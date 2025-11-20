@@ -19,10 +19,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <div className="flex">
+        <div className="flex h-screen overflow-hidden">
           <SidebarProvider>
             <AppSidebar />
-            <main className="w-[90%] bg-gray-100 p-4">{children}</main>
+            <main className="w-[90%] bg-gray-100 p-4 overflow-y-auto">
+              {children}
+            </main>
           </SidebarProvider>
         </div>
       </body>
