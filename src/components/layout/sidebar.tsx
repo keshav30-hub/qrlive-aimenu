@@ -9,6 +9,7 @@ import {
   Settings,
   QrCode,
   Calendar,
+  Users,
 } from 'lucide-react';
 import Link from 'next/link';
 import {
@@ -74,6 +75,14 @@ export function AppSidebar() {
               <SidebarMenuButton>
                 <Calendar />
                 <span>Events</span>
+              </SidebarMenuButton>
+            </Link>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <Link href="/staff">
+              <SidebarMenuButton>
+                <Users />
+                <span>Staff</span>
               </SidebarMenuButton>
             </Link>
           </SidebarMenuItem>
