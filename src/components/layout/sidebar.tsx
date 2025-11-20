@@ -8,6 +8,7 @@ import {
   MessageSquare,
   Settings,
   QrCode,
+  Calendar,
 } from 'lucide-react';
 import Link from 'next/link';
 import {
@@ -65,6 +66,14 @@ export function AppSidebar() {
               <SidebarMenuButton>
                 <QrCode />
                 <span>QR Menu</span>
+              </SidebarMenuButton>
+            </Link>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <Link href="/events">
+              <SidebarMenuButton>
+                <Calendar />
+                <span>Events</span>
               </SidebarMenuButton>
             </Link>
           </SidebarMenuItem>
