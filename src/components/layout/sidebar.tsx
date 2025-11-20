@@ -9,6 +9,7 @@ import {
   Settings,
   QrCode,
 } from 'lucide-react';
+import Link from 'next/link';
 import {
   Sidebar,
   SidebarContent,
@@ -28,50 +29,64 @@ export function AppSidebar() {
       <SidebarContent>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton href="/dashboard">
-              <LayoutDashboard />
-              <span>Dashboard</span>
-            </SidebarMenuButton>
+            <Link href="/dashboard">
+              <SidebarMenuButton>
+                <LayoutDashboard />
+                <span>Dashboard</span>
+              </SidebarMenuButton>
+            </Link>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton href="/menu">
-              <BookOpen />
-              <span>Menu</span>
-            </SidebarMenuButton>
+            <Link href="/menu">
+              <SidebarMenuButton>
+                <BookOpen />
+                <span>Menu</span>
+              </SidebarMenuButton>
+            </Link>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton href="/tasks">
-              <ListTodo />
-              <span>Tasks</span>
-            </SidebarMenuButton>
+            <Link href="/tasks">
+              <SidebarMenuButton>
+                <ListTodo />
+                <span>Tasks</span>
+              </SidebarMenuButton>
+            </Link>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton href="/feedback">
-              <MessageSquare />
-              <span>Feedback</span>
-            </SidebarMenuButton>
+            <Link href="/feedback">
+              <SidebarMenuButton>
+                <MessageSquare />
+                <span>Feedback</span>
+              </SidebarMenuButton>
+            </Link>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton href="/qr-menu">
-              <QrCode />
-              <span>QR Menu</span>
-            </SidebarMenuButton>
+            <Link href="/qr-menu">
+              <SidebarMenuButton>
+                <QrCode />
+                <span>QR Menu</span>
+              </SidebarMenuButton>
+            </Link>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton href="/settings">
-              <Settings />
-              <span>Settings</span>
-            </SidebarMenuButton>
+            <Link href="/settings">
+              <SidebarMenuButton>
+                <Settings />
+                <span>Settings</span>
+              </SidebarMenuButton>
+            </Link>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton href="#">
-              <LogOut />
-              <span>Logout</span>
-            </SidebarMenuButton>
+            <Link href="#">
+              <SidebarMenuButton>
+                <LogOut />
+                <span>Logout</span>
+              </SidebarMenuButton>
+            </Link>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
