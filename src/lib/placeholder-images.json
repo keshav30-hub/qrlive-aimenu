@@ -1,3 +1,28 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "event1",
+      "description": "A jazz band performing on stage.",
+      "imageUrl": "https://images.unsplash.com/photo-1531971772042-d189c2021395?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxqYXp6JTIwYmFuZHxlbnwwfHx8fDE3NjM2MjcxMTB8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "jazz band"
+    },
+    {
+      "id": "event2",
+      "description": "A plate of delicious tacos.",
+      "imageUrl": "https://images.unsplash.com/photo-1703073185774-a38e4e68c205?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8dGFjb3MlMjBmb29kfGVufDB8fHx8MTc2MzU3NDkwN3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "tacos food"
+    },
+    {
+      "id": "event3",
+      "description": "Glasses of red and white wine.",
+      "imageUrl": "https://images.unsplash.com/photo-1603360901888-d96f6e46c578?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHx3aW5lJTIwZ2xhc3Nlc3xlbnwwfHx8fDE3NjM2NTI0Mzd8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "wine glasses"
+    },
+    {
+      "id": "event4",
+      "description": "People celebrating at Oktoberfest.",
+      "imageUrl": "https://images.unsplash.com/photo-1545165230-00d5c6012a01?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxiZWVyJTIwZmVzdGl2YWx8ZW58MHx8fHwxNzYzNjUyNDM2fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "beer festival"
+    }
+  ]
 }
