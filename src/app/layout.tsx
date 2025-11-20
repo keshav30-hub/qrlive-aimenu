@@ -3,6 +3,7 @@ import {Inter} from 'next/font/google';
 import './globals.css';
 import {SidebarProvider} from '@/components/ui/sidebar';
 import {AppSidebar} from '@/components/layout/sidebar';
+import { Toaster } from '@/components/ui/toaster';
 
 const inter = Inter({subsets: ['latin'], variable: '--font-inter'});
 
@@ -17,16 +18,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
+    <html lang="en" suppressHydrationWarning>
+      <body className={inter.variable}>
         <div className="flex h-screen overflow-hidden">
           <SidebarProvider>
             <AppSidebar />
-            <main className="w-[90%] bg-gray-100 p-4 overflow-y-auto">
+            <main className="w-full bg-gray-100 p-4 overflow-y-auto">
               {children}
             </main>
           </SidebarProvider>
         </div>
+        <Toaster />
       </body>
     </html>
   );
