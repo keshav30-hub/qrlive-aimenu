@@ -1,3 +1,6 @@
+'use client';
+
+import { useState, useMemo } from 'react';
 import {
   Card,
   CardContent,
@@ -15,7 +18,6 @@ import {
   TableCell,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 
 const unattendedTasks = [
   {
@@ -40,40 +42,22 @@ const unattendedTasks = [
   },
 ];
 
-const taskHistory = [
-  {
-    taskCount: 101,
-    dateTime: '2023-10-27 10:20 AM',
-    tableNumber: 'Table 1',
-    requestType: 'Refill Water',
-    status: 'attended',
-    staff: 'John Doe',
-  },
-  {
-    taskCount: 102,
-    dateTime: '2023-10-27 10:15 AM',
-    tableNumber: 'Table 7',
-    requestType: 'Bill Please',
-    status: 'ignored',
-    staff: 'Jane Smith',
-  },
-  {
-    taskCount: 103,
-    dateTime: '2023-10-27 10:10 AM',
-    tableNumber: 'Table 4',
-    requestType: 'Clean Table',
-    status: 'attended',
-    staff: 'John Doe',
-  },
-  {
-    taskCount: 104,
-    dateTime: '2023-10-27 10:05 AM',
-    tableNumber: 'Table 5',
-    requestType: 'Extra Napkins',
-    status: 'unattended',
-    staff: '-',
-  },
-];
+// Expanded task history data for pagination
+const taskHistory = Array.from({ length: 55 }, (_, i) => {
+    const statusTypes = ['attended', 'ignored', 'unattended'] as const;
+    const requestTypes = ['Refill Water', 'Bill Please', 'Clean Table', 'Extra Napkins'];
+    const staffNames = ['John Doe', 'Jane Smith', 'Alex Johnson', 'Emily White'];
+    const status = statusTypes[i % statusTypes.length];
+    return {
+        taskCount: 101 + i,
+        dateTime: `2023-10-27 ${10 - Math.floor(i/60)}:${(59 - (i % 60)).toString().padStart(2, '0')} AM`,
+        tableNumber: `Table ${ (i % 12) + 1 }`,
+        requestType: requestTypes[i % requestTypes.length],
+        status: status,
+        staff: status === 'attended' ? staffNames[i % staffNames.length] : '-',
+    };
+});
+
 
 const statusVariant = (status: string) => {
   switch (status) {
@@ -88,11 +72,31 @@ const statusVariant = (status: string) => {
   }
 };
 
+const ITEMS_PER_PAGE = 10;
+
 export default function TasksPage() {
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const totalPages = Math.ceil(taskHistory.length / ITEMS_PER_PAGE);
+
+  const paginatedTasks = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return taskHistory.slice(startIndex, endIndex);
+  }, [currentPage]);
+
+  const handlePreviousPage = () => {
+    setCurrentPage((prev) => Math.max(prev - 1, 1));
+  };
+
+  const handleNextPage = () => {
+    setCurrentPage((prev) => Math.min(prev + 1, totalPages));
+  };
+
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">Tasks</h1>
-      
+
       <Card>
         <CardHeader>
           <CardTitle>Unattended Tasks</CardTitle>
@@ -107,7 +111,9 @@ export default function TasksPage() {
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <p className="font-semibold">{task.requestType}</p>
-                    <p className="text-sm text-muted-foreground">{task.dateTime}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {task.dateTime}
+                    </p>
                     <div className="flex justify-between pt-2">
                       <Button variant="outline">Ignore</Button>
                       <Button>Attend</Button>
@@ -138,14 +144,17 @@ export default function TasksPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {taskHistory.map((task) => (
+              {paginatedTasks.map((task) => (
                 <TableRow key={task.taskCount}>
                   <TableCell>{task.taskCount}</TableCell>
                   <TableCell>{task.dateTime}</TableCell>
                   <TableCell>{task.tableNumber}</TableCell>
                   <TableCell>{task.requestType}</TableCell>
                   <TableCell>
-                    <Badge variant={statusVariant(task.status)} className="capitalize">
+                    <Badge
+                      variant={statusVariant(task.status)}
+                      className="capitalize"
+                    >
                       {task.status}
                     </Badge>
                   </TableCell>
@@ -154,6 +163,27 @@ export default function TasksPage() {
               ))}
             </TableBody>
           </Table>
+          <div className="flex items-center justify-end space-x-2 pt-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handlePreviousPage}
+              disabled={currentPage === 1}
+            >
+              Previous
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              Page {currentPage} of {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleNextPage}
+              disabled={currentPage === totalPages}
+            >
+              Next
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>
