@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { placeHolderImages } from '@/lib/placeholder-images';
-import { User, Calendar, Clock, Info, Users, PlusCircle, FilePenLine, Trash2, Download, ChevronLeft } from 'lucide-react';
+import { User, Calendar, Clock, Info, Users, PlusCircle, FilePenLine, Trash2, Download, ChevronLeft, Check, X } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -48,13 +48,14 @@ import {
 import { useState } from 'react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import { Textarea } from '@/components/ui/textarea';
 
 
-const eventDetails = {
+const eventDetailsData = {
   id: '1',
   name: 'Jazz Night',
   description: 'Enjoy a relaxing evening with live jazz music featuring some of the best local artists. The night will be filled with smooth melodies and a great atmosphere. Perfect for a date night or a night out with friends. Full bar and a special cocktail menu will be available.',
-  datetime: '2023-11-15 19:00',
+  datetime: '2023-11-15T19:00',
   imageUrl: placeHolderImages.find((p) => p.id === 'event1')?.imageUrl || '',
   imageHint: placeHolderImages.find((p) => p.id === 'event1')?.imageHint || '',
   organizers: ['The Velvet Note Club', 'City Jazz Association'],
@@ -132,7 +133,10 @@ export default function EventDetailsPage({
 }: {
   params: { eventId: string };
 }) {
-  const date = new Date(eventDetails.datetime);
+  const [eventDetails, setEventDetails] = useState(eventDetailsData);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedDetails, setEditedDetails] = useState(eventDetailsData);
+  
   const [rsvpList, setRsvpList] = useState(initialRsvpList);
 
   const handleStatusChange = (seq: number, newStatus: string) => {
@@ -149,6 +153,44 @@ export default function EventDetailsPage({
     });
     doc.save('rsvp-details.pdf');
   };
+
+  const handleEditClick = () => {
+    setEditedDetails(eventDetails);
+    setIsEditing(true);
+  };
+  
+  const handleCancelClick = () => {
+    setIsEditing(false);
+  };
+
+  const handleSaveClick = () => {
+    setEventDetails(editedDetails);
+    setIsEditing(false);
+  };
+  
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setEditedDetails(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    const currentDateTime = new Date(editedDetails.datetime);
+    
+    if (name === 'date') {
+      const [year, month, day] = value.split('-').map(Number);
+      currentDateTime.setFullYear(year, month - 1, day);
+    } else if (name === 'time') {
+      const [hours, minutes] = value.split(':').map(Number);
+      currentDateTime.setHours(hours, minutes);
+    }
+
+    setEditedDetails(prev => ({ ...prev, datetime: currentDateTime.toISOString() }));
+  };
+  
+
+  const date = new Date(eventDetails.datetime);
+  const editedDate = new Date(editedDetails.datetime);
 
   return (
     <div className="space-y-6">
@@ -174,16 +216,38 @@ export default function EventDetailsPage({
         </div>
         <CardHeader>
            <div className="flex justify-between items-center">
-            <CardTitle className="text-4xl">{eventDetails.name}</CardTitle>
+            {isEditing ? (
+              <Input
+                name="name"
+                value={editedDetails.name}
+                onChange={handleInputChange}
+                className="text-4xl font-bold p-0 border-0 shadow-none focus-visible:ring-0"
+              />
+            ) : (
+              <CardTitle className="text-4xl">{eventDetails.name}</CardTitle>
+            )}
             <div className="flex gap-2">
-              <Button variant="outline" size="icon">
-                <FilePenLine className="h-5 w-5" />
-                <span className="sr-only">Edit Event</span>
-              </Button>
-              <Button variant="destructive" size="icon">
-                <Trash2 className="h-5 w-5" />
-                 <span className="sr-only">Delete Event</span>
-              </Button>
+              {isEditing ? (
+                <>
+                  <Button variant="outline" onClick={handleCancelClick}>
+                    <X className="mr-2 h-4 w-4" /> Cancel
+                  </Button>
+                  <Button onClick={handleSaveClick}>
+                    <Check className="mr-2 h-4 w-4" /> Save
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button variant="outline" size="icon" onClick={handleEditClick}>
+                    <FilePenLine className="h-5 w-5" />
+                    <span className="sr-only">Edit Event</span>
+                  </Button>
+                  <Button variant="destructive" size="icon">
+                    <Trash2 className="h-5 w-5" />
+                     <span className="sr-only">Delete Event</span>
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -191,26 +255,59 @@ export default function EventDetailsPage({
           <div className="flex items-center gap-4 text-muted-foreground">
             <div className='flex items-center gap-2'>
               <Calendar className="h-5 w-5" />
-              <span>{date.toLocaleDateString()}</span>
-            </div>
-            <div className='flex items-center gap-2'>
-              <Clock className="h-5 w-5" />
-              <span>{date.toLocaleTimeString()}</span>
+               {isEditing ? (
+                <div className="flex gap-2">
+                  <Input 
+                    type="date"
+                    name="date" 
+                    value={editedDate.toISOString().split('T')[0]}
+                    onChange={handleDateChange} 
+                  />
+                  <Input 
+                    type="time" 
+                    name="time"
+                    value={editedDate.toTimeString().slice(0, 5)}
+                    onChange={handleDateChange} 
+                  />
+                </div>
+              ) : (
+                <>
+                  <span>{date.toLocaleDateString()}</span>
+                  <Clock className="h-5 w-5" />
+                  <span>{date.toLocaleTimeString()}</span>
+                </>
+              )}
             </div>
           </div>
           <div className="flex items-start gap-2 text-foreground/80">
             <Info className="h-5 w-5 mt-1 shrink-0" />
-            <p>{eventDetails.description}</p>
+            {isEditing ? (
+              <Textarea 
+                name="description" 
+                value={editedDetails.description} 
+                onChange={handleInputChange} 
+                className="w-full"
+              />
+            ) : (
+              <p>{eventDetails.description}</p>
+            )}
           </div>
-          {eventDetails.organizers && eventDetails.organizers.length > 0 && (
-             <div className="flex items-start gap-2 text-foreground/80">
-                <Users className="h-5 w-5 mt-1 shrink-0" />
-                <div>
-                    <h3 className="font-semibold">Organized by:</h3>
+          <div className="flex items-start gap-2 text-foreground/80">
+              <Users className="h-5 w-5 mt-1 shrink-0" />
+              <div>
+                  <h3 className="font-semibold">Organized by:</h3>
+                   {isEditing ? (
+                    <Input 
+                      name="organizers" 
+                      value={editedDetails.organizers.join(', ')} 
+                      onChange={(e) => setEditedDetails(prev => ({ ...prev, organizers: e.target.value.split(',').map(s => s.trim())}))}
+                      className="w-full"
+                    />
+                  ) : (
                     <p>{eventDetails.organizers.join(', ')}</p>
-                </div>
-            </div>
-          )}
+                  )}
+              </div>
+          </div>
         </CardContent>
       </Card>
 

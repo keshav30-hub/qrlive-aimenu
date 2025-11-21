@@ -38,6 +38,7 @@ import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
 import React from 'react';
 import { format } from 'date-fns';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 const events = [
   {
@@ -148,6 +149,14 @@ export default function EventsPage() {
                 <Label htmlFor="event-organizers">Event Organizers (Optional)</Label>
                 <Input id="event-organizers" placeholder="e.g. John Doe, Jane Smith" />
               </div>
+               <Accordion type="single" collapsible>
+                <AccordionItem value="item-1">
+                  <AccordionTrigger>Terms & Conditions (Optional)</AccordionTrigger>
+                  <AccordionContent>
+                    <Textarea placeholder="Enter terms and conditions for the event." />
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             </div>
             </ScrollArea>
             <SheetFooter>
