@@ -27,6 +27,14 @@ import {
   SheetFooter,
   SheetDescription,
 } from '@/components/ui/sheet';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { useCurrency } from '@/hooks/use-currency';
@@ -39,6 +47,11 @@ import {
   Star,
   Flame,
   Bell,
+  ConciergeBell,
+  FileText,
+  Sparkles,
+  GlassWater,
+  Spray,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -148,6 +161,14 @@ const getTagIcon = (tag: string) => {
   }
 };
 
+const serviceRequests = [
+    { text: 'Get Bill', icon: <FileText /> },
+    { text: 'Call Captain', icon: <ConciergeBell /> },
+    { text: 'Get Tissues', icon: <Sparkles /> },
+    { text: 'Clean the Table', icon: <Spray /> },
+    { text: 'Get Water', icon: <GlassWater /> },
+]
+
 export default function QrMenuPage() {
   const params = useParams();
   const { 'business-name': businessName, 'table-number': tableNumber } = params;
@@ -205,10 +226,30 @@ export default function QrMenuPage() {
               </p>
             </div>
           </div>
-          <Button variant="ghost" size="icon">
-            <Bell className="h-6 w-6" />
-            <span className="sr-only">Notifications</span>
-          </Button>
+          <Dialog>
+            <DialogTrigger asChild>
+                <Button size="icon" className="bg-primary text-primary-foreground">
+                    <Bell className="h-6 w-6" />
+                    <span className="sr-only">Call Waiter</span>
+                </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-xs sm:max-w-sm rounded-lg">
+                 <DialogHeader>
+                    <DialogTitle>Request Assistance</DialogTitle>
+                    <DialogDescription>
+                        Select a service and a staff member will be right with you.
+                    </DialogDescription>
+                 </DialogHeader>
+                 <div className="flex flex-wrap gap-3 py-4">
+                    {serviceRequests.map(req => (
+                        <Button key={req.text} variant="outline" className="flex-grow h-16 flex-col gap-1">
+                            {req.icon}
+                            <span>{req.text}</span>
+                        </Button>
+                    ))}
+                 </div>
+            </DialogContent>
+          </Dialog>
         </header>
 
         <section className="px-4 pb-4">
@@ -222,7 +263,7 @@ export default function QrMenuPage() {
           >
             <CarouselContent>
               {events.map((event) => (
-                <CarouselItem key={event.id} className="md:basis-1/2 lg:basis-full">
+                <CarouselItem key={event.id} className="basis-auto">
                   <Card className="overflow-hidden">
                     <div className="relative h-32 w-full">
                       <Image
