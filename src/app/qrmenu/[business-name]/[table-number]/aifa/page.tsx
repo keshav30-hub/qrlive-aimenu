@@ -12,6 +12,7 @@ import { Card } from "@/components/ui/card";
 import Image from "next/image";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import Link from 'next/link';
 import { runAifaFlow } from "@/ai/flows/aifa-flow";
 import { type AIFALowInput } from "@/ai/flows/aifa-schema";
 import { menu as menuData, events as allEvents, businessData } from '@/lib/qrmenu-mock';
@@ -38,10 +39,14 @@ const EventCard = ({ event }: { event: typeof allEvents[0] }) => (
         </div>
         <div className="p-3">
             <h4 className="font-semibold">{event.name}</h4>
-            <p className="text-sm text-muted-foreground">{event.description}</p>
-            <Button className="w-full mt-3">
-                <Ticket className="mr-2 h-4 w-4" /> RSVP
-            </Button>
+            <p className="text-sm text-muted-foreground line-clamp-2">{event.description}</p>
+            <div className="flex gap-2 mt-3">
+                <Link href={`/events/${event.id}`} className="flex-1">
+                    <Button className="w-full">
+                         View Details
+                    </Button>
+                </Link>
+            </div>
         </div>
     </Card>
 );
@@ -121,11 +126,11 @@ export default function AIFAPage() {
 
     useEffect(() => {
         try {
-          const savedMessages = sessionStorage.getItem('aifa-chat-history');
-          if (savedMessages) {
-            const parsedMessages = JSON.parse(savedMessages);
-            if (Array.isArray(parsedMessages) && parsedMessages.length > 0) {
-              const textMessages = parsedMessages.filter((msg: any) => typeof msg.content === 'string');
+          const savedMessagesJSON = sessionStorage.getItem('aifa-chat-history');
+          if (savedMessagesJSON) {
+            const savedMessages = JSON.parse(savedMessagesJSON);
+            if (Array.isArray(savedMessages) && savedMessages.length > 0) {
+              const textMessages = savedMessages.filter((msg: any) => typeof msg.content === 'string');
               if (textMessages.length > 0) {
                 setMessages(textMessages);
                 setShowInitialActions(false);
@@ -161,6 +166,7 @@ export default function AIFAPage() {
         setMessages(prev => {
             const newMessages = [...prev, { id: Date.now(), sender, content }];
             try {
+                // Save only serializable messages (strings)
                 const serializableMessages = newMessages.filter(msg => typeof msg.content === 'string');
                 sessionStorage.setItem('aifa-chat-history', JSON.stringify(serializableMessages));
             } catch (error) {
@@ -196,17 +202,10 @@ export default function AIFAPage() {
             }));
         
         try {
-            const flowInput: AIFALowInput = {
-                businessName: businessNameParam,
-                menuCategories: menuData.categories.map(c => ({name: c.name, description: c.description})),
-                menuItems: menuData.items.map(i => ({...i, price: i.price.toString(), tags: i.tags || [] })),
-                events: allEvents,
-                history: historyForAI,
-                prompt,
-            };
-            const response = await runAifaFlow(flowInput);
+            // A special check to see if the user's intent is to see events
+            const isAskingForEvents = /event|happening|special/i.test(prompt);
 
-            if (prompt === "Events") {
+            if ((prompt === "Events" || isAskingForEvents) && activeEvents.length > 0) {
                  addMessage('aifa', "You're in for a treat! Here are our upcoming events. Let me know if you'd like to RSVP.");
                 activeEvents.forEach(event => {
                     addMessage('aifa', <EventCard event={event} />);
@@ -215,6 +214,15 @@ export default function AIFAPage() {
                 addMessage('aifa', <div><p>I appreciate you taking the time! Who is this feedback for?</p><FeedbackTargetSelection onSelect={handleFeedbackTarget} /></div>);
             }
             else {
+                 const flowInput: AIFALowInput = {
+                    businessName: businessNameParam,
+                    menuCategories: menuData.categories.map(c => ({name: c.name, description: c.description})),
+                    menuItems: menuData.items.map(i => ({...i, price: i.price.toString(), tags: i.tags || [] })),
+                    events: allEvents,
+                    history: historyForAI,
+                    prompt,
+                };
+                const response = await runAifaFlow(flowInput);
                 addMessage('aifa', response);
             }
         } catch(e) {
