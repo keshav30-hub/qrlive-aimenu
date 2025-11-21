@@ -7,7 +7,9 @@ import { Input } from '@/components/ui/input';
 const MAP_ID = 'google-map-script-places';
 
 interface PlacesAutocompleteProps {
-  onPlaceSelect: (place: google.maps.places.Place | null) => void;
+  onPlaceSelect: (place: google.maps.places.PlaceResult | null) => void;
+  value: string;
+  onChange: (value: string) => void;
 }
 
 // Extend the JSX IntrinsicElements to include the custom web component
@@ -19,7 +21,7 @@ declare global {
   }
 }
 
-export function PlacesAutocomplete({ onPlaceSelect }: PlacesAutocompleteProps) {
+export function PlacesAutocomplete({ onPlaceSelect, value, onChange }: PlacesAutocompleteProps) {
   const [isApiLoaded, setIsApiLoaded] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<HTMLElement>(null);
@@ -38,7 +40,6 @@ export function PlacesAutocomplete({ onPlaceSelect }: PlacesAutocompleteProps) {
 
     const existingScript = document.getElementById(MAP_ID);
     if (existingScript) {
-        // Assume if script exists, it will eventually load google.maps
         const checkGoogle = setInterval(() => {
             if (window.google && window.google.maps && window.google.maps.places) {
                 setIsApiLoaded(true);
@@ -71,12 +72,11 @@ export function PlacesAutocomplete({ onPlaceSelect }: PlacesAutocompleteProps) {
         const autocompleteElement = autocompleteRef.current;
         const inputElement = inputRef.current;
 
-        // Set the input element for the autocomplete web component
         autocompleteElement.appendChild(inputElement);
 
         const handlePlaceChange = async (event: Event) => {
             const autocomplete = (event.target as any);
-            const place = await autocomplete.getPlace();
+            const place = await autocomplete.getPlace(); // This is PlaceResult
             if (place) {
                 onPlaceSelect(place);
             } else {
@@ -103,14 +103,23 @@ export function PlacesAutocomplete({ onPlaceSelect }: PlacesAutocompleteProps) {
   }
 
   return (
-    <gmp-place-autocomplete ref={autocompleteRef}>
-        <Input 
-            ref={inputRef}
-            type="text"
-            id="full-address" 
-            placeholder="Start typing your address..." 
-            className="pl-10"
-        />
-    </gmp-place-autocomplete>
+    <>
+      <style>{`
+        gmp-place-autocomplete input {
+          color: hsl(var(--foreground));
+        }
+      `}</style>
+      <gmp-place-autocomplete ref={autocompleteRef} country="in">
+          <Input 
+              ref={inputRef}
+              type="text"
+              id="full-address" 
+              placeholder="Start typing your address..." 
+              className="pl-10"
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+          />
+      </gmp-place-autocomplete>
+    </>
   );
 }

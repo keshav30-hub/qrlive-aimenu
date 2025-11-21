@@ -20,6 +20,7 @@ import { PlacesAutocomplete } from '@/components/places-autocomplete';
 export default function OnboardingPage() {
   const router = useRouter();
   const [address, setAddress] = useState('');
+  const [selectedPlace, setSelectedPlace] = useState<google.maps.places.PlaceResult | null>(null);
 
   const handleCompleteOnboarding = () => {
     // Here you would typically save the data
@@ -27,9 +28,16 @@ export default function OnboardingPage() {
     router.push('/dashboard');
   };
 
-  const handlePlaceSelect = (place: google.maps.places.Place | null) => {
-    console.log(place);
-    setAddress(place?.formatted_address || '');
+  const handlePlaceSelect = (place: google.maps.places.PlaceResult | null) => {
+    setSelectedPlace(place);
+    if (place) {
+      // Display both name and formatted address
+      const displayAddress = `${place.name ? place.name + ', ' : ''}${place.formatted_address || ''}`;
+      setAddress(displayAddress);
+    } else {
+      // If place is null (e.g. input cleared), keep the typed value.
+      // The user might be typing a manual address.
+    }
   }
 
   return (
@@ -67,7 +75,7 @@ export default function OnboardingPage() {
             <Label htmlFor="full-address">Full Address</Label>
             <div className="relative">
               <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
-              <PlacesAutocomplete onPlaceSelect={handlePlaceSelect} />
+              <PlacesAutocomplete onPlaceSelect={handlePlaceSelect} value={address} onChange={setAddress} />
             </div>
           </div>
           <div className="space-y-2">
