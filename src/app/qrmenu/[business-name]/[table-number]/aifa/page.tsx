@@ -6,10 +6,12 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar } from "@/components/ui/avatar";
 import { useRouter, useParams } from "next/navigation";
-import { ChevronLeft, Send, Sparkles, Ticket } from "lucide-react";
+import { ChevronLeft, Send, Sparkles, Ticket, Star, ImagePlus } from "lucide-react";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import Image from "next/image";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 
 // Mock data for events - in a real app, this would be fetched
 const allEvents = [
@@ -49,7 +51,7 @@ type Message = {
 const InitialActions = ({ onSelect, showEventsButton }: { onSelect: (action: string) => void, showEventsButton: boolean }) => (
     <div className="flex gap-2 justify-center py-2">
         <Button variant="outline" onClick={() => onSelect('Menu')}>Menu</Button>
-        <Button variant="outline" onClick={() => onSelect('Feedback')}>Give Feedback</Button>
+        <Button variant="outline" onClick={() => onSelect('Give Feedback')}>Give Feedback</Button>
         {showEventsButton && <Button variant="outline" onClick={() => onSelect('Events')}>Events</Button>}
     </div>
 );
@@ -67,7 +69,66 @@ const EventCard = ({ event }: { event: typeof allEvents[0] }) => (
             </Button>
         </div>
     </Card>
-)
+);
+
+const FeedbackTargetSelection = ({ onSelect }: { onSelect: (target: string) => void }) => (
+    <div className="flex gap-2 justify-center py-2">
+        <Button variant="outline" onClick={() => onSelect('Business')}>Business</Button>
+        <Button variant="outline" onClick={() => onSelect('AIFA')}>AIFA</Button>
+    </div>
+);
+
+const FeedbackForm = ({ target }: { target: string }) => {
+    const [rating, setRating] = useState(0);
+    const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setImagePreview(reader.result as string);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    return (
+        <div className="space-y-4 rounded-lg border bg-background p-4">
+            <h4 className="font-medium text-center">Feedback for {target}</h4>
+            <div className="flex justify-center gap-1">
+                {[1, 2, 3, 4, 5].map((star) => (
+                    <button key={star} onClick={() => setRating(star)}>
+                        <Star
+                            className={`h-8 w-8 ${
+                                rating >= star
+                                    ? 'text-yellow-400 fill-yellow-400'
+                                    : 'text-gray-300 dark:text-gray-600'
+                            }`}
+                        />
+                    </button>
+                ))}
+            </div>
+            <Textarea placeholder="Tell us more about your experience..." />
+            <div className="space-y-2">
+                 <Label htmlFor="feedback-image" className="cursor-pointer flex items-center justify-center gap-2 rounded-md border-2 border-dashed border-muted-foreground/50 p-4 text-muted-foreground hover:bg-accent">
+                    {imagePreview ? (
+                        <Image src={imagePreview} alt="Image preview" width={80} height={80} className="h-20 w-20 object-cover rounded-md" />
+                    ) : (
+                        <>
+                            <ImagePlus className="h-6 w-6" />
+                            <span>Upload Image (Optional)</span>
+                        </>
+                    )}
+                </Label>
+                <Input id="feedback-image" type="file" className="sr-only" accept="image/*" onChange={handleImageChange} />
+            </div>
+            <Button className="w-full">
+                <Send className="mr-2 h-4 w-4" /> Submit Feedback
+            </Button>
+        </div>
+    );
+};
 
 
 export default function AIFAPage() {
@@ -105,6 +166,13 @@ export default function AIFAPage() {
     const addMessage = (sender: 'user' | 'aifa', content: React.ReactNode) => {
         setMessages(prev => [...prev, { id: Date.now(), sender, content }]);
     }
+    
+    const handleFeedbackTarget = (target: string) => {
+        addMessage('user', `Feedback for ${target}`);
+        setTimeout(() => {
+            addMessage('aifa', <FeedbackForm target={target} />);
+        }, 300);
+    }
 
     const handleInitialAction = (action: string) => {
         addMessage('user', action);
@@ -113,8 +181,8 @@ export default function AIFAPage() {
         setTimeout(() => {
             if (action === 'Menu') {
                 addMessage('aifa', "Great choice! To give you the best recommendation, tell me: what's your mood? Or do you have any dietary preferences?");
-            } else if (action === 'Feedback') {
-                addMessage('aifa', "I'm all ears! Please tell me about your experience. Your feedback is the secret ingredient to our improvement.");
+            } else if (action === 'Give Feedback') {
+                addMessage('aifa', <div><p>I appreciate you taking the time! Who is this feedback for?</p><FeedbackTargetSelection onSelect={handleFeedbackTarget} /></div>);
             } else if (action === 'Events') {
                 addMessage('aifa', "You're in for a treat! Here are our upcoming events. Let me know if you'd like to RSVP.");
                 activeEvents.forEach(event => {
