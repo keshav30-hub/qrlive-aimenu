@@ -16,30 +16,79 @@ import { Label } from '@/components/ui/label';
 import { Building, User, Phone, MapPin, FileText } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { PlacesAutocomplete } from '@/components/places-autocomplete';
+import { useFirebase } from '@/firebase';
+import { doc, setDoc } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const { user, firestore } = useFirebase();
+  const { toast } = useToast();
+  
+  const [businessName, setBusinessName] = useState('');
+  const [ownerName, setOwnerName] = useState('');
+  const [contact, setContact] = useState('');
   const [address, setAddress] = useState('');
+  const [gst, setGst] = useState('');
   const [selectedPlace, setSelectedPlace] = useState<google.maps.places.PlaceResult | null>(null);
 
-  const handleCompleteOnboarding = () => {
-    // Here you would typically save the data
-    // and then redirect the user.
-    router.push('/dashboard');
+  const handleCompleteOnboarding = async () => {
+    if (!user || !firestore) {
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "User not authenticated. Please log in.",
+        });
+        return;
+    }
+    if (!businessName || !ownerName || !contact || !address) {
+        toast({
+            variant: "destructive",
+            title: "Missing Fields",
+            description: "Please fill out all required fields.",
+        });
+        return;
+    }
+
+    try {
+      const userRef = doc(firestore, 'users', user.uid);
+      await setDoc(userRef, {
+        businessName,
+        ownerName,
+        contact,
+        address,
+        gst,
+        latitude: selectedPlace?.geometry?.location?.lat() || null,
+        longitude: selectedPlace?.geometry?.location?.lng() || null,
+        businessId: `is-Menu-25-DFCV68`,
+        onboarding: true,
+      }, { merge: true });
+      
+      toast({
+        title: "Onboarding Complete!",
+        description: "Welcome to your dashboard.",
+      });
+
+      router.push('/dashboard');
+    } catch (error) {
+        console.error("Error saving onboarding data:", error);
+        toast({
+            variant: "destructive",
+            title: "Save Failed",
+            description: "Could not save your information. Please try again.",
+        });
+    }
   };
 
   const handlePlaceSelect = (place: google.maps.places.PlaceResult | null) => {
     setSelectedPlace(place);
     if (place) {
-      // Display both name and formatted address
       const displayAddress = `${place.name ? place.name + ', ' : ''}${place.formatted_address || ''}`;
       setAddress(displayAddress);
     }
   }
 
   const handleAddressChange = (value: string) => {
-    // If the user is typing manually, update the address state
-    // but don't clear the selectedPlace, as they might just be editing.
     setAddress(value);
   }
 
@@ -57,21 +106,21 @@ export default function OnboardingPage() {
             <Label htmlFor="business-name">Business Name</Label>
             <div className="relative">
               <Building className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input id="business-name" placeholder="e.g., The Gourmet Place" className="pl-10" />
+              <Input id="business-name" value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="e.g., The Gourmet Place" className="pl-10" />
             </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="owner-name">Owner Name</Label>
             <div className="relative">
               <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input id="owner-name" placeholder="e.g., John Doe" className="pl-10" />
+              <Input id="owner-name" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} placeholder="e.g., John Doe" className="pl-10" />
             </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="mobile-number">Mobile Number</Label>
             <div className="relative">
               <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input id="mobile-number" type="tel" placeholder="e.g., 9876543210" className="pl-10" />
+              <Input id="mobile-number" type="tel" value={contact} onChange={(e) => setContact(e.target.value)} placeholder="e.g., 9876543210" className="pl-10" />
             </div>
           </div>
           <div className="space-y-2">
@@ -85,7 +134,7 @@ export default function OnboardingPage() {
             <Label htmlFor="gst-detail">GST Detail (Optional)</Label>
             <div className="relative">
               <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input id="gst-detail" placeholder="Enter your GST number" className="pl-10" />
+              <Input id="gst-detail" value={gst} onChange={(e) => setGst(e.target.value)} placeholder="Enter your GST number" className="pl-10" />
             </div>
           </div>
         </CardContent>
@@ -98,3 +147,5 @@ export default function OnboardingPage() {
     </div>
   );
 }
+
+    

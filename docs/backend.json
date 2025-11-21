@@ -6,9 +6,9 @@
       "type": "object",
       "description": "Represents a user of the Qrlive-Menu application.",
       "properties": {
-        "id": {
+        "uid": {
           "type": "string",
-          "description": "Unique identifier for the user."
+          "description": "Unique identifier for the user, matching Firebase Auth UID."
         },
         "email": {
           "type": "string",
@@ -25,7 +25,7 @@
           "description": "Timestamp indicating the user's last login.",
           "format": "date-time"
         },
-        "onboardingComplete": {
+        "onboarding": {
           "type": "boolean",
           "description": "Indicates whether the user has completed the onboarding process."
         },
@@ -33,24 +33,41 @@
           "type": "string",
           "description": "The ID of the business associated with the user (e.g., is-Menu-25-DFCV68)."
         },
+        "businessName": {
+          "type": "string",
+          "description": "The name of the user's business."
+        },
+        "ownerName": {
+          "type": "string",
+          "description": "The name of the business owner."
+        },
+        "contact": {
+          "type": "string",
+          "description": "The contact number for the business."
+        },
+        "address": {
+          "type": "string",
+          "description": "The full address of the business."
+        },
+        "gst": {
+          "type": "string",
+          "description": "The GST detail for the business."
+        },
         "latitude": {
           "type": "number",
-          "description": "Latitude of the user's location."
+          "description": "Latitude of the user's business location."
         },
         "longitude": {
           "type": "number",
-          "description": "Longitude of the user's location."
+          "description": "Longitude of the user's business location."
         }
       },
       "required": [
-        "id",
+        "uid",
         "email",
         "createdAt",
         "lastLoginAt",
-        "onboardingComplete",
-        "businessId",
-        "latitude",
-        "longitude"
+        "onboarding"
       ]
     },
     "MenuItem": {
@@ -510,269 +527,94 @@
   },
   "auth": {
     "providers": [
-      "password",
-      "anonymous"
+      "google.com"
     ]
   },
   "firestore": {
-    "structure": [
-      {
-        "path": "/users/{userId}",
-        "definition": {
-          "entityName": "User",
-          "schema": {
-            "$ref": "#/backend/entities/User"
-          },
-          "description": "Stores user data including email, creation timestamp, last login, onboarding status, business ID, latitude, and longitude.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier for the user."
-            }
-          ]
-        }
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/User"
       },
-      {
-        "path": "/users/{userId}/menuItems/{itemId}",
-        "definition": {
-          "entityName": "MenuItem",
-          "schema": {
-            "$ref": "#/backend/entities/MenuItem"
-          },
-          "description": "Stores menu items associated with a user.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier for the user."
-            },
-            {
-              "name": "itemId",
-              "description": "The unique identifier for the menu item."
-            }
-          ]
-        }
+      "description": "Stores user profile data."
+    },
+    "/users/{userId}/menuItems/{itemId}": {
+      "schema": {
+        "$ref": "#/entities/MenuItem"
       },
-      {
-        "path": "/users/{userId}/menuCategories/{categoryId}",
-        "definition": {
-          "entityName": "MenuCategory",
-          "schema": {
-            "$ref": "#/backend/entities/MenuCategory"
-          },
-          "description": "Stores menu categories created by a user.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier for the user."
-            },
-            {
-              "name": "categoryId",
-              "description": "The unique identifier for the menu category."
-            }
-          ]
-        }
+      "description": "Stores menu items associated with a user."
+    },
+    "/users/{userId}/menuCategories/{categoryId}": {
+      "schema": {
+        "$ref": "#/entities/MenuCategory"
       },
-      {
-        "path": "/users/{userId}/events/{eventId}",
-        "definition": {
-          "entityName": "Event",
-          "schema": {
-            "$ref": "#/backend/entities/Event"
-          },
-          "description": "Stores events created by a user.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier for the user."
-            },
-            {
-              "name": "eventId",
-              "description": "The unique identifier for the event."
-            }
-          ]
-        }
+      "description": "Stores menu categories created by a user."
+    },
+    "/users/{userId}/events/{eventId}": {
+      "schema": {
+        "$ref": "#/entities/Event"
       },
-      {
-        "path": "/users/{userId}/events/{eventId}/rsvps/{rsvpId}",
-        "definition": {
-          "entityName": "Rsvp",
-          "schema": {
-            "$ref": "#/backend/entities/Rsvp"
-          },
-          "description": "Stores RSVPs for events.  User ID is denormalized.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier for the user."
-            },
-            {
-              "name": "eventId",
-              "description": "The unique identifier for the event."
-            },
-            {
-              "name": "rsvpId",
-              "description": "The unique identifier for the RSVP."
-            }
-          ]
-        }
+      "description": "Stores events created by a user."
+    },
+    "/users/{userId}/events/{eventId}/rsvps/{rsvpId}": {
+      "schema": {
+        "$ref": "#/entities/Rsvp"
       },
-      {
-        "path": "/users/{userId}/tasks/{taskId}",
-        "definition": {
-          "entityName": "Task",
-          "schema": {
-            "$ref": "#/backend/entities/Task"
-          },
-          "description": "Stores tasks assigned to a user.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier for the user."
-            },
-            {
-              "name": "taskId",
-              "description": "The unique identifier for the task."
-            }
-          ]
-        }
+      "description": "Stores RSVPs for events. User ID is denormalized."
+    },
+    "/users/{userId}/tasks/{taskId}": {
+      "schema": {
+        "$ref": "#/entities/Task"
       },
-      {
-        "path": "/users/{userId}/feedback/{feedbackId}",
-        "definition": {
-          "entityName": "Feedback",
-          "schema": {
-            "$ref": "#/backend/entities/Feedback"
-          },
-          "description": "Stores feedback provided by a user.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier for the user."
-            },
-            {
-              "name": "feedbackId",
-              "description": "The unique identifier for the feedback."
-            }
-          ]
-        }
+      "description": "Stores tasks assigned to a user."
+    },
+    "/users/{userId}/feedback/{feedbackId}": {
+      "schema": {
+        "$ref": "#/entities/Feedback"
       },
-      {
-        "path": "/qrlive-feedback/{feedbackId}",
-        "definition": {
-          "entityName": "QrliveFeedback",
-          "schema": {
-            "$ref": "#/backend/entities/QrliveFeedback"
-          },
-          "description": "Stores feedback for the QRLive app.",
-          "params": [
-            {
-              "name": "feedbackId",
-              "description": "The unique identifier for the QRLive feedback."
-            }
-          ]
-        }
+      "description": "Stores feedback provided by a user."
+    },
+    "/qrlive-feedback/{feedbackId}": {
+      "schema": {
+        "$ref": "#/entities/QrliveFeedback"
       },
-      {
-        "path": "/mobileVerifications/{verificationId}",
-        "definition": {
-          "entityName": "MobileVerification",
-          "schema": {
-            "$ref": "#/backend/entities/MobileVerification"
-          },
-          "description": "Stores mobile verification entries.",
-          "params": [
-            {
-              "name": "verificationId",
-              "description": "The unique identifier for the verification entry."
-            }
-          ]
-        }
+      "description": "Stores feedback for the QRLive app."
+    },
+    "/mobileVerifications/{verificationId}": {
+      "schema": {
+        "$ref": "#/entities/MobileVerification"
       },
-      {
-        "path": "/users/{userId}/activity/{activityId}",
-        "definition": {
-          "entityName": "Activity",
-          "schema": {
-            "$ref": "#/backend/entities/Activity"
-          },
-          "description": "Stores activity logs for a user.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier for the user."
-            },
-            {
-              "name": "activityId",
-              "description": "The unique identifier for the activity log entry."
-            }
-          ]
-        }
+      "description": "Stores mobile verification entries."
+    },
+    "/users/{userId}/activity/{activityId}": {
+      "schema": {
+        "$ref": "#/entities/Activity"
       },
-      {
-        "path": "/plans/{planId}",
-        "definition": {
-          "entityName": "Plan",
-          "schema": {
-            "$ref": "#/backend/entities/Plan"
-          },
-          "description": "Stores subscription plans.",
-          "params": [
-            {
-              "name": "planId",
-              "description": "The unique identifier for the subscription plan."
-            }
-          ]
-        }
+      "description": "Stores activity logs for a user."
+    },
+    "/plans/{planId}": {
+      "schema": {
+        "$ref": "#/entities/Plan"
       },
-      {
-        "path": "/notifications/{notificationId}",
-        "definition": {
-          "entityName": "Notification",
-          "schema": {
-            "$ref": "#/backend/entities/Notification"
-          },
-          "description": "Stores notifications.",
-          "params": [
-            {
-              "name": "notificationId",
-              "description": "The unique identifier for the notification."
-            }
-          ]
-        }
+      "description": "Stores subscription plans."
+    },
+    "/notifications/{notificationId}": {
+      "schema": {
+        "$ref": "#/entities/Notification"
       },
-      {
-        "path": "/feedback_requests/{requestId}",
-        "definition": {
-          "entityName": "FeedbackRequest",
-          "schema": {
-            "$ref": "#/backend/entities/FeedbackRequest"
-          },
-          "description": "Stores feedback requests created by the admin.",
-          "params": [
-            {
-              "name": "requestId",
-              "description": "The unique identifier for the feedback request."
-            }
-          ]
-        }
+      "description": "Stores notifications."
+    },
+    "/feedback_requests/{requestId}": {
+      "schema": {
+        "$ref": "#/entities/FeedbackRequest"
       },
-      {
-        "path": "/feedback_responses/{responseId}",
-        "definition": {
-          "entityName": "FeedbackResponse",
-          "schema": {
-            "$ref": "#/backend/entities/FeedbackResponse"
-          },
-          "description": "Stores feedback responses provided by users.",
-          "params": [
-            {
-              "name": "responseId",
-              "description": "The unique identifier for the feedback response."
-            }
-          ]
-        }
-      }
-    ],
-    "reasoning": "The Firestore data structure is designed to support the Qrlive-Menu application, focusing on user-owned data and admin-managed content. The structure is optimized for security, scalability, and debuggability, adhering to the principles of Authorization Independence, Clarity of Intent, DBAC (Database-Based Access Control), and QAPs (Rules are not Filters). \n\n**Authorization Independence:** Achieved by structuring user-owned data under `/users/{userId}` paths. For example, menu items, categories, and events are stored as subcollections under the user's document. This eliminates the need for `get()` calls in security rules, as all necessary authorization context is available within the document path.\n\n**QAPs (Rules are not Filters):** The structure supports secure `list` operations. For example, listing menu items is restricted to the owner of the menu items, preventing unauthorized access to other users' data.  Admin-managed content (plans, notifications, feedback requests/responses) is stored in root-level collections, allowing for distinct security rules without impacting user-owned data.\n\nThe `users` collection stores core user data, including onboarding status and business ID. Subcollections like `menuItems`, `menuCategories`, `events`, `tasks`, and `feedback` are organized under each user, providing a clear ownership structure. This design simplifies security rules, allowing for easy enforcement of owner-based access control.\n\nAdmin-managed data, such as `plans`, `notifications`, `feedback_requests`, and `feedback_responses`, are stored in root-level collections to isolate their security contexts. This ensures that only admins can write to these collections, while users can read or create responses as needed.\n\n**Denormalization**: This architecture assumes the need to denormalize data for authorization independence. For example, if `menuItems` needed to know the status of the `User`'s account, then this field from the user document would need to be copied into the `menuItems` documents. This would provide Authorization Independence for these `menuItems` documents.  The current design is optimized for ownership, where the user ID is sufficient to establish authorization."
+      "description": "Stores feedback requests created by the admin."
+    },
+    "/feedback_responses/{responseId}": {
+      "schema": {
+        "$ref": "#/entities/FeedbackResponse"
+      },
+      "description": "Stores feedback responses provided by users."
+    }
   }
 }
+    
