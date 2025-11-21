@@ -48,7 +48,7 @@ type Message = {
 
 const InitialActions = ({ onSelect, showEventsButton }: { onSelect: (action: string) => void, showEventsButton: boolean }) => (
     <div className="flex gap-2 justify-center py-2">
-        <Button variant="outline" onClick={() => onSelect('Menu')}>Suggest from Menu</Button>
+        <Button variant="outline" onClick={() => onSelect('Menu')}>Menu</Button>
         <Button variant="outline" onClick={() => onSelect('Feedback')}>Give Feedback</Button>
         {showEventsButton && <Button variant="outline" onClick={() => onSelect('Events')}>Show Events</Button>}
     </div>
