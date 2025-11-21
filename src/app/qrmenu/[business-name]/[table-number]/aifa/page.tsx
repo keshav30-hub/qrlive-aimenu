@@ -24,7 +24,7 @@ type Message = {
 };
 
 const InitialActions = ({ onSelect, showEventsButton }: { onSelect: (action: string) => void, showEventsButton: boolean }) => (
-    <div className="flex gap-2 justify-center py-2">
+    <div className="flex flex-wrap gap-2 justify-center py-2">
         <Button variant="outline" onClick={() => onSelect('Menu')}>Menu</Button>
         <Button variant="outline" onClick={() => onSelect('Give Feedback')}>Give Feedback</Button>
         {showEventsButton && <Button variant="outline" onClick={() => onSelect('Events')}>Events</Button>}
@@ -115,7 +115,7 @@ export default function AIFAPage() {
     const [inputValue, setInputValue] = useState('');
     const [showInitialActions, setShowInitialActions] = useState(true);
     const [isThinking, setIsThinking] = useState(false);
-    const scrollAreaRef = useRef<HTMLDivElement>(null);
+    const scrollViewportRef = useRef<HTMLDivElement>(null);
 
     const activeEvents = useMemo(() => allEvents.filter(e => e.active), []);
 
@@ -148,9 +148,9 @@ export default function AIFAPage() {
 
 
     useEffect(() => {
-        if (scrollAreaRef.current) {
-            scrollAreaRef.current.scrollTo({
-                top: scrollAreaRef.current.scrollHeight,
+        if (scrollViewportRef.current) {
+            scrollViewportRef.current.scrollTo({
+                top: scrollViewportRef.current.scrollHeight,
                 behavior: 'smooth'
             });
         }
@@ -199,7 +199,7 @@ export default function AIFAPage() {
             const flowInput: AIFALowInput = {
                 businessName: businessNameParam,
                 menuCategories: menuData.categories.map(c => ({name: c.name, description: c.description})),
-                menuItems: menuData.items.map(i => ({...i, price: i.price.toString()})),
+                menuItems: menuData.items.map(i => ({...i, price: i.price.toString(), tags: i.tags || [] })),
                 events: allEvents,
                 history: historyForAI,
                 prompt,
@@ -250,8 +250,8 @@ export default function AIFAPage() {
                     </div>
                 </header>
                 
-                <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
-                    <div className="space-y-6">
+                <ScrollArea className="flex-1" viewportRef={scrollViewportRef}>
+                    <div className="space-y-6 p-4">
                         {messages.map(message => (
                             <div key={message.id} className={`flex items-start gap-2 ${message.sender === 'user' ? 'justify-end' : ''}`}>
                                 {message.sender === 'aifa' && (
@@ -305,3 +305,5 @@ export default function AIFAPage() {
         </div>
     );
 }
+
+    
