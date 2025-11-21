@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -25,6 +26,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogTrigger,
 } from '@/components/ui/dialog';
 
@@ -176,7 +178,8 @@ export default function FeedbackPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>ID</TableHead>
-                <TableHead>Date & Time</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Time</TableHead>
                 <TableHead>Table Name</TableHead>
                 <TableHead>Feedback</TableHead>
                 <TableHead>Image</TableHead>
@@ -185,36 +188,51 @@ export default function FeedbackPage() {
             </TableHeader>
             <TableBody>
               {paginatedFeedback.map((feedback) => (
-                <TableRow key={feedback.id}>
-                  <TableCell className="font-medium">{feedback.id}</TableCell>
-                  <TableCell>{new Date(feedback.datetime).toLocaleString()}</TableCell>
-                  <TableCell>{feedback.tableName}</TableCell>
-                  <TableCell className="max-w-xs truncate">{feedback.description}</TableCell>
-                  <TableCell>
-                    {feedback.imageUrl ? (
-                       <Dialog>
-                        <DialogTrigger asChild>
-                           <Button variant="ghost" size="icon">
-                             <ImageIcon className="h-5 w-5" />
-                           </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-md">
-                           <DialogHeader>
-                             <DialogTitle>Feedback Image from {feedback.tableName}</DialogTitle>
-                           </DialogHeader>
-                           <div className="relative mt-4 h-64 w-full">
-                             <Image src={feedback.imageUrl} alt={`Feedback from ${feedback.tableName}`} layout="fill" objectFit="contain" />
-                           </div>
-                         </DialogContent>
-                       </Dialog>
-                    ) : (
-                      <span className="text-muted-foreground">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="flex justify-center items-center">
-                    {getMood(feedback.rating).icon}
-                  </TableCell>
-                </TableRow>
+                <Dialog key={feedback.id}>
+                  <DialogTrigger asChild>
+                    <TableRow className="cursor-pointer">
+                      <TableCell className="font-medium">{feedback.id}</TableCell>
+                      <TableCell>{new Date(feedback.datetime).toLocaleDateString('en-GB')}</TableCell>
+                      <TableCell>{new Date(feedback.datetime).toLocaleTimeString()}</TableCell>
+                      <TableCell>{feedback.tableName}</TableCell>
+                      <TableCell className="max-w-xs truncate">{feedback.description}</TableCell>
+                      <TableCell>
+                        {feedback.imageUrl ? (
+                           <ImageIcon className="h-5 w-5" />
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="flex justify-center items-center">
+                        {getMood(feedback.rating).icon}
+                      </TableCell>
+                    </TableRow>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Feedback from {feedback.tableName}</DialogTitle>
+                      <DialogDescription>
+                        {new Date(feedback.datetime).toLocaleDateString('en-GB')} at {new Date(feedback.datetime).toLocaleTimeString()}
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="flex items-center">
+                        {[...Array(5)].map((_, i) => (
+                          <Star
+                            key={i}
+                            className={i < feedback.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300 dark:text-gray-600'}
+                          />
+                        ))}
+                      </div>
+                      <p className="text-sm">{feedback.description}</p>
+                      {feedback.imageUrl && (
+                        <div className="relative mt-4 h-64 w-full">
+                          <Image src={feedback.imageUrl} alt={`Feedback from ${feedback.tableName}`} layout="fill" objectFit="contain" />
+                        </div>
+                      )}
+                    </div>
+                  </DialogContent>
+                </Dialog>
               ))}
             </TableBody>
           </Table>
