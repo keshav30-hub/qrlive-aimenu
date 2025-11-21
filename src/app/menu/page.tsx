@@ -48,6 +48,9 @@ import { useCurrency } from '@/hooks/use-currency';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 
 type Addon = { name: string; price: string };
@@ -161,6 +164,32 @@ const defaultCategory: Omit<Category, 'id' | 'imageUrl' | 'imageHint'> = {
     toTime: '',
 };
 
+const initialCombos = [
+  {
+    id: '1',
+    name: 'Super Saver Combo',
+    items: ['Margherita Pizza', 'Coke'],
+    price: '299',
+    available: true,
+  },
+  {
+    id: '2',
+    name: 'Burger Feast',
+    items: ['Chicken Burger', 'Fries', 'Coke'],
+    price: '250',
+    available: true,
+  },
+  {
+    id: '3',
+    name: 'Healthy Delight',
+    items: ['Caesar Salad', 'Fresh Juice'],
+    price: '200',
+    available: false,
+  },
+]
+
+const ITEMS_PER_PAGE = 15;
+
 export default function MenuPage() {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isEditingItem, setIsEditingItem] = useState(false);
@@ -173,10 +202,14 @@ export default function MenuPage() {
   
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
-  
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemSearch, setItemSearch] = useState('');
+  const [filterCategory, setFilterCategory] = useState('all');
+  const [filterType, setFilterType] = useState('all');
+
   const { format } = useCurrency();
   
-  const filteredItems = items.filter(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredComboItems = items.filter(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
   const handleItemCheckboxChange = (itemId: string, checked: boolean) => {
     setSelectedItems(prev => 
@@ -270,6 +303,23 @@ export default function MenuPage() {
     // Logic to save category will go here
     setIsCategorySheetOpen(false);
   }
+
+  const filteredItems = items
+    .filter(item => item.name.toLowerCase().includes(itemSearch.toLowerCase()))
+    .filter(item => filterCategory === 'all' || item.category === filterCategory)
+    .filter(item => filterType === 'all' || item.type === filterType);
+
+  const totalPages = Math.ceil(filteredItems.length / ITEMS_PER_PAGE);
+  const paginatedItems = filteredItems.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
+  const handlePreviousPage = () => {
+    setCurrentPage((prev) => Math.max(prev - 1, 1));
+  };
+
+  const handleNextPage = () => {
+    setCurrentPage((prev) => Math.min(prev + 1, totalPages));
+  };
+
 
   return (
     <div className="space-y-6">
@@ -396,35 +446,69 @@ export default function MenuPage() {
             </Sheet>
           </div>
           <Card className="mt-4">
-            <CardContent className="pt-6">
+            <CardHeader>
+                <div className="flex flex-col md:flex-row gap-4 justify-between">
+                    <div className="relative w-full md:w-1/3">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input 
+                            placeholder="Search by item name..." 
+                            className="pl-10"
+                            value={itemSearch}
+                            onChange={(e) => setItemSearch(e.target.value)}
+                        />
+                    </div>
+                    <div className="flex gap-4 w-full md:w-auto">
+                        <Select value={filterCategory} onValueChange={setFilterCategory}>
+                            <SelectTrigger className="w-full md:w-[180px]">
+                                <SelectValue placeholder="Filter by category" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Categories</SelectItem>
+                                {categories.map(cat => <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                        <Select value={filterType} onValueChange={setFilterType}>
+                            <SelectTrigger className="w-full md:w-[180px]">
+                                <SelectValue placeholder="Filter by type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Types</SelectItem>
+                                <SelectItem value="veg">Veg</SelectItem>
+                                <SelectItem value="non-veg">Non-Veg</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+            </CardHeader>
+            <CardContent>
                 <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left">
-                        <thead className="text-xs text-muted-foreground uppercase">
-                            <tr>
-                                <th scope="col" className="px-6 py-3">#</th>
-                                <th scope="col" className="px-6 py-3">Item Name</th>
-                                <th scope="col" className="px-6 py-3">Category</th>
-                                <th scope="col" className="px-6 py-3">MRP</th>
-                                <th scope="col" className="px-6 py-3">Type</th>
-                                <th scope="col" className="px-6 py-3">Availability</th>
-                                <th scope="col" className="px-6 py-3 text-right">More</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {items.map((item, index) => (
-                                <tr key={item.id} className="border-b">
-                                    <td className="px-6 py-4">{index + 1}</td>
-                                    <td className="px-6 py-4 font-medium">{item.name}</td>
-                                    <td className="px-6 py-4">{item.category}</td>
-                                    <td className="px-6 py-4">{format(Number(item.mrp))}</td>
-                                    <td className="px-6 py-4 capitalize">{item.type}</td>
-                                    <td className="px-6 py-4">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>#</TableHead>
+                                <TableHead>Item Name</TableHead>
+                                <TableHead>Category</TableHead>
+                                <TableHead>MRP</TableHead>
+                                <TableHead>Type</TableHead>
+                                <TableHead>Availability</TableHead>
+                                <TableHead className="text-right">More</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {paginatedItems.map((item, index) => (
+                                <TableRow key={item.id}>
+                                    <TableCell>{(currentPage - 1) * ITEMS_PER_PAGE + index + 1}</TableCell>
+                                    <TableCell className="font-medium">{item.name}</TableCell>
+                                    <TableCell>{item.category}</TableCell>
+                                    <TableCell>{format(Number(item.mrp))}</TableCell>
+                                    <TableCell className="capitalize">{item.type}</TableCell>
+                                    <TableCell>
                                         <Switch
                                             checked={item.available}
                                             onCheckedChange={(checked) => handleItemAvailabilityToggle(item.id, checked)}
                                         />
-                                    </td>
-                                    <td className="px-6 py-4 text-right">
+                                    </TableCell>
+                                    <TableCell className="text-right">
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
                                                 <Button variant="ghost" size="icon">
@@ -436,17 +520,38 @@ export default function MenuPage() {
                                                 <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
-                                    </td>
-                                </tr>
+                                    </TableCell>
+                                </TableRow>
                             ))}
-                        </tbody>
-                    </table>
+                        </TableBody>
+                    </Table>
                 </div>
-                 {items.length === 0 && (
+                 {filteredItems.length === 0 && (
                     <div className="mt-4 text-center text-muted-foreground">
                         <p>No items have been added yet.</p>
                     </div>
                 )}
+                 <div className="flex items-center justify-end space-x-2 pt-4">
+                    <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handlePreviousPage}
+                    disabled={currentPage === 1}
+                    >
+                    Previous
+                    </Button>
+                    <span className="text-sm text-muted-foreground">
+                    Page {currentPage} of {totalPages}
+                    </span>
+                    <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleNextPage}
+                    disabled={currentPage === totalPages}
+                    >
+                    Next
+                    </Button>
+                </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -660,7 +765,7 @@ export default function MenuPage() {
                                 </div>
                                 <ScrollArea className="h-48 rounded-md border">
                                     <div className="p-4">
-                                        {filteredItems.length > 0 ? filteredItems.map(item => (
+                                        {filteredComboItems.length > 0 ? filteredComboItems.map(item => (
                                             <div key={item.id} className="flex items-center space-x-2 py-2">
                                                 <Checkbox 
                                                     id={`item-${item.id}`}
@@ -685,13 +790,63 @@ export default function MenuPage() {
                     </DialogContent>
                 </Dialog>
             </div>
-          <div className="mt-4 text-center text-muted-foreground">
-            <p>Combo offer management will be available here.</p>
-          </div>
+            <Card className="mt-4">
+              <CardContent className="pt-6">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>#</TableHead>
+                      <TableHead>Combo Name</TableHead>
+                      <TableHead>Items</TableHead>
+                      <TableHead>Price</TableHead>
+                      <TableHead>Availability</TableHead>
+                      <TableHead className="text-right">More</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {initialCombos.map((combo, index) => (
+                      <TableRow key={combo.id}>
+                        <TableCell>{index + 1}</TableCell>
+                        <TableCell className="font-medium">{combo.name}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {combo.items.map((item, itemIndex) => (
+                              <Badge key={itemIndex} variant="secondary">{item}</Badge>
+                            ))}
+                          </div>
+                        </TableCell>
+                        <TableCell>{format(Number(combo.price))}</TableCell>
+                        <TableCell>
+                          <Switch
+                            checked={combo.available}
+                            // onCheckedChange={(checked) => handleComboAvailabilityToggle(combo.id, checked)}
+                          />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreVertical className="h-5 w-5" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem>Edit</DropdownMenuItem>
+                              <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
         </TabsContent>
       </Tabs>
     </div>
   );
 }
+
+    
 
     
