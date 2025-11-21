@@ -21,7 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { CalendarIcon, ChevronLeft, ChevronRight, PlusCircle } from 'lucide-react';
+import { CalendarIcon, ChevronLeft, ChevronRight, PlusCircle, Clock, FilePenLine, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -47,6 +47,16 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
 
 
 type AttendanceStatus = 'Present' | 'Absent' | 'Paid Leave' | 'Half Day';
@@ -89,6 +99,11 @@ const initialStaffList = [
   },
 ];
 
+const initialShifts = [
+    { id: 1, name: 'Morning Shift', from: '09:00', to: '17:00' },
+    { id: 2, name: 'Evening Shift', from: '17:00', to: '01:00' },
+];
+
 const pageAccessOptions = [
     { id: 'dashboard', label: 'Dashboard' },
     { id: 'menu', label: 'Menu' },
@@ -122,6 +137,7 @@ export default function StaffPage() {
   const [date, setDate] = useState<Date>(new Date());
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [dob, setDob] = useState<Date>();
+  const [shifts, setShifts] = useState(initialShifts);
 
   const handleStatusChange = (staffId: string, newStatus: AttendanceStatus) => {
     setStaffList(
@@ -145,7 +161,73 @@ export default function StaffPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Staff Management</h1>
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold">Staff Management</h1>
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button variant="outline">
+              <Clock className="mr-2 h-4 w-4" />
+              Add Shift
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Manage Shifts</DialogTitle>
+              <DialogDescription>
+                View, create, and edit staff shifts.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                    <Label className="text-sm font-medium text-muted-foreground">Existing Shifts</Label>
+                    <div className="space-y-2">
+                        {shifts.map(shift => (
+                            <div key={shift.id} className="flex items-center justify-between rounded-md border p-3">
+                                <div>
+                                    <p className="font-semibold">{shift.name}</p>
+                                    <p className="text-sm text-muted-foreground">{shift.from} - {shift.to}</p>
+                                </div>
+                                <div className="flex gap-2">
+                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                        <FilePenLine className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <Separator />
+                
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="shift-name" className="text-sm font-medium text-muted-foreground">Add New Shift</Label>
+                  </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="shift-name">Shift Name</Label>
+                        <Input id="shift-name" placeholder="e.g. Lunch Shift" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="from-time">From</Label>
+                            <Input id="from-time" type="time" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="to-time">To</Label>
+                            <Input id="to-time" type="time" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <DialogFooter>
+              <Button type="submit">Save Shift</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
       <Tabs defaultValue="attendance" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="attendance">Attendance</TabsTrigger>
