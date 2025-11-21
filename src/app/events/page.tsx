@@ -18,8 +18,26 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Switch } from '@/components/ui/switch';
-import { MoreVertical, PlusCircle } from 'lucide-react';
+import { Calendar as CalendarIcon, MoreVertical, PlusCircle } from 'lucide-react';
 import { placeHolderImages } from '@/lib/placeholder-images';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
+import { Calendar } from '@/components/ui/calendar';
+import React from 'react';
+import { format } from 'date-fns';
 
 const events = [
   {
@@ -61,14 +79,82 @@ const events = [
 ];
 
 export default function EventsPage() {
+  const [date, setDate] = React.useState<Date>();
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Events</h1>
-        <Button>
-          <PlusCircle className="mr-2" />
-          Add Event
-        </Button>
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button>
+              <PlusCircle className="mr-2" />
+              Add Event
+            </Button>
+          </SheetTrigger>
+          <SheetContent>
+            <SheetHeader>
+              <SheetTitle>Add New Event</SheetTitle>
+              <SheetDescription>
+                Fill in the details below to create a new event.
+              </SheetDescription>
+            </SheetHeader>
+            <ScrollArea className="h-[calc(100%-120px)] pr-4">
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="event-image">Event Image</Label>
+                <Input id="event-image" type="file" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="event-name">Event Name</Label>
+                <Input id="event-name" placeholder="e.g. Summer Festival" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="event-description">Description</Label>
+                <Textarea id="event-description" placeholder="Describe the event..." />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="event-date">Date</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant={"outline"}
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !date && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {date ? format(date, "PPP") : <span>Pick a date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={date}
+                        onSelect={setDate}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="event-time">Time</Label>
+                  <Input id="event-time" type="time" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="event-organizers">Event Organizers (Optional)</Label>
+                <Input id="event-organizers" placeholder="e.g. John Doe, Jane Smith" />
+              </div>
+            </div>
+            </ScrollArea>
+            <SheetFooter>
+              <Button type="submit" className="w-full">Save Event</Button>
+            </SheetFooter>
+          </SheetContent>
+        </Sheet>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -79,7 +165,7 @@ export default function EventsPage() {
                 <Image
                   src={event.imageUrl}
                   alt={event.name}
-                  layout="fill"
+                  fill
                   objectFit="cover"
                   data-ai-hint={event.imageHint}
                 />
