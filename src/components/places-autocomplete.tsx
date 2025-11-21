@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -81,7 +82,7 @@ export function PlacesAutocomplete({ onPlaceSelect, value, onChange }: PlacesAut
         id="full-address" 
         placeholder="Start typing your address..." 
         className="pl-10"
-        value={value}
+        value={value || ''}
         onChange={(e) => onChange(e.target.value)}
     />
   );
