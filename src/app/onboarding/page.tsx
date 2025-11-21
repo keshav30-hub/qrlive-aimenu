@@ -60,8 +60,8 @@ export default function OnboardingPage() {
         gst,
         latitude: selectedPlace?.geometry?.location?.lat() || null,
         longitude: selectedPlace?.geometry?.location?.lng() || null,
-        businessId: 'is-Menu-25-DFCV68', // Static Business ID
-        onboarding: true, // Set onboarding to true
+        businessId: 'Menu-25-DFCV68', // Corrected Static Business ID
+        onboarding: true,
       }, { merge: true });
       
       toast({
@@ -126,7 +126,7 @@ export default function OnboardingPage() {
             <Label htmlFor="full-address">Full Address</Label>
             <div className="relative">
               <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
-              <PlacesAutocomplete onPlaceSelect={handlePlaceSelect} defaultValue={address} onChange={handleAddressChange} />
+              <PlacesAutocomplete onPlaceSelect={handlePlaceSelect} onChange={handleAddressChange} />
             </div>
           </div>
           <div className="space-y-2">

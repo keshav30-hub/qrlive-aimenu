@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -24,9 +25,19 @@ import {
   SidebarMenuButton,
 } from '@/components/ui/sidebar';
 import { useTaskNotification } from '@/context/TaskNotificationContext';
+import { useFirebase } from '@/firebase';
+import { signOut } from 'firebase/auth';
+import { useRouter } from 'next/navigation';
 
 export function AppSidebar() {
   const { isMuted, toggleMute } = useTaskNotification();
+  const { auth } = useFirebase();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    router.push('/login');
+  };
 
   return (
     <Sidebar className="w-[10%]" collapsible="none">
@@ -110,12 +121,10 @@ export function AppSidebar() {
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <Link href="#">
-              <SidebarMenuButton>
-                <LogOut />
-                <span>Logout</span>
-              </SidebarMenuButton>
-            </Link>
+            <SidebarMenuButton onClick={handleLogout}>
+              <LogOut />
+              <span>Logout</span>
+            </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
