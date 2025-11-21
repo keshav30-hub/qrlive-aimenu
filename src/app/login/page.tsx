@@ -56,7 +56,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-100 dark:bg-black p-4">
+    <div className="flex min-h-screen items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">Welcome to QRLive Menu</CardTitle>
@@ -66,7 +66,7 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent>
           <Button
-            variant="outline"
+            variant="secondary"
             className="w-full h-12 text-lg"
             onClick={handleGoogleSignIn}
           >
