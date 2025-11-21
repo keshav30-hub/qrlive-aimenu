@@ -204,7 +204,7 @@ export default function CategoryMenuPage() {
           </div>
         </main>
         
-        <div className="fixed bottom-4 right-4 z-20" style={{ transform: 'translateX(calc(50vw - 240px))' }}>
+        <div className="fixed bottom-4 right-4 z-20">
              <Link href={aifaUrl}>
                 <Button size="icon" className="h-14 w-14 rounded-full shadow-lg bg-primary text-primary-foreground">
                     <Sparkles className="h-7 w-7" />
@@ -216,3 +216,5 @@ export default function CategoryMenuPage() {
     </div>
   );
 }
+
+    
