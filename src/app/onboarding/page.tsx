@@ -87,10 +87,6 @@ export default function OnboardingPage() {
     }
   }
 
-  const handleAddressChange = (value: string) => {
-    setAddress(value);
-  }
-
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-100 dark:bg-black p-4">
       <Card className="w-full max-w-lg">
@@ -128,7 +124,6 @@ export default function OnboardingPage() {
               <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
               <PlacesAutocomplete 
                 onPlaceSelect={handlePlaceSelect} 
-                onChange={handleAddressChange} 
                 defaultValue={address} 
               />
             </div>

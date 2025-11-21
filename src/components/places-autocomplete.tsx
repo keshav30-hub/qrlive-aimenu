@@ -14,12 +14,12 @@ const MAP_ID = 'google-map-script-places';
 interface PlacesAutocompleteProps {
   onPlaceSelect: (place: google.maps.places.PlaceResult | null) => void;
   defaultValue?: string;
-  onChange?: (value: string) => void;
 }
 
-export function PlacesAutocomplete({ onPlaceSelect, defaultValue, onChange }: PlacesAutocompleteProps) {
+export function PlacesAutocomplete({ onPlaceSelect, defaultValue }: PlacesAutocompleteProps) {
   const [isApiLoaded, setIsApiLoaded] = React.useState(false);
   const autocompleteRef = useRef<HTMLElement | null>(null);
+  const isInitialized = useRef(false); // To prevent re-initialization
 
   useEffect(() => {
     const apiKey = process.env.NEXT_PUBLIC_PLACES_API_KEY;
@@ -62,29 +62,33 @@ export function PlacesAutocomplete({ onPlaceSelect, defaultValue, onChange }: Pl
 
   useEffect(() => {
     const autocompleteElement = autocompleteRef.current;
-    if (!isApiLoaded || !autocompleteElement) return;
+    if (!isApiLoaded || !autocompleteElement || isInitialized.current) return;
+    
+    // Set default value on the native input element if available
+    const input = autocompleteElement.querySelector('input');
+    if(input && defaultValue) {
+        input.value = defaultValue;
+    }
 
     const handlePlaceChange = (event: Event) => {
         const placeChangeEvent = event as PlaceChangeEvent;
         const place = placeChangeEvent.detail.place;
         onPlaceSelect(place);
-        if (onChange && place?.formatted_address) {
-          onChange(place.formatted_address);
-        }
     };
     
     // The modern way to listen for place changes on the web component
     autocompleteElement.addEventListener('gmp-placechange', handlePlaceChange);
+    isInitialized.current = true; // Mark as initialized
 
     return () => {
         autocompleteElement.removeEventListener('gmp-placechange', handlePlaceChange);
     };
-  }, [isApiLoaded, onPlaceSelect, onChange]);
+  }, [isApiLoaded, onPlaceSelect, defaultValue]);
 
   if (!isApiLoaded) {
     return (
       <div 
-          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pl-10 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
       >
         Loading address search...
       </div>
