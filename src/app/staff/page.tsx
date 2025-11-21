@@ -17,12 +17,6 @@ import {
   TableBody,
   TableCell,
 } from '@/components/ui/table';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -219,33 +213,21 @@ export default function StaffPage() {
 
                       </TableCell>
                       <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="outline"
-                              className="capitalize w-32 justify-start"
-                            >
-                              <Badge
-                                variant={getStatusVariant(staff.status)}
-                                className="w-full"
-                              >
-                                {staff.status}
-                              </Badge>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent>
+                        <div className="flex gap-2 justify-end">
                             {attendanceOptions.map((status) => (
-                              <DropdownMenuItem
+                                <Badge
                                 key={status}
-                                onSelect={() =>
-                                  handleStatusChange(staff.id, status)
-                                }
-                              >
+                                variant={staff.status === status ? getStatusVariant(status) : 'outline'}
+                                onClick={() => handleStatusChange(staff.id, status)}
+                                className={cn(
+                                    "cursor-pointer capitalize w-24 justify-center",
+                                    staff.status !== status && "bg-transparent text-foreground"
+                                )}
+                                >
                                 {status}
-                              </DropdownMenuItem>
+                                </Badge>
                             ))}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
