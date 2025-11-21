@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 // Define the custom event type for gmp-placechange
 interface PlaceChangeEvent extends Event {
@@ -13,13 +13,14 @@ const MAP_ID = 'google-map-script-places';
 
 interface PlacesAutocompleteProps {
   onPlaceSelect: (place: google.maps.places.PlaceResult | null) => void;
-  defaultValue?: string;
+  onChange: (value: string) => void;
+  value?: string;
 }
 
-export function PlacesAutocomplete({ onPlaceSelect, defaultValue }: PlacesAutocompleteProps) {
-  const [isApiLoaded, setIsApiLoaded] = React.useState(false);
+export function PlacesAutocomplete({ onPlaceSelect, onChange, value }: PlacesAutocompleteProps) {
+  const [isApiLoaded, setIsApiLoaded] = useState(false);
   const autocompleteRef = useRef<HTMLElement | null>(null);
-  const isInitialized = useRef(false); // To prevent re-initialization
+  const isInitialized = useRef(false);
 
   useEffect(() => {
     const apiKey = process.env.NEXT_PUBLIC_PLACES_API_KEY;
@@ -64,10 +65,9 @@ export function PlacesAutocomplete({ onPlaceSelect, defaultValue }: PlacesAutoco
     const autocompleteElement = autocompleteRef.current;
     if (!isApiLoaded || !autocompleteElement || isInitialized.current) return;
     
-    // Set default value on the native input element if available
     const input = autocompleteElement.querySelector('input');
-    if(input && defaultValue) {
-        input.value = defaultValue;
+    if(input && value) {
+      input.value = value;
     }
 
     const handlePlaceChange = (event: Event) => {
@@ -75,15 +75,26 @@ export function PlacesAutocomplete({ onPlaceSelect, defaultValue }: PlacesAutoco
         const place = placeChangeEvent.detail.place;
         onPlaceSelect(place);
     };
+
+    const handleInputChange = (event: Event) => {
+      const inputEvent = event as InputEvent;
+      const target = inputEvent.target as HTMLInputElement;
+      onChange(target.value);
+    };
     
-    // The modern way to listen for place changes on the web component
     autocompleteElement.addEventListener('gmp-placechange', handlePlaceChange);
-    isInitialized.current = true; // Mark as initialized
+    if (input) {
+      input.addEventListener('input', handleInputChange);
+    }
+    isInitialized.current = true;
 
     return () => {
         autocompleteElement.removeEventListener('gmp-placechange', handlePlaceChange);
+         if (input) {
+          input.removeEventListener('input', handleInputChange);
+        }
     };
-  }, [isApiLoaded, onPlaceSelect, defaultValue]);
+  }, [isApiLoaded, onPlaceSelect, onChange, value]);
 
   if (!isApiLoaded) {
     return (
@@ -102,7 +113,6 @@ export function PlacesAutocomplete({ onPlaceSelect, defaultValue }: PlacesAutoco
           gmp-place-autocomplete::part(input) {
             background-color: hsl(var(--background));
             color: hsl(var(--foreground));
-            /* Re-apply ShadCN input styles */
             display: flex;
             height: 2.5rem; /* h-10 */
             width: 100%;
@@ -130,7 +140,6 @@ export function PlacesAutocomplete({ onPlaceSelect, defaultValue }: PlacesAutoco
   );
 }
 
-// Since the component is now uncontrolled internally, we need to declare the custom element type for JSX
 declare global {
   namespace JSX {
     interface IntrinsicElements {
@@ -138,6 +147,7 @@ declare global {
           'country-codes'?: string;
           placeholder?: string;
           part?: string;
+          value?: string;
         }, HTMLElement>;
     }
   }
