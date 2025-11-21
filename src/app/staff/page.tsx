@@ -27,7 +27,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { CalendarIcon, PlusCircle } from 'lucide-react';
+import { CalendarIcon, ChevronLeft, ChevronRight, PlusCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -125,7 +125,7 @@ const getStatusVariant = (status: AttendanceStatus) => {
 
 export default function StaffPage() {
   const [staffList, setStaffList] = useState(initialStaffList);
-  const [date, setDate] = useState<Date | undefined>(new Date());
+  const [date, setDate] = useState<Date>(new Date());
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [dob, setDob] = useState<Date>();
 
@@ -135,6 +135,18 @@ export default function StaffPage() {
         staff.id === staffId ? { ...staff, status: newStatus } : staff
       )
     );
+  };
+  
+  const handlePrevDay = () => {
+    const prevDay = new Date(date);
+    prevDay.setDate(prevDay.getDate() - 1);
+    setDate(prevDay);
+  };
+
+  const handleNextDay = () => {
+    const nextDay = new Date(date);
+    nextDay.setDate(nextDay.getDate() + 1);
+    setDate(nextDay);
   };
 
   return (
@@ -149,28 +161,36 @@ export default function StaffPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Daily Attendance</CardTitle>
-              <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant={"outline"}
-                        className={cn(
-                          "w-[280px] justify-start text-left font-normal",
-                          !date && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {date ? format(date, "PPP") : <span>Pick a date</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={date}
-                        onSelect={setDate}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="icon" onClick={handlePrevDay}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={'outline'}
+                      className={cn(
+                        'w-[240px] justify-start text-left font-normal',
+                        !date && 'text-muted-foreground'
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {date ? format(date, 'PPP') : <span>Pick a date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={date}
+                      onSelect={(day) => day && setDate(day)}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                 <Button variant="outline" size="icon" onClick={handleNextDay}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <Table>
