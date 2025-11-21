@@ -12,6 +12,7 @@ export default function Home() {
   useEffect(() => {
     if (!isUserLoading) {
       if (user) {
+        // The authenticated layout will handle the redirect to onboarding if needed
         router.push('/dashboard');
       } else {
         router.push('/login');
@@ -25,5 +26,3 @@ export default function Home() {
     </div>
   );
 }
-
-    

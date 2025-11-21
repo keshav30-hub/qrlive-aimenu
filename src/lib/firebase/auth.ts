@@ -13,9 +13,10 @@ import {
   setDoc,
   serverTimestamp,
 } from 'firebase/firestore';
+import { initializeFirebase } from '@/firebase';
 
 export async function signInWithGoogle(): Promise<User | null> {
-  const auth = getAuth();
+  const { auth } = initializeFirebase();
   const provider = new GoogleAuthProvider();
 
   try {
@@ -35,24 +36,30 @@ export async function signInWithGoogle(): Promise<User | null> {
 }
 
 export async function createUserDocument(user: User) {
-  const db = getFirestore();
-  const userRef = doc(db, 'users', user.uid);
+  const { firestore } = initializeFirebase();
+  const userRef = doc(firestore, 'users', user.uid);
   const userSnap = await getDoc(userRef);
 
   if (!userSnap.exists()) {
-    // User is new, create the document
+    // User is new, create the document with onboarding set to false
     const createdAt = serverTimestamp();
-    await setDoc(userRef, {
-      uid: user.uid,
-      email: user.email,
-      createdAt: createdAt,
-      lastLoginAt: createdAt,
-      onboarding: false,
-    });
+    try {
+      await setDoc(userRef, {
+        uid: user.uid,
+        email: user.email,
+        createdAt: createdAt,
+        lastLoginAt: createdAt,
+        onboarding: false, // Set onboarding to false for new users
+      });
+    } catch (e) {
+      console.error("Error creating user document: ", e);
+    }
   } else {
-    // User exists, update last login time
-    await setDoc(userRef, { lastLoginAt: serverTimestamp() }, { merge: true });
+    // User exists, just update last login time
+    try {
+      await setDoc(userRef, { lastLoginAt: serverTimestamp() }, { merge: true });
+    } catch (e) {
+      console.error("Error updating last login time: ", e);
+    }
   }
 }
-
-    

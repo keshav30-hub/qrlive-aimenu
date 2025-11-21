@@ -3,11 +3,13 @@
 
 import { useUser, useDoc, useMemoFirebase } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { doc, getFirestore } from 'firebase/firestore';
+import { doc } from 'firebase/firestore';
 import { useEffect } from 'react';
 import { AppSidebar } from '@/components/layout/sidebar';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { TaskNotificationProvider } from '@/context/TaskNotificationContext';
+import { useFirebase } from '@/firebase';
+
 
 type UserProfile = {
     onboarding: boolean;
@@ -15,11 +17,11 @@ type UserProfile = {
 
 function AuthRedirect({ children }: { children: React.ReactNode }) {
     const { user, isUserLoading } = useUser();
+    const { firestore } = useFirebase();
     const router = useRouter();
-    const firestore = getFirestore();
 
     const userDocRef = useMemoFirebase(() => {
-        if (!user) return null;
+        if (!user || !firestore) return null;
         return doc(firestore, 'users', user.uid);
     }, [user, firestore]);
     
@@ -37,9 +39,9 @@ function AuthRedirect({ children }: { children: React.ReactNode }) {
         }
     }, [user, userProfile, isDataLoading, router]);
 
-    const isDataLoading = isUserLoading || isProfileLoading;
+    const isLoading = isUserLoading || (user && isProfileLoading);
 
-    if (isDataLoading) {
+    if (isLoading) {
         return (
             <div className="flex h-screen items-center justify-center">
                 <p>Loading...</p>
@@ -51,7 +53,7 @@ function AuthRedirect({ children }: { children: React.ReactNode }) {
         return <>{children}</>;
     }
 
-    // Fallback loading/null state
+    // Fallback for cases where user exists but profile doesn't, or redirecting.
     return (
         <div className="flex h-screen items-center justify-center">
             <p>Loading...</p>
@@ -82,5 +84,3 @@ export default function AuthedLayout({
     </AuthRedirect>
   );
 }
-
-    

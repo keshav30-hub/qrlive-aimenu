@@ -56,12 +56,12 @@ export default function OnboardingPage() {
         businessName,
         ownerName,
         contact,
-        address,
+        address: selectedPlace?.formatted_address || address,
         gst,
         latitude: selectedPlace?.geometry?.location?.lat() || null,
         longitude: selectedPlace?.geometry?.location?.lng() || null,
-        businessId: `is-Menu-25-DFCV68`,
-        onboarding: true,
+        businessId: 'is-Menu-25-DFCV68', // Static Business ID
+        onboarding: true, // Set onboarding to true
       }, { merge: true });
       
       toast({
@@ -83,8 +83,7 @@ export default function OnboardingPage() {
   const handlePlaceSelect = (place: google.maps.places.PlaceResult | null) => {
     setSelectedPlace(place);
     if (place) {
-      const displayAddress = `${place.name ? place.name + ', ' : ''}${place.formatted_address || ''}`;
-      setAddress(displayAddress);
+      setAddress(place.formatted_address || '');
     }
   }
 
@@ -147,5 +146,3 @@ export default function OnboardingPage() {
     </div>
   );
 }
-
-    

@@ -13,19 +13,30 @@ import {
 import { signInWithGoogle } from '@/lib/firebase/auth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
+import { useUser } from '@/firebase';
+import { useEffect } from 'react';
 
 export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { user, isUserLoading } = useUser();
+
+  useEffect(() => {
+    // If user is already logged in, redirect to dashboard
+    if (!isUserLoading && user) {
+      router.push('/dashboard');
+    }
+  }, [user, isUserLoading, router]);
 
   const handleGoogleSignIn = async () => {
-    const user = await signInWithGoogle();
-    if (user) {
+    const signedInUser = await signInWithGoogle();
+    if (signedInUser) {
       toast({
         title: 'Sign In Successful',
-        description: `Welcome back, ${user.displayName}!`,
+        description: `Welcome, ${signedInUser.displayName}!`,
       });
-      router.push('/'); // Redirect to the root, which will handle onboarding check
+      // The auth redirect in the layout will handle the push to onboarding or dashboard
+      router.push('/'); 
     } else {
       toast({
         variant: 'destructive',
@@ -34,6 +45,15 @@ export default function LoginPage() {
       });
     }
   };
+  
+  // Render loading state or nothing if user check is in progress
+  if (isUserLoading || user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-100 dark:bg-black">
+        <p>Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-100 dark:bg-black p-4">
@@ -58,5 +78,3 @@ export default function LoginPage() {
     </div>
   );
 }
-
-    
