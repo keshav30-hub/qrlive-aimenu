@@ -84,6 +84,10 @@ const menu = {
     { name: 'Main Course', imageUrl: 'https://picsum.photos/seed/cat2/300/200', imageHint: 'main course' },
     { name: 'Desserts', imageUrl: 'https://picsum.photos/seed/cat3/300/200', imageHint: 'dessert' },
     { name: 'Beverages', imageUrl: 'https://picsum.photos/seed/cat4/300/200', imageHint: 'beverages' },
+    { name: 'Soups', imageUrl: 'https://picsum.photos/seed/cat5/300/200', imageHint: 'soup bowl' },
+    { name: 'Salads', imageUrl: 'https://picsum.photos/seed/cat6/300/200', imageHint: 'fresh salad' },
+    { name: 'Seafood', imageUrl: 'https://picsum.photos/seed/cat7/300/200', imageHint: 'seafood platter' },
+    { name: 'Breads', imageUrl: 'https://picsum.photos/seed/cat8/300/200', imageHint: 'artisan bread' },
   ],
   items: [
     {
@@ -115,7 +119,7 @@ const menu = {
     {
       id: '3',
       name: 'Caesar Salad',
-      category: 'Appetizers',
+      category: 'Salads',
       price: '150',
       type: 'veg',
       description: 'Crisp romaine lettuce with croutons and parmesan cheese.',
@@ -146,6 +150,42 @@ const menu = {
       kcal: '150',
       imageUrl: 'https://picsum.photos/seed/item5/400/300',
       imageHint: 'mojito drink',
+      tags: [],
+    },
+    {
+      id: '6',
+      name: 'Tomato Soup',
+      category: 'Soups',
+      price: '110',
+      type: 'veg',
+      description: 'Creamy tomato soup served with croutons.',
+      kcal: '200',
+      imageUrl: 'https://picsum.photos/seed/item6/400/300',
+      imageHint: 'tomato soup',
+      tags: [],
+    },
+    {
+      id: '7',
+      name: 'Grilled Salmon',
+      category: 'Seafood',
+      price: '450',
+      type: 'non-veg',
+      description: 'Perfectly grilled salmon fillet with a lemon-dill sauce.',
+      kcal: '600',
+      imageUrl: 'https://picsum.photos/seed/item7/400/300',
+      imageHint: 'grilled salmon',
+      tags: ['healthy'],
+    },
+    {
+      id: '8',
+      name: 'Garlic Bread',
+      category: 'Breads',
+      price: '90',
+      type: 'veg',
+      description: 'Toasted bread with garlic butter and herbs.',
+      kcal: '300',
+      imageUrl: 'https://picsum.photos/seed/item8/400/300',
+      imageHint: 'garlic bread',
       tags: [],
     },
   ],
@@ -207,10 +247,12 @@ export default function QrMenuPage() {
     (total, item) => total + item.price * item.quantity,
     0
   );
+  
+  const aifaUrl = `/qrmenu/${businessName}/${tableNumber}/aifa`;
 
   return (
     <div className="bg-gray-100 dark:bg-black min-h-screen">
-      <div className="max-w-[480px] mx-auto bg-white dark:bg-gray-950 shadow-lg">
+      <div className="max-w-[480px] mx-auto bg-white dark:bg-gray-950 shadow-lg relative pb-24">
         <header className="p-4 flex justify-between items-center">
           <div className="flex items-center gap-4">
             <Image
@@ -309,7 +351,7 @@ export default function QrMenuPage() {
         {cart.length > 0 && (
           <Sheet>
             <SheetTrigger asChild>
-              <div className="sticky bottom-4 px-4 z-10">
+              <div className="sticky bottom-20 px-4 z-10">
                 <Button className="w-full h-12 text-lg shadow-lg">
                   <ShoppingBag className="mr-2" />
                   View Cart ({cart.length})
@@ -396,6 +438,15 @@ export default function QrMenuPage() {
             </SheetContent>
           </Sheet>
         )}
+        
+        <div className="fixed bottom-4 right-4 z-20" style={{ transform: 'translateX(calc(50vw - 240px))' }}>
+            <Link href={aifaUrl}>
+                <Button size="icon" className="h-14 w-14 rounded-full shadow-lg bg-primary text-primary-foreground">
+                    <Sparkles className="h-7 w-7" />
+                    <span className="sr-only">AI Food Assistant</span>
+                </Button>
+            </Link>
+        </div>
       </div>
     </div>
   );

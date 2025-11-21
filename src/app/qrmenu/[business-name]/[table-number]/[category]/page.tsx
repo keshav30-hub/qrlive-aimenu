@@ -31,9 +31,10 @@ import {
   FileText,
   Sparkles,
   GlassWater,
-  SprayCan
+  SprayCan,
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
+import Link from 'next/link';
 
 // Mock data - in a real app, this would be fetched based on params
 const menu = {
@@ -65,7 +66,7 @@ const menu = {
     {
       id: '3',
       name: 'Caesar Salad',
-      category: 'Appetizers',
+      category: 'Salads',
       price: '150',
       type: 'veg',
       description: 'Crisp romaine lettuce with croutons and parmesan cheese.',
@@ -77,7 +78,7 @@ const menu = {
      {
       id: '6',
       name: 'Garlic Bread',
-      category: 'Appetizers',
+      category: 'Breads',
       price: '120',
       type: 'veg',
       description: 'Toasted bread with garlic butter and herbs.',
@@ -110,6 +111,30 @@ const menu = {
       imageHint: 'mojito drink',
       tags: [],
     },
+    {
+      id: '7',
+      name: 'Tomato Soup',
+      category: 'Soups',
+      price: '110',
+      type: 'veg',
+      description: 'Creamy tomato soup served with croutons.',
+      kcal: '200',
+      imageUrl: 'https://picsum.photos/seed/item7/400/300',
+      imageHint: 'tomato soup',
+      tags: [],
+    },
+    {
+      id: '8',
+      name: 'Grilled Salmon',
+      category: 'Seafood',
+      price: '450',
+      type: 'non-veg',
+      description: 'Perfectly grilled salmon fillet with a lemon-dill sauce.',
+      kcal: '600',
+      imageUrl: 'https://picsum.photos/seed/item8/400/300',
+      imageHint: 'grilled salmon',
+      tags: ['healthy'],
+    },
   ],
 };
 
@@ -135,6 +160,7 @@ const serviceRequests = [
 export default function CategoryMenuPage() {
   const router = useRouter();
   const params = useParams();
+  const { 'business-name': businessName, 'table-number': tableNumber } = params;
   const categoryName = params.category ? (params.category as string).replace(/-/g, ' ') : '';
   
   const { format } = useCurrency();
@@ -158,9 +184,11 @@ export default function CategoryMenuPage() {
     console.log(`Added ${item.name} to cart.`);
   };
 
+  const aifaUrl = `/qrmenu/${businessName}/${tableNumber}/aifa`;
+
   return (
     <div className="bg-gray-100 dark:bg-black min-h-screen">
-      <div className="max-w-[480px] mx-auto bg-white dark:bg-gray-950 shadow-lg">
+      <div className="max-w-[480px] mx-auto bg-white dark:bg-gray-950 shadow-lg relative pb-24">
         <header className="p-4 flex justify-between items-center sticky top-0 bg-white dark:bg-gray-950 z-10">
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" onClick={() => router.back()}>
@@ -274,6 +302,15 @@ export default function CategoryMenuPage() {
             )}
           </div>
         </main>
+        
+        <div className="fixed bottom-4 right-4 z-20" style={{ transform: 'translateX(calc(50vw - 240px))' }}>
+             <Link href={aifaUrl}>
+                <Button size="icon" className="h-14 w-14 rounded-full shadow-lg bg-primary text-primary-foreground">
+                    <Sparkles className="h-7 w-7" />
+                    <span className="sr-only">AI Food Assistant</span>
+                </Button>
+            </Link>
+        </div>
       </div>
     </div>
   );
