@@ -1,6 +1,8 @@
+
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import {
   Tabs,
   TabsContent,
@@ -40,9 +42,12 @@ import {
   RadioGroupItem,
 } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
-import { PlusCircle, Trash2 } from 'lucide-react';
+import { PlusCircle, Trash2, MoreVertical, Save } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useCurrency } from '@/hooks/use-currency';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 
 type Addon = { name: string; price: string };
@@ -68,9 +73,60 @@ const daysOfWeek = [
     { id: 'sunday', label: 'Sunday' },
 ];
 
+const initialCategories = [
+    {
+      id: '1',
+      name: 'Appetizers',
+      description: 'Start your meal with our delicious appetizers.',
+      imageUrl: 'https://picsum.photos/seed/cat1/600/400',
+      imageHint: 'appetizer food',
+      active: true,
+      availableDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+      fromTime: '11:00',
+      toTime: '23:00',
+    },
+    {
+      id: '2',
+      name: 'Main Course',
+      description: 'Hearty and satisfying main courses.',
+      imageUrl: 'https://picsum.photos/seed/cat2/600/400',
+      imageHint: 'main course food',
+      active: true,
+      availableDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+      fromTime: '11:00',
+      toTime: '23:00',
+    },
+    {
+      id: '3',
+      name: 'Desserts',
+      description: 'Sweet treats to end your meal.',
+      imageUrl: 'https://picsum.photos/seed/cat3/600/400',
+      imageHint: 'dessert food',
+      active: false,
+      availableDays: ['friday', 'saturday', 'sunday'],
+      fromTime: '18:00',
+      toTime: '23:00',
+    },
+];
+
+type Category = typeof initialCategories[0];
+const defaultCategory: Omit<Category, 'id' | 'imageUrl' | 'imageHint'> = {
+    name: '',
+    description: '',
+    active: true,
+    availableDays: [],
+    fromTime: '',
+    toTime: '',
+};
+
 export default function MenuPage() {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [isCategorySheetOpen, setIsCategorySheetOpen] = useState(false);
+  const [isEditingCategory, setIsEditingCategory] = useState(false);
   const [newItem, setNewItem] = useState(initialItemState);
+  const [categories, setCategories] = useState(initialCategories);
+  const [currentCategory, setCurrentCategory] = useState<Omit<Category, 'id' | 'imageUrl' | 'imageHint'> & { id?: string }>(defaultCategory);
+  
   const { format } = useCurrency();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -116,6 +172,31 @@ export default function MenuPage() {
     setNewItem(prev => ({ ...prev, modifiers }));
   };
 
+  const handleEditCategoryClick = (category: Category) => {
+    setIsEditingCategory(true);
+    setCurrentCategory(category);
+    setIsCategorySheetOpen(true);
+  };
+
+  const handleCategoryToggleSwitch = (categoryId: string, active: boolean) => {
+    setCategories(categories.map(cat => cat.id === categoryId ? { ...cat, active } : cat));
+  };
+  
+  const handleCategoryInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { id, value } = e.target;
+    setCurrentCategory(prev => ({ ...prev, [id]: value }));
+  };
+
+  const handleCategoryDayChange = (dayId: string, checked: boolean) => {
+    const currentDays = currentCategory.availableDays || [];
+    const newDays = checked ? [...currentDays, dayId] : currentDays.filter(d => d !== dayId);
+    setCurrentCategory(prev => ({ ...prev, availableDays: newDays }));
+  }
+
+  const handleSaveCategory = () => {
+    // Logic to save category will go here
+    setIsCategorySheetOpen(false);
+  }
 
   return (
     <div className="space-y-6">
@@ -247,7 +328,7 @@ export default function MenuPage() {
           </div>
         </TabsContent>
         <TabsContent value="category">
-           <div className="flex justify-end">
+           <div className="flex justify-end mb-4">
             <Dialog>
               <DialogTrigger asChild>
                 <Button>
@@ -305,9 +386,113 @@ export default function MenuPage() {
               </DialogContent>
             </Dialog>
           </div>
-          <div className="mt-4 text-center text-muted-foreground">
-            <p>No categories have been added yet.</p>
-          </div>
+          
+            <Sheet open={isCategorySheetOpen} onOpenChange={setIsCategorySheetOpen}>
+                <SheetContent className="w-full sm:max-w-md">
+                    <SheetHeader>
+                    <SheetTitle>Edit Category</SheetTitle>
+                    <SheetDescription>
+                        Update the details for your menu category.
+                    </SheetDescription>
+                    </SheetHeader>
+                    <ScrollArea className="h-[calc(100%-120px)] pr-4">
+                        <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="category-image-edit">Category Image</Label>
+                            <Input id="category-image-edit" type="file" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="name">Category Name</Label>
+                            <Input id="name" value={currentCategory.name} onChange={handleCategoryInputChange} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="description">Description (Optional)</Label>
+                            <Textarea id="description" value={currentCategory.description} onChange={handleCategoryInputChange} />
+                        </div>
+                        <div className="space-y-3">
+                            <Label>Available Days of Week</Label>
+                            <div className="grid grid-cols-3 gap-2 rounded-md border p-4">
+                                {daysOfWeek.map((day) => (
+                                    <div key={day.id} className="flex items-center space-x-2">
+                                        <Checkbox 
+                                            id={`edit-${day.id}`}
+                                            checked={currentCategory.availableDays.includes(day.id)}
+                                            onCheckedChange={(checked) => handleCategoryDayChange(day.id, !!checked)}
+                                        />
+                                        <Label htmlFor={`edit-${day.id}`} className="font-normal text-sm">{day.label}</Label>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Available Duration</Label>
+                            <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                                <Label htmlFor="from-time-edit" className="text-xs">From</Label>
+                                <Input id="fromTime" type="time" value={currentCategory.fromTime} onChange={handleCategoryInputChange} />
+                            </div>
+                            <div className="space-y-1">
+                                <Label htmlFor="to-time-edit" className="text-xs">To</Label>
+                                <Input id="toTime" type="time" value={currentCategory.toTime} onChange={handleCategoryInputChange} />
+                            </div>
+                            </div>
+                        </div>
+                        </div>
+                    </ScrollArea>
+                    <SheetFooter>
+                    <Button variant="outline" onClick={() => setIsCategorySheetOpen(false)}>Cancel</Button>
+                    <Button onClick={handleSaveCategory}><Save className="mr-2" />Save Changes</Button>
+                    </SheetFooter>
+                </SheetContent>
+            </Sheet>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {categories.map((category) => (
+                <Card key={category.id} className="overflow-hidden flex flex-col">
+                    <div className="relative w-full h-40">
+                        <Image
+                            src={category.imageUrl}
+                            alt={category.name}
+                            fill
+                            style={{objectFit: 'cover'}}
+                            data-ai-hint={category.imageHint}
+                        />
+                    </div>
+                    <CardHeader>
+                        <CardTitle>{category.name}</CardTitle>
+                    </CardHeader>
+                    <CardFooter className="flex items-center justify-between bg-gray-50 dark:bg-gray-800/50 p-3 mt-auto">
+                        <div className="flex items-center gap-2">
+                            <Switch
+                                id={`category-toggle-${category.id}`}
+                                checked={category.active}
+                                onCheckedChange={(checked) => handleCategoryToggleSwitch(category.id, checked)}
+                            />
+                            <label htmlFor={`category-toggle-${category.id}`} className="text-sm font-medium">
+                                {category.active ? 'Active' : 'Inactive'}
+                            </label>
+                        </div>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                                <MoreVertical className="h-5 w-5" />
+                                <span className="sr-only">More options</span>
+                            </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleEditCategoryClick(category)}>Edit</DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </CardFooter>
+                </Card>
+                ))}
+            </div>
+            {categories.length === 0 && (
+                 <div className="mt-4 text-center text-muted-foreground">
+                    <p>No categories have been added yet.</p>
+                </div>
+            )}
         </TabsContent>
         <TabsContent value="combo">
           <div className="mt-4 text-center text-muted-foreground">
@@ -318,3 +503,5 @@ export default function MenuPage() {
     </div>
   );
 }
+
+    
