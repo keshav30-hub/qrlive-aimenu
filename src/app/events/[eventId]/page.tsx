@@ -18,7 +18,26 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { placeHolderImages } from '@/lib/placeholder-images';
-import { User, Calendar, Clock, Info, Users } from 'lucide-react';
+import { User, Calendar, Clock, Info, Users, PlusCircle } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const eventDetails = {
   id: '1',
@@ -37,7 +56,7 @@ const rsvpList = [
     mobile: '555-0101',
     email: 'alice@example.com',
     people: 2,
-    status: 'Confirmed',
+    status: 'Attended',
   },
   {
     seq: 2,
@@ -45,7 +64,7 @@ const rsvpList = [
     mobile: '555-0102',
     email: 'bob@example.com',
     people: 1,
-    status: 'Pending',
+    status: 'Interested',
   },
   {
     seq: 3,
@@ -53,7 +72,7 @@ const rsvpList = [
     mobile: '555-0103',
     email: 'charlie@example.com',
     people: 4,
-    status: 'Confirmed',
+    status: 'Attended',
   },
   {
     seq: 4,
@@ -61,7 +80,7 @@ const rsvpList = [
     mobile: '555-0104',
     email: 'diana@example.com',
     people: 2,
-    status: 'Cancelled',
+    status: 'No Show',
   },
     {
     seq: 5,
@@ -69,7 +88,7 @@ const rsvpList = [
     mobile: '555-0105',
     email: 'ethan@example.com',
     people: 3,
-    status: 'Confirmed',
+    status: 'Attended',
   },
    {
     seq: 6,
@@ -77,17 +96,17 @@ const rsvpList = [
     mobile: '555-0106',
     email: 'fiona@example.com',
     people: 1,
-    status: 'Confirmed',
+    status: 'Attended',
   },
 ];
 
 const statusVariant = (status: string) => {
   switch (status) {
-    case 'Confirmed':
+    case 'Attended':
       return 'default';
-    case 'Cancelled':
+    case 'No Show':
       return 'destructive';
-    case 'Pending':
+    case 'Interested':
       return 'secondary';
     default:
       return 'outline';
@@ -147,11 +166,73 @@ export default function EventDetailsPage({
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle>RSVP Details</CardTitle>
-          <CardDescription>
-            Here are the details of guests who have RSVP'd to the event.
-          </CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>RSVP Details</CardTitle>
+            <CardDescription>
+              Here are the details of guests who have RSVP'd to the event.
+            </CardDescription>
+          </div>
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button>
+                <PlusCircle className="mr-2" />
+                Add RSVP
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Add New RSVP</DialogTitle>
+                <DialogDescription>
+                  Fill in the details below to add a new RSVP.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="name" className="text-right">
+                    Name
+                  </Label>
+                  <Input id="name" placeholder="Guest Name" className="col-span-3" />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="mobile" className="text-right">
+                    Mobile
+                  </Label>
+                  <Input id="mobile" placeholder="Mobile Number" className="col-span-3" />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="email" className="text-right">
+                    Email
+                  </Label>
+                  <Input id="email" type="email" placeholder="Email Address" className="col-span-3" />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="people" className="text-right">
+                    No. of People
+                  </Label>
+                  <Input id="people" type="number" placeholder="1" className="col-span-3" />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="status" className="text-right">
+                    Status
+                  </Label>
+                   <Select>
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="interested">Interested</SelectItem>
+                      <SelectItem value="attended">Attended</SelectItem>
+                      <SelectItem value="no-show">No Show</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="submit">Save RSVP</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </CardHeader>
         <CardContent>
           <Table>
