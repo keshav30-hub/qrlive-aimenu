@@ -10,10 +10,11 @@ import {
 } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Edit, Save, X, Upload } from 'lucide-react';
+import { Edit, Save, X, Upload, Fingerprint, RefreshCw, Crown, ExternalLink } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import Link from 'next/link';
 
 const initialBusinessInfo = {
   name: 'The Gourmet Place',
@@ -64,6 +65,53 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">Settings</h1>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                    <Fingerprint className="h-5 w-5" />
+                    Business ID
+                </CardTitle>
+            </CardHeader>
+            <CardContent>
+                <p className="text-2xl font-bold font-mono bg-gray-100 dark:bg-gray-800 p-3 rounded-md text-center">
+                    B-10X2001
+                </p>
+            </CardContent>
+        </Card>
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                    <RefreshCw className="h-5 w-5" />
+                    Data Sync
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+                <p className="text-sm text-muted-foreground">Last synced: Just now</p>
+                <Button className="w-full">
+                    <RefreshCw className="mr-2 h-4 w-4" /> Sync Now
+                </Button>
+            </CardContent>
+        </Card>
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                    <Crown className="h-5 w-5" />
+                    Subscription
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+                <p className="font-semibold">Pro Plan <span className="text-xs font-normal text-muted-foreground">(Renews on 24 Dec 2024)</span></p>
+                 <Link href="#" className="w-full">
+                    <Button variant="outline" className="w-full">
+                        Manage Subscription
+                        <ExternalLink className="ml-2 h-4 w-4" />
+                    </Button>
+                </Link>
+            </CardContent>
+        </Card>
+      </div>
       
       <Card>
         <CardHeader className="flex flex-row items-start justify-between">
@@ -74,17 +122,17 @@ export default function SettingsPage() {
           {isEditing ? (
             <div className="flex gap-2">
               <Button variant="outline" onClick={handleCancel}>
-                <X className="mr-2" />
+                <X className="mr-2 h-4 w-4" />
                 Cancel
               </Button>
               <Button onClick={handleSave}>
-                <Save className="mr-2" />
-                Save
+                <Save className="mr-2 h-4 w-4" />
+                Save Changes
               </Button>
             </div>
           ) : (
             <Button variant="outline" onClick={handleEdit}>
-              <Edit className="mr-2" />
+              <Edit className="mr-2 h-4 w-4" />
               Edit
             </Button>
           )}
