@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { placeHolderImages } from '@/lib/placeholder-images';
-import { User, Calendar, Clock, Info, Users, PlusCircle } from 'lucide-react';
+import { User, Calendar, Clock, Info, Users, PlusCircle, FilePenLine, Trash2, Download } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -45,6 +45,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useState } from 'react';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+
 
 const eventDetails = {
   id: '1',
@@ -135,6 +138,17 @@ export default function EventDetailsPage({
     setRsvpList(rsvpList.map(rsvp => rsvp.seq === seq ? { ...rsvp, status: newStatus } : rsvp));
   };
 
+  const handleDownloadPdf = () => {
+    const doc = new jsPDF();
+    doc.text("RSVP Details", 14, 16);
+    (doc as any).autoTable({
+      startY: 20,
+      head: [['#', 'Name', 'Mobile Number', 'No. of People']],
+      body: rsvpList.map(rsvp => [rsvp.seq, rsvp.name, rsvp.mobile, rsvp.people]),
+    });
+    doc.save('rsvp-details.pdf');
+  };
+
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">Event Details</h1>
@@ -145,12 +159,24 @@ export default function EventDetailsPage({
             src={eventDetails.imageUrl}
             alt={eventDetails.name}
             fill
-            objectFit="cover"
+            style={{objectFit: 'cover'}}
             data-ai-hint={eventDetails.imageHint}
           />
         </div>
         <CardHeader>
-          <CardTitle className="text-4xl">{eventDetails.name}</CardTitle>
+           <div className="flex justify-between items-center">
+            <CardTitle className="text-4xl">{eventDetails.name}</CardTitle>
+            <div className="flex gap-2">
+              <Button variant="outline" size="icon">
+                <FilePenLine className="h-5 w-5" />
+                <span className="sr-only">Edit Event</span>
+              </Button>
+              <Button variant="destructive" size="icon">
+                <Trash2 className="h-5 w-5" />
+                 <span className="sr-only">Delete Event</span>
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center gap-4 text-muted-foreground">
@@ -187,66 +213,72 @@ export default function EventDetailsPage({
               Here are the details of guests who have RSVP'd to the event.
             </CardDescription>
           </div>
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button>
-                <PlusCircle className="mr-2" />
-                Add RSVP
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle>Add New RSVP</DialogTitle>
-                <DialogDescription>
-                  Fill in the details below to add a new RSVP.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="name" className="text-right">
-                    Name
-                  </Label>
-                  <Input id="name" placeholder="Guest Name" className="col-span-3" />
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={handleDownloadPdf}>
+                <Download className="mr-2" />
+                Download PDF
+            </Button>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button>
+                  <PlusCircle className="mr-2" />
+                  Add RSVP
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>Add New RSVP</DialogTitle>
+                  <DialogDescription>
+                    Fill in the details below to add a new RSVP.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="name" className="text-right">
+                      Name
+                    </Label>
+                    <Input id="name" placeholder="Guest Name" className="col-span-3" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="mobile" className="text-right">
+                      Mobile
+                    </Label>
+                    <Input id="mobile" placeholder="Mobile Number" type="tel" pattern="[0-9]{10}" maxLength={10} className="col-span-3" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="email" className="text-right">
+                      Email (Optional)
+                    </Label>
+                    <Input id="email" type="email" placeholder="Email Address" className="col-span-3" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="people" className="text-right">
+                      No. of People
+                    </Label>
+                    <Input id="people" type="number" placeholder="1" className="col-span-3" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="status" className="text-right">
+                      Status
+                    </Label>
+                    <Select>
+                      <SelectTrigger className="col-span-3">
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="interested">Interested</SelectItem>
+                        <SelectItem value="attended">Attended</SelectItem>
+                        <SelectItem value="no-show">No Show</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="mobile" className="text-right">
-                    Mobile
-                  </Label>
-                  <Input id="mobile" placeholder="Mobile Number" className="col-span-3" />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="email" className="text-right">
-                    Email
-                  </Label>
-                  <Input id="email" type="email" placeholder="Email Address" className="col-span-3" />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="people" className="text-right">
-                    No. of People
-                  </Label>
-                  <Input id="people" type="number" placeholder="1" className="col-span-3" />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="status" className="text-right">
-                    Status
-                  </Label>
-                   <Select>
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="interested">Interested</SelectItem>
-                      <SelectItem value="attended">Attended</SelectItem>
-                      <SelectItem value="no-show">No Show</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button type="submit">Save RSVP</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+                <DialogFooter>
+                  <Button type="submit">Save RSVP</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
@@ -255,7 +287,6 @@ export default function EventDetailsPage({
                 <TableHead>#</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Mobile Number</TableHead>
-                <TableHead>Email ID</TableHead>
                 <TableHead>No. of People</TableHead>
                 <TableHead>Status</TableHead>
               </TableRow>
@@ -266,7 +297,6 @@ export default function EventDetailsPage({
                   <TableCell>{rsvp.seq}</TableCell>
                   <TableCell>{rsvp.name}</TableCell>
                   <TableCell>{rsvp.mobile}</TableCell>
-                  <TableCell>{rsvp.email}</TableCell>
                   <TableCell className="text-center">{rsvp.people}</TableCell>
                   <TableCell>
                     <DropdownMenu>
