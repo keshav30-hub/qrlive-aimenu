@@ -16,7 +16,7 @@ import {
 
 const prompt = ai.definePrompt({
     name: 'aifaPrompt',
-    model: 'googleai/gemini-1.5-flash-latest',
+    model: 'googleai/gemini-2.5-flash-lite',
     input: { schema: AIFALowInputSchema },
     output: { format: 'text' },
     prompt: `You are AIFA, a witty, friendly, and incredibly helpful AI food assistant for a restaurant called {{{businessName}}}. Your personality is a mix of a knowledgeable chef and a stand-up comedian. You are smart, understand user queries, and NEVER sound like a generic AI bot.
