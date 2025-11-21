@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Input } from '@/components/ui/input';
 
 // Define the custom event type for gmp-placechange
 interface PlaceChangeEvent extends Event {
@@ -86,46 +85,17 @@ export function PlacesAutocomplete({ onPlaceSelect, defaultValue }: PlacesAutoco
 
   if (!isApiLoaded) {
     return (
-      <Input 
-        className="pl-10"
-        placeholder="Loading address search..."
-        disabled
-      />
+      <div className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm animate-pulse" />
     );
   }
 
   return (
-    <>
-      <style>
-        {`
-          gmp-place-autocomplete::part(input) {
-            background-color: hsl(var(--background));
-            color: hsl(var(--foreground));
-            display: flex;
-            height: 2.5rem; /* h-10 */
-            width: 100%;
-            border-radius: 0.375rem; /* rounded-md */
-            border: 1px solid hsl(var(--input));
-            padding: 0.5rem 0.75rem;
-            padding-left: 2.5rem; /* pl-10 for the icon */
-            font-size: 0.875rem; /* md:text-sm */
-            line-height: 1.25rem;
-          }
-          gmp-place-autocomplete::part(input):focus {
-            outline: 2px solid transparent;
-            outline-offset: 2px;
-            border-color: hsl(var(--ring));
-            box-shadow: 0 0 0 2px hsl(var(--ring));
-          }
-        `}
-      </style>
       <gmp-place-autocomplete
         ref={autocompleteRef}
         placeholder="Start typing your address..."
         country-codes="in"
         part="input"
       ></gmp-place-autocomplete>
-    </>
   );
 }
 
