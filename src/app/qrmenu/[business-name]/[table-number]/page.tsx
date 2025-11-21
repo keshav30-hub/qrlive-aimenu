@@ -2,6 +2,7 @@
 
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
+import Link from 'next/link';
 import {
   Card,
   CardContent,
@@ -50,7 +51,7 @@ import {
   FileText,
   Sparkles,
   GlassWater,
-  Spray,
+  SprayCan,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -79,10 +80,10 @@ const events = [
 
 const menu = {
   categories: [
-    { name: 'Appetizers' },
-    { name: 'Main Course' },
-    { name: 'Desserts' },
-    { name: 'Beverages' },
+    { name: 'Appetizers', imageUrl: 'https://picsum.photos/seed/cat1/300/200', imageHint: 'appetizers food' },
+    { name: 'Main Course', imageUrl: 'https://picsum.photos/seed/cat2/300/200', imageHint: 'main course' },
+    { name: 'Desserts', imageUrl: 'https://picsum.photos/seed/cat3/300/200', imageHint: 'dessert' },
+    { name: 'Beverages', imageUrl: 'https://picsum.photos/seed/cat4/300/200', imageHint: 'beverages' },
   ],
   items: [
     {
@@ -165,7 +166,7 @@ const serviceRequests = [
     { text: 'Get Bill', icon: <FileText /> },
     { text: 'Call Captain', icon: <ConciergeBell /> },
     { text: 'Get Tissues', icon: <Sparkles /> },
-    { text: 'Clean the Table', icon: <Spray /> },
+    { text: 'Clean the Table', icon: <SprayCan /> },
     { text: 'Get Water', icon: <GlassWater /> },
 ]
 
@@ -282,80 +283,27 @@ export default function QrMenuPage() {
           </Carousel>
         </section>
 
-        <main>
-          <Tabs defaultValue={menu.categories[0].name} className="w-full">
-            <TabsList className="mx-4">
-              {menu.categories.map((category) => (
-                <TabsTrigger key={category.name} value={category.name}>
-                  {category.name}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-
+        <main className="p-4">
+           <div className="grid grid-cols-2 gap-4">
             {menu.categories.map((category) => (
-              <TabsContent key={category.name} value={category.name}>
-                <div className="space-y-4 p-4">
-                  {menu.items
-                    .filter((item) => item.category === category.name)
-                    .map((item) => (
-                      <Card
-                        key={item.id}
-                        className="flex gap-4 overflow-hidden"
-                      >
-                        <div className="relative w-24 h-24 flex-shrink-0">
-                          <Image
-                            src={item.imageUrl}
-                            alt={item.name}
-                            fill
-                            style={{ objectFit: 'cover' }}
-                            data-ai-hint={item.imageHint}
-                          />
+                <Link key={category.name} href={`/qrmenu/${businessName}/${tableNumber}/${category.name.toLowerCase().replace(/ /g, '-')}`}>
+                    <Card className="overflow-hidden">
+                        <div className="relative h-24 w-full">
+                             <Image
+                                src={category.imageUrl}
+                                alt={category.name}
+                                fill
+                                style={{ objectFit: 'cover' }}
+                                data-ai-hint={category.imageHint}
+                              />
                         </div>
-                        <div className="flex-grow p-3 flex flex-col">
-                          <div className="flex justify-between items-start">
-                            <h3 className="font-semibold">{item.name}</h3>
-                            <Badge
-                              variant={
-                                item.type === 'veg' ? 'secondary' : 'destructive'
-                              }
-                              className="capitalize h-5"
-                            >
-                              {item.type}
-                            </Badge>
-                          </div>
-                          <p className="text-xs text-muted-foreground flex-grow line-clamp-2 mt-1">
-                            {item.description}
-                          </p>
-                           <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                            {item.kcal} kcal
-                            {item.tags.length > 0 && <Separator orientation='vertical' className='h-3' />}
-                            <div className='flex gap-2'>
-                                {item.tags.map(tag => (
-                                    <div key={tag} className="flex items-center gap-1 capitalize">
-                                        {getTagIcon(tag)} {tag}
-                                    </div>
-                                ))}
-                            </div>
-                          </div>
-                          <div className="flex justify-between items-end mt-2">
-                            <span className="font-bold text-lg">
-                              {format(Number(item.price))}
-                            </span>
-                            <Button
-                              size="sm"
-                              className="h-8"
-                              onClick={() => addToCart(item)}
-                            >
-                              Add
-                            </Button>
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
-                </div>
-              </TabsContent>
+                        <CardHeader className="p-3">
+                            <CardTitle className="text-base text-center">{category.name}</CardTitle>
+                        </CardHeader>
+                    </Card>
+                </Link>
             ))}
-          </Tabs>
+           </div>
         </main>
 
         {cart.length > 0 && (
