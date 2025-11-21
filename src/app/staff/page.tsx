@@ -8,6 +8,7 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
+  CardFooter,
 } from '@/components/ui/card';
 import {
   Table,
@@ -21,7 +22,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { CalendarIcon, ChevronLeft, ChevronRight, PlusCircle, Clock, FilePenLine, Trash2 } from 'lucide-react';
+import { CalendarIcon, ChevronLeft, ChevronRight, PlusCircle, Clock, FilePenLine, Trash2, MoreVertical } from 'lucide-react';
 import { format } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -57,6 +58,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 
 type AttendanceStatus = 'Present' | 'Absent' | 'Paid Leave' | 'Half Day';
@@ -131,6 +133,17 @@ const getStatusVariant = (status: AttendanceStatus) => {
       return 'outline';
   }
 };
+
+const getRoleVariant = (role: string) => {
+    switch (role) {
+      case 'Manager':
+        return 'default';
+      case 'Captain':
+        return 'secondary';
+      default:
+        return 'outline';
+    }
+  };
 
 export default function StaffPage() {
   const [staffList, setStaffList] = useState(initialStaffList);
@@ -419,33 +432,39 @@ export default function StaffPage() {
                 </SheetContent>
               </Sheet>
             </CardHeader>
-            <CardContent>
-               <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Staff Member</TableHead>
-                    <TableHead>Role</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {staffList.map((staff) => (
-                    <TableRow key={staff.id} className="cursor-pointer">
-                      <TableCell>
-                        <Link href={`/staff/${staff.name.toLowerCase().replace(/ /g, '-')}`} className="flex items-center gap-4 hover:underline">
-                          <Avatar>
-                            <AvatarImage src={staff.avatar} alt={staff.name} />
-                            <AvatarFallback>
-                              {staff.name.split(' ').map((n) => n[0]).join('')}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="font-medium">{staff.name}</span>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {staffList.map((staff) => (
+                    <Card key={staff.id} className="overflow-hidden">
+                        <Link href={`/staff/${staff.name.toLowerCase().replace(/ /g, '-')}`} className="block hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                            <CardContent className="pt-6 flex flex-col items-center justify-center text-center gap-3">
+                                <Avatar className="h-24 w-24">
+                                    <AvatarImage src={staff.avatar} alt={staff.name} />
+                                    <AvatarFallback>
+                                    {staff.name.split(' ').map((n) => n[0]).join('')}
+                                    </AvatarFallback>
+                                </Avatar>
+                                <div className='space-y-1'>
+                                    <CardTitle className="text-xl">{staff.name}</CardTitle>
+                                    <Badge variant={getRoleVariant(staff.role)}>{staff.role}</Badge>
+                                </div>
+                            </CardContent>
                         </Link>
-                      </TableCell>
-                      <TableCell>{staff.role}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                         <CardFooter className="flex justify-end p-2 bg-gray-50 dark:bg-gray-800/50">
+                             <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                    <MoreVertical className="h-5 w-5" />
+                                    <span className="sr-only">More options</span>
+                                </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                <DropdownMenuItem>Edit</DropdownMenuItem>
+                                <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </CardFooter>
+                    </Card>
+                ))}
             </CardContent>
            </Card>
         </TabsContent>
