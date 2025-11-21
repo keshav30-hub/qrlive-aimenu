@@ -19,9 +19,15 @@ import { menu as menuData, events as allEvents, businessData } from '@/lib/qrmen
 
 
 type Message = {
-    id: number;
+    id: string;
     sender: 'user' | 'aifa';
     content: React.ReactNode;
+};
+
+// Helper to generate unique IDs for messages, avoiding duplicates from Date.now()
+let messageIdCounter = 0;
+const getUniqueMessageId = () => {
+    return `${Date.now()}-${messageIdCounter++}`;
 };
 
 const InitialActions = ({ onSelect, showEventsButton }: { onSelect: (action: string) => void, showEventsButton: boolean }) => (
@@ -144,7 +150,7 @@ export default function AIFAPage() {
         }
     
         const initialMessage = {
-          id: 1,
+          id: getUniqueMessageId(),
           sender: 'aifa' as const,
           content: `Hi! Welcome to ${businessNameParam}. I'm AIFA, your personal food assistant. How can I help you today?`
         };
@@ -165,7 +171,7 @@ export default function AIFAPage() {
 
     const addMessage = (sender: 'user' | 'aifa', content: React.ReactNode) => {
         setMessages(prev => {
-            const newMessages = [...prev, { id: Date.now(), sender, content }];
+            const newMessages = [...prev, { id: getUniqueMessageId(), sender, content }];
             try {
                 // Save only serializable messages (strings) to prevent component storage
                 const serializableMessages = newMessages.filter(msg => typeof msg.content === 'string');
