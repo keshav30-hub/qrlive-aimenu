@@ -54,7 +54,7 @@ const topPages = [
   { name: '/cart', visits: 500 },
 ];
 
-export default function QrMenuPage() {
+export default function SetupQrMenuPage() {
   const [tables, setTables] = useState(initialTables);
   const [newTableName, setNewTableName] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -194,7 +194,7 @@ export default function QrMenuPage() {
                       <Download className="mr-2 h-4 w-4" />
                       Download QR
                     </Button>
-                    <Link href="/qr-menu" target="_blank">
+                    <Link href="/setupqrmenu" target="_blank">
                       <Button variant="outline" size="sm">
                         <ExternalLink className="mr-2 h-4 w-4" />
                         Visit

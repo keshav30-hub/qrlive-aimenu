@@ -73,7 +73,7 @@ export function AppSidebar() {
             </Link>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <Link href="/qr-menu">
+            <Link href="/setupqrmenu">
               <SidebarMenuButton>
                 <QrCode />
                 <span>QR Menu</span>
