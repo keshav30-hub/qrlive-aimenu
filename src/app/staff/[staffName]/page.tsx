@@ -15,14 +15,19 @@ import {
 } from '@/components/ui/accordion';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Edit, Eye, EyeOff, X, Check } from 'lucide-react';
+import { ChevronLeft, Edit, Eye, EyeOff, X, Check, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 
 const staffData: { [key: string]: any } = {
@@ -107,9 +112,6 @@ const generateAttendanceData = (year: number) => {
     return attendance;
 };
   
-const currentYear = new Date().getFullYear();
-const attendanceData = generateAttendanceData(currentYear);
-  
 export default function StaffDetailsPage() {
   const params = useParams();
   const staffName = params.staffName as string;
@@ -119,6 +121,8 @@ export default function StaffDetailsPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [editedDetails, setEditedDetails] = useState(staffMember);
   const [showAccessCode, setShowAccessCode] = useState(false);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [attendanceData, setAttendanceData] = useState(() => generateAttendanceData(selectedYear));
 
 
   const handleEditClick = () => {
@@ -140,22 +144,27 @@ export default function StaffDetailsPage() {
     setEditedDetails((prev: any) => ({ ...prev, [name]: value }));
   };
 
+  const handleYearChange = (year: number) => {
+    setSelectedYear(year);
+    setAttendanceData(generateAttendanceData(year));
+  };
+
 
   const attendanceSummary = useMemo(() => {
     const summary: { [key: string]: any } = {};
     for (let month = 0; month < 12; month++) {
       const monthData = attendanceData[month] || {};
-      const days = Object.keys(monthData);
+      const days = Object.keys(monthData).map(Number);
       const totalDays = days.length;
-      const present = days.filter(day => monthData[parseInt(day)] === 'Present').length;
-      const absent = days.filter(day => monthData[parseInt(day)] === 'Absent').length;
-      const paidLeave = days.filter(day => monthData[parseInt(day)] === 'Paid Leave').length;
-      const halfDay = days.filter(day => monthData[parseInt(day)] === 'Half Day').length;
+      const present = days.filter(day => monthData[day] === 'Present').length;
+      const absent = days.filter(day => monthData[day] === 'Absent').length;
+      const paidLeave = days.filter(day => monthData[day] === 'Paid Leave').length;
+      const halfDay = days.filter(day => monthData[day] === 'Half Day').length;
 
       summary[month] = { totalDays, present, absent, paidLeave, halfDay };
     }
     return summary;
-  }, []);
+  }, [attendanceData]);
 
   if (!staffDetails) {
     return (
@@ -169,8 +178,11 @@ export default function StaffDetailsPage() {
   }
 
   const months = Array.from({ length: 12 }, (_, i) => {
-    return new Date(currentYear, i, 1).toLocaleString('default', { month: 'long' });
+    return new Date(selectedYear, i, 1).toLocaleString('default', { month: 'long' });
   });
+
+  const yearOptions = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i);
+
 
   return (
     <div className="space-y-6">
@@ -259,8 +271,23 @@ export default function StaffDetailsPage() {
       </Card>
       
       <Card>
-        <CardHeader>
-            <CardTitle>Attendance History - {currentYear}</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Attendance History</CardTitle>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  {selectedYear}
+                  <ChevronDown className="ml-2 h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                {yearOptions.map(year => (
+                    <DropdownMenuItem key={year} onSelect={() => handleYearChange(year)}>
+                        {year}
+                    </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
         </CardHeader>
         <CardContent>
             <Accordion type="single" collapsible className="w-full">

@@ -477,6 +477,23 @@ export default function StaffPage() {
                                 </SelectContent>
                             </Select>
                         </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="staff-salary">Staff Salary</Label>
+                          <Input id="staff-salary" type="number" placeholder="e.g. 30000" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="shift-selection">Shift Selection</Label>
+                             <Select>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select a shift" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {shifts.map(shift => (
+                                      <SelectItem key={shift.id} value={shift.name.toLowerCase().replace(' ', '-')}>{shift.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
                         <div className="space-y-3">
                             <Label>Page Access</Label>
                             <div className="space-y-2 rounded-md border p-4">
