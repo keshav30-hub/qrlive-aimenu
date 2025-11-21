@@ -124,11 +124,15 @@ export default function AIFAPage() {
           const savedMessages = sessionStorage.getItem('aifa-chat-history');
           if (savedMessages) {
             const parsedMessages = JSON.parse(savedMessages);
-            // Simple check to ensure it's an array of messages
             if (Array.isArray(parsedMessages) && parsedMessages.length > 0) {
-              setMessages(parsedMessages);
-              setShowInitialActions(false); // Don't show initial actions if history exists
-              return;
+              // We can't persist React components, so we just restore the text messages.
+              // This means interactive components won't reappear on reload, which is acceptable.
+              const textMessages = parsedMessages.filter((msg: any) => typeof msg.content === 'string');
+              if (textMessages.length > 0) {
+                setMessages(textMessages);
+                setShowInitialActions(false);
+                return;
+              }
             }
           }
         } catch (error) {
@@ -160,11 +164,8 @@ export default function AIFAPage() {
         setMessages(prev => {
             const newMessages = [...prev, { id: Date.now(), sender, content }];
             try {
-                // We can't store React components in JSON, so we convert them to a placeholder string.
-                const serializableMessages = newMessages.map(msg => ({
-                    ...msg,
-                    content: typeof msg.content === 'string' ? msg.content : '[Interactive Component]',
-                }));
+                // Only store messages with string content in session storage
+                const serializableMessages = newMessages.filter(msg => typeof msg.content === 'string');
                 sessionStorage.setItem('aifa-chat-history', JSON.stringify(serializableMessages));
             } catch (error) {
                 console.error("Failed to save chat history to session storage:", error);
@@ -191,10 +192,12 @@ export default function AIFAPage() {
     const getAIResponse = async (prompt: string) => {
         setIsThinking(true);
 
-        const historyForAI = messages.map(msg => ({
-            role: msg.sender === 'user' ? 'user' : 'model' as 'user' | 'model',
-            content: typeof msg.content === 'string' ? msg.content : 'Interactive Component'
-        }));
+        const historyForAI = messages
+            .filter(msg => typeof msg.content === 'string') // **CRITICAL FIX: Filter for string content only**
+            .map(msg => ({
+                role: msg.sender === 'user' ? 'user' : 'model' as 'user' | 'model',
+                content: msg.content as string
+            }));
         
         try {
             const flowInput: AIFALowInput = {
