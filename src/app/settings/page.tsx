@@ -10,11 +10,12 @@ import {
 } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Edit, Save, X, Upload, Fingerprint, RefreshCw, Crown, ExternalLink } from 'lucide-react';
+import { Edit, Save, X, Upload, Fingerprint, RefreshCw, Crown, ExternalLink, Instagram, Globe } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import Link from 'next/link';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const initialBusinessInfo = {
   name: 'The Gourmet Place',
@@ -218,6 +219,66 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Raise a Ticket</CardTitle>
+            <CardDescription>Get help with any issues you're facing.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+             <div className="space-y-2">
+              <Label htmlFor="ticket-type">Support Ticket Type</Label>
+              <Select>
+                <SelectTrigger id="ticket-type">
+                  <SelectValue placeholder="Select a ticket type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="technical">Technical Issue</SelectItem>
+                  <SelectItem value="billing">Billing Inquiry</SelectItem>
+                  <SelectItem value="feedback">General Feedback</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="ticket-description">Description</Label>
+              <Textarea id="ticket-description" placeholder="Please describe your issue in detail..." rows={5} />
+            </div>
+            <Button className="w-full">Submit Ticket</Button>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle>Customer Support</CardTitle>
+            <CardDescription>Contact us directly for immediate assistance.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>Email ID</Label>
+              <p className="font-medium">support@qrlive.menu</p>
+            </div>
+            <div className="space-y-2">
+              <Label>Mobile Number</Label>
+              <p className="font-medium">+91 12345 67890</p>
+            </div>
+            <div className="flex gap-2 pt-2">
+                <Button variant="outline" size="icon" asChild>
+                    <Link href="#" target="_blank">
+                        <Instagram className="h-5 w-5" />
+                    </Link>
+                </Button>
+                 <Button variant="outline" size="icon" asChild>
+                    <Link href="#" target="_blank">
+                        <Globe className="h-5 w-5" />
+                    </Link>
+                </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
     </div>
   );
 }
