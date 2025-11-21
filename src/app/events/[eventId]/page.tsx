@@ -1,3 +1,4 @@
+
 'use client';
 
 import Image from 'next/image';
@@ -119,7 +120,7 @@ export default function PublicEventDetailsPage() {
                             <Label htmlFor="mobile">Mobile Number</Label>
                              <div className="relative">
                                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input id="mobile" type="tel" placeholder="9876543210" className="pl-10" />
+                                <Input id="mobile" type="tel" placeholder="9876543210" className="pl-10" pattern="[0-9]{10}" maxLength={10} />
                             </div>
                         </div>
                         <div className="space-y-2">
