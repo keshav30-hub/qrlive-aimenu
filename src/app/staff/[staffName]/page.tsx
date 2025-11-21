@@ -28,6 +28,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 
 
 const staffData: { [key: string]: any } = {
@@ -40,6 +44,9 @@ const staffData: { [key: string]: any } = {
       accessCode: '123456',
       role: 'Manager',
       pageAccess: ['dashboard', 'menu', 'tasks', 'feedback', 'qr-menu', 'events', 'staff', 'settings'],
+      salary: 50000,
+      shift: 'Morning Shift',
+      active: true,
     },
     'jane-smith': {
       id: '2',
@@ -50,6 +57,9 @@ const staffData: { [key: string]: any } = {
       accessCode: '654321',
       role: 'Captain',
       pageAccess: ['dashboard', 'menu', 'tasks'],
+      salary: 35000,
+      shift: 'Evening Shift',
+      active: true,
     },
     'alex-johnson': {
       id: '3',
@@ -60,6 +70,9 @@ const staffData: { [key: string]: any } = {
       accessCode: '112233',
       role: 'Captain',
       pageAccess: ['tasks', 'feedback'],
+      salary: 32000,
+      shift: 'Morning Shift',
+      active: false,
     },
     'emily-white': {
       id: '4',
@@ -70,6 +83,9 @@ const staffData: { [key: string]: any } = {
       accessCode: '445566',
       role: 'Captain',
       pageAccess: ['qr-menu', 'events'],
+      salary: 33000,
+      shift: 'Evening Shift',
+      active: true,
     },
     'michael-brown': {
       id: '5',
@@ -80,19 +96,24 @@ const staffData: { [key: string]: any } = {
       accessCode: '778899',
       role: 'Manager',
       pageAccess: ['dashboard', 'staff', 'settings'],
+      salary: 52000,
+      shift: 'Morning Shift',
+      active: true,
     },
   };
   
-  const pageAccessLabels: { [key: string]: string } = {
-    dashboard: 'Dashboard',
-    menu: 'Menu',
-    tasks: 'Tasks',
-    feedback: 'Feedback',
-    'qr-menu': 'QR Menu',
-    events: 'Events',
-    staff: 'Staff',
-    settings: 'Settings',
-  };
+const pageAccessOptions = [
+    { id: 'dashboard', label: 'Dashboard' },
+    { id: 'menu', label: 'Menu' },
+    { id: 'tasks', label: 'Tasks' },
+    { id: 'feedback', label: 'Feedback' },
+    { id: 'qr-menu', label: 'QR Menu' },
+    { id: 'events', label: 'Events' },
+    { id: 'staff', label: 'Staff' },
+    { id: 'settings', label: 'Settings' },
+];
+
+const shiftOptions = ['Morning Shift', 'Evening Shift'];
   
 
 const generateAttendanceData = (year: number) => {
@@ -147,6 +168,15 @@ export default function StaffDetailsPage() {
   const handleYearChange = (year: number) => {
     setSelectedYear(year);
     setAttendanceData(generateAttendanceData(year));
+  };
+  
+  const handlePageAccessChange = (pageId: string, checked: boolean) => {
+    setEditedDetails((prev: any) => {
+      const newPageAccess = checked
+        ? [...prev.pageAccess, pageId]
+        : prev.pageAccess.filter((id: string) => id !== pageId);
+      return { ...prev, pageAccess: newPageAccess };
+    });
   };
 
 
@@ -209,27 +239,43 @@ export default function StaffDetailsPage() {
                       <CardTitle className="text-3xl">{staffDetails.name}</CardTitle>
                     )}
                     {isEditing ? (
-                        <Input name="role" value={editedDetails.role} onChange={handleInputChange} className="text-lg p-0 border-0 shadow-none focus-visible:ring-0" />
+                       <Select value={editedDetails.role} onValueChange={(value) => setEditedDetails((prev: any) => ({ ...prev, role: value }))}>
+                          <SelectTrigger className="text-lg p-0 border-0 shadow-none focus-visible:ring-0 w-32">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Manager">Manager</SelectItem>
+                            <SelectItem value="Captain">Captain</SelectItem>
+                          </SelectContent>
+                        </Select>
                     ) : (
                        <CardDescription className="text-lg">{staffDetails.role}</CardDescription>
                     )}
                 </div>
             </div>
-            <div className="flex gap-2">
-                {isEditing ? (
-                    <>
-                    <Button variant="outline" onClick={handleCancelClick}><X className="mr-2 h-4 w-4" />Cancel</Button>
-                    <Button onClick={handleSaveClick}><Check className="mr-2 h-4 w-4" />Save</Button>
-                    </>
-                ) : (
-                    <Button variant="outline" size="icon" onClick={handleEditClick}>
-                        <Edit className="h-5 w-5" />
-                        <span className="sr-only">Edit Staff</span>
-                    </Button>
-                )}
+            <div className="flex items-center gap-4">
+               {!isEditing && (
+                <div className="flex items-center space-x-2">
+                    <Switch id="active-status" checked={staffDetails.active} disabled />
+                    <Label htmlFor="active-status">{staffDetails.active ? 'Active' : 'Inactive'}</Label>
+                </div>
+               )}
+                <div className="flex gap-2">
+                    {isEditing ? (
+                        <>
+                        <Button variant="outline" onClick={handleCancelClick}><X className="mr-2 h-4 w-4" />Cancel</Button>
+                        <Button onClick={handleSaveClick}><Check className="mr-2 h-4 w-4" />Save</Button>
+                        </>
+                    ) : (
+                        <Button variant="outline" size="icon" onClick={handleEditClick}>
+                            <Edit className="h-5 w-5" />
+                            <span className="sr-only">Edit Staff</span>
+                        </Button>
+                    )}
+                </div>
             </div>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 pt-6">
+        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-4 pt-6">
           <div>
             <h4 className="font-semibold text-muted-foreground">Date of Birth</h4>
             {isEditing ? (
@@ -239,6 +285,39 @@ export default function StaffDetailsPage() {
             )}
           </div>
           <div>
+            <h4 className="font-semibold text-muted-foreground">Salary</h4>
+            {isEditing ? (
+                <Input type="number" name="salary" value={editedDetails.salary} onChange={handleInputChange} />
+            ) : (
+                <p>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(staffDetails.salary)}</p>
+            )}
+          </div>
+          <div>
+            <h4 className="font-semibold text-muted-foreground">Shift</h4>
+             {isEditing ? (
+                <Select value={editedDetails.shift} onValueChange={(value) => setEditedDetails((prev: any) => ({ ...prev, shift: value }))}>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Select a shift" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {shiftOptions.map(shift => (
+                            <SelectItem key={shift} value={shift}>{shift}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            ) : (
+                <p>{staffDetails.shift}</p>
+            )}
+          </div>
+          <div className="col-span-1 md:col-span-3">
+            <h4 className="font-semibold text-muted-foreground">Address</h4>
+            {isEditing ? (
+                <Textarea name="address" value={editedDetails.address} onChange={handleInputChange} />
+            ) : (
+                <p>{staffDetails.address}</p>
+            )}
+          </div>
+           <div className="col-span-1">
             <h4 className="font-semibold text-muted-foreground">Access Code</h4>
              {isEditing ? (
                 <div className="relative">
@@ -251,21 +330,40 @@ export default function StaffDetailsPage() {
                 <p>******</p>
              )}
           </div>
-          <div className="col-span-1 md:col-span-2">
-            <h4 className="font-semibold text-muted-foreground">Address</h4>
-            {isEditing ? (
-                <Textarea name="address" value={editedDetails.address} onChange={handleInputChange} />
-            ) : (
-                <p>{staffDetails.address}</p>
-            )}
-          </div>
-          <div className="col-span-1 md:col-span-2">
-            <h4 className="font-semibold text-muted-foreground">Page Access</h4>
-            <div className="flex flex-wrap gap-2 mt-2">
-              {staffDetails.pageAccess.map((pageId: string) => (
-                <Badge key={pageId} variant="secondary">{pageAccessLabels[pageId] || pageId}</Badge>
-              ))}
+           {isEditing && (
+            <div className="flex items-center space-x-2 self-end">
+                <Switch 
+                    id="active-status-edit" 
+                    checked={editedDetails.active} 
+                    onCheckedChange={(checked) => setEditedDetails((prev: any) => ({...prev, active: checked}))}
+                />
+                <Label htmlFor="active-status-edit">{editedDetails.active ? 'Active' : 'Inactive'}</Label>
             </div>
+           )}
+          <div className="col-span-1 md:col-span-3">
+            <h4 className="font-semibold text-muted-foreground">Page Access</h4>
+             {isEditing ? (
+                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 rounded-md border p-4 mt-2">
+                    {pageAccessOptions.map((item) => (
+                        <div key={item.id} className="flex flex-row items-center space-x-3">
+                            <Checkbox 
+                                id={`access-${item.id}`} 
+                                checked={editedDetails.pageAccess.includes(item.id)}
+                                onCheckedChange={(checked) => handlePageAccessChange(item.id, !!checked)}
+                            />
+                            <Label htmlFor={`access-${item.id}`} className="font-normal">
+                                {item.label}
+                            </Label>
+                        </div>
+                    ))}
+                </div>
+             ) : (
+                <div className="flex flex-wrap gap-2 mt-2">
+                {staffDetails.pageAccess.map((pageId: string) => (
+                    <Badge key={pageId} variant="secondary">{pageAccessOptions.find(p => p.id === pageId)?.label || pageId}</Badge>
+                ))}
+                </div>
+             )}
           </div>
         </CardContent>
       </Card>
