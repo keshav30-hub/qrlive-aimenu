@@ -69,7 +69,6 @@ const initialStaffList = [
     name: 'John Doe',
     avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026704d',
     status: 'Present' as AttendanceStatus,
-    role: 'Manager',
     active: true,
   },
   {
@@ -77,7 +76,6 @@ const initialStaffList = [
     name: 'Jane Smith',
     avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026705d',
     status: 'Absent' as AttendanceStatus,
-    role: 'Captain',
     active: true,
   },
   {
@@ -85,7 +83,6 @@ const initialStaffList = [
     name: 'Alex Johnson',
     avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026706d',
     status: 'Paid Leave' as AttendanceStatus,
-    role: 'Captain',
     active: false,
   },
   {
@@ -93,7 +90,6 @@ const initialStaffList = [
     name: 'Emily White',
     avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026707d',
     status: 'Half Day' as AttendanceStatus,
-    role: 'Captain',
     active: true,
   },
   {
@@ -101,7 +97,6 @@ const initialStaffList = [
     name: 'Michael Brown',
     avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026708d',
     status: 'Present' as AttendanceStatus,
-    role: 'Manager',
     active: true,
   },
 ];
@@ -138,17 +133,6 @@ const getStatusVariant = (status: AttendanceStatus) => {
       return 'outline';
   }
 };
-
-const getRoleVariant = (role: string) => {
-    switch (role) {
-      case 'Manager':
-        return 'default';
-      case 'Captain':
-        return 'secondary';
-      default:
-        return 'outline';
-    }
-  };
 
 export default function StaffPage() {
   const [staffList, setStaffList] = useState(initialStaffList);
@@ -470,22 +454,6 @@ export default function StaffPage() {
                             <Textarea id="full-address" placeholder="Enter full address" />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="access-code">Access Code</Label>
-                            <Input id="access-code" type="password" placeholder="Enter 6-digit code" maxLength={6} />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="staff-role">Staff Role</Label>
-                             <Select>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select a role" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="captain">Captain</SelectItem>
-                                    <SelectItem value="manager">Manager</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="space-y-2">
                           <Label htmlFor="staff-salary">Staff Salary</Label>
                           <Input id="staff-salary" type="number" placeholder="e.g. 30000" />
                         </div>
@@ -537,7 +505,6 @@ export default function StaffPage() {
                                 </Avatar>
                                 <div className='space-y-1'>
                                     <CardTitle className="text-xl">{staff.name}</CardTitle>
-                                    <Badge variant={getRoleVariant(staff.role)}>{staff.role}</Badge>
                                 </div>
                             </CardContent>
                         </Link>

@@ -41,8 +41,6 @@ const staffData: { [key: string]: any } = {
       avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026704d',
       dob: '1990-05-15',
       address: '123 Main St, Anytown, USA',
-      accessCode: '123456',
-      role: 'Manager',
       pageAccess: ['dashboard', 'menu', 'tasks', 'feedback', 'qr-menu', 'events', 'staff', 'settings'],
       salary: 50000,
       shift: 'Morning Shift',
@@ -54,8 +52,6 @@ const staffData: { [key: string]: any } = {
       avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026705d',
       dob: '1992-08-22',
       address: '456 Oak Ave, Anytown, USA',
-      accessCode: '654321',
-      role: 'Captain',
       pageAccess: ['dashboard', 'menu', 'tasks'],
       salary: 35000,
       shift: 'Evening Shift',
@@ -67,8 +63,6 @@ const staffData: { [key: string]: any } = {
       avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026706d',
       dob: '1995-01-30',
       address: '789 Pine Ln, Anytown, USA',
-      accessCode: '112233',
-      role: 'Captain',
       pageAccess: ['tasks', 'feedback'],
       salary: 32000,
       shift: 'Morning Shift',
@@ -80,8 +74,6 @@ const staffData: { [key: string]: any } = {
       avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026707d',
       dob: '1998-11-10',
       address: '101 Maple Dr, Anytown, USA',
-      accessCode: '445566',
-      role: 'Captain',
       pageAccess: ['qr-menu', 'events'],
       salary: 33000,
       shift: 'Evening Shift',
@@ -93,8 +85,6 @@ const staffData: { [key: string]: any } = {
       avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026708d',
       dob: '1988-03-25',
       address: '212 Birch Rd, Anytown, USA',
-      accessCode: '778899',
-      role: 'Manager',
       pageAccess: ['dashboard', 'staff', 'settings'],
       salary: 52000,
       shift: 'Morning Shift',
@@ -141,7 +131,6 @@ export default function StaffDetailsPage() {
   const [staffDetails, setStaffDetails] = useState(staffMember);
   const [isEditing, setIsEditing] = useState(false);
   const [editedDetails, setEditedDetails] = useState(staffMember);
-  const [showAccessCode, setShowAccessCode] = useState(false);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [attendanceData, setAttendanceData] = useState(() => generateAttendanceData(selectedYear));
 
@@ -246,19 +235,6 @@ export default function StaffDetailsPage() {
                     ) : (
                       <CardTitle className="text-3xl">{staffDetails.name}</CardTitle>
                     )}
-                    {isEditing ? (
-                       <Select value={editedDetails.role} onValueChange={(value) => setEditedDetails((prev: any) => ({ ...prev, role: value }))}>
-                          <SelectTrigger className="text-lg p-0 border-0 shadow-none focus-visible:ring-0 w-32">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Manager">Manager</SelectItem>
-                            <SelectItem value="Captain">Captain</SelectItem>
-                          </SelectContent>
-                        </Select>
-                    ) : (
-                       <CardDescription className="text-lg">{staffDetails.role}</CardDescription>
-                    )}
                 </div>
             </div>
             <div className="flex items-center gap-4">
@@ -324,19 +300,6 @@ export default function StaffDetailsPage() {
             ) : (
                 <p>{staffDetails.address}</p>
             )}
-          </div>
-           <div className="col-span-1">
-            <h4 className="font-semibold text-muted-foreground">Access Code</h4>
-             {isEditing ? (
-                <div className="relative">
-                    <Input name="accessCode" type={showAccessCode ? 'text' : 'password'} value={editedDetails.accessCode} onChange={handleInputChange} />
-                    <Button variant="ghost" size="icon" className="absolute right-0 top-0 h-full" onClick={() => setShowAccessCode(!showAccessCode)}>
-                        {showAccessCode ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </Button>
-                </div>
-             ) : (
-                <p>******</p>
-             )}
           </div>
            {isEditing && (
             <div className="flex items-center space-x-2 self-end">
