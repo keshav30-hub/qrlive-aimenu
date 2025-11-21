@@ -17,6 +17,15 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -30,6 +39,7 @@ import {
   RadioGroup,
   RadioGroupItem,
 } from '@/components/ui/radio-group';
+import { Checkbox } from '@/components/ui/checkbox';
 import { PlusCircle, Trash2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useCurrency } from '@/hooks/use-currency';
@@ -47,6 +57,16 @@ const initialItemState = {
   addons: [{ name: '', price: '' }],
   modifiers: [{ name: '', price: '' }],
 };
+
+const daysOfWeek = [
+    { id: 'monday', label: 'Monday' },
+    { id: 'tuesday', label: 'Tuesday' },
+    { id: 'wednesday', label: 'Wednesday' },
+    { id: 'thursday', label: 'Thursday' },
+    { id: 'friday', label: 'Friday' },
+    { id: 'saturday', label: 'Saturday' },
+    { id: 'sunday', label: 'Sunday' },
+];
 
 export default function MenuPage() {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -227,8 +247,66 @@ export default function MenuPage() {
           </div>
         </TabsContent>
         <TabsContent value="category">
+           <div className="flex justify-end">
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button>
+                  <PlusCircle className="mr-2" /> Add Category
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Add New Category</DialogTitle>
+                  <DialogDescription>
+                    Fill in the details for your new menu category.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="category-name">Category Name</Label>
+                    <Input id="category-name" placeholder="e.g. Appetizers" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="category-image">Category Image</Label>
+                    <Input id="category-image" type="file" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="category-description">Description (Optional)</Label>
+                    <Textarea id="category-description" placeholder="Describe the category..." />
+                  </div>
+                  <div className="space-y-3">
+                    <Label>Available Days of Week</Label>
+                    <div className="grid grid-cols-3 gap-2 rounded-md border p-4">
+                        {daysOfWeek.map((day) => (
+                            <div key={day.id} className="flex items-center space-x-2">
+                                <Checkbox id={day.id} />
+                                <Label htmlFor={day.id} className="font-normal text-sm">{day.label}</Label>
+                            </div>
+                        ))}
+                    </div>
+                  </div>
+                   <div className="space-y-2">
+                    <Label>Available Duration</Label>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <Label htmlFor="from-time" className="text-xs">From</Label>
+                        <Input id="from-time" type="time" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="to-time" className="text-xs">To</Label>
+                        <Input id="to-time" type="time" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button type="submit">Save Category</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
           <div className="mt-4 text-center text-muted-foreground">
-            <p>Category management will be available here.</p>
+            <p>No categories have been added yet.</p>
           </div>
         </TabsContent>
         <TabsContent value="combo">
