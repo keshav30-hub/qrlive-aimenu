@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams } from 'next/navigation';
@@ -37,6 +38,7 @@ import {
   Tag,
   Star,
   Flame,
+  Bell,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -187,20 +189,26 @@ export default function QrMenuPage() {
   return (
     <div className="bg-gray-100 dark:bg-black min-h-screen">
       <div className="max-w-[480px] mx-auto bg-white dark:bg-gray-950 shadow-lg">
-        <header className="p-4 flex items-center gap-4">
-          <Image
-            src={businessData.logo}
-            alt={`${businessData.name} logo`}
-            width={48}
-            height={48}
-            className="rounded-full"
-          />
-          <div>
-            <h1 className="text-2xl font-bold">{businessData.name}</h1>
-            <p className="text-muted-foreground">
-              Welcome to Table {tableNumber}
-            </p>
+        <header className="p-4 flex justify-between items-center">
+          <div className="flex items-center gap-4">
+            <Image
+              src={businessData.logo}
+              alt={`${businessData.name} logo`}
+              width={48}
+              height={48}
+              className="rounded-full"
+            />
+            <div>
+              <h1 className="text-xl font-bold">{businessData.name}</h1>
+              <p className="text-sm text-muted-foreground">
+                You are at Table {tableNumber}
+              </p>
+            </div>
           </div>
+          <Button variant="ghost" size="icon">
+            <Bell className="h-6 w-6" />
+            <span className="sr-only">Notifications</span>
+          </Button>
         </header>
 
         <section className="px-4 pb-4">
