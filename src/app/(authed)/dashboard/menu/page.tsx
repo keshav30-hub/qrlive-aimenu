@@ -1,8 +1,7 @@
 
-
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import {
   Tabs,
@@ -53,13 +52,30 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { generateMenuItemDetails } from '@/ai/flows/generate-menu-item-details';
+import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, doc, addDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
 
 
 type Addon = { name: string; price: string };
 type Modifier = { name: string; price: string };
 
-const initialItemState = {
-  id: '',
+type MenuItem = {
+  id: string;
+  name: string;
+  category: string;
+  ingredients: string;
+  description: string;
+  mrp: string;
+  kcal: string;
+  duration: string;
+  type: 'veg' | 'non-veg';
+  addons: Addon[];
+  modifiers: Modifier[];
+  available: boolean;
+};
+
+const initialItemState: Omit<MenuItem, 'id'> = {
   name: '',
   category: '',
   ingredients: '',
@@ -73,50 +89,6 @@ const initialItemState = {
   available: true,
 };
 
-const initialItems = [
-    {
-      id: '1',
-      name: 'Margherita Pizza',
-      category: 'Main Course',
-      mrp: '250',
-      type: 'veg',
-      available: true,
-      ingredients: 'Dough, Tomato Sauce, Mozzarella, Basil',
-      description: 'A classic pizza with fresh ingredients.',
-      kcal: '750',
-      duration: '20',
-      addons: [],
-      modifiers: [],
-    },
-    {
-      id: '2',
-      name: 'Chicken Burger',
-      category: 'Main Course',
-      mrp: '180',
-      type: 'non-veg',
-      available: true,
-      ingredients: 'Bun, Chicken Patty, Lettuce, Tomato, Mayo',
-      description: 'A juicy chicken burger.',
-      kcal: '550',
-      duration: '15',
-      addons: [],
-      modifiers: [],
-    },
-    {
-      id: '3',
-      name: 'Caesar Salad',
-      category: 'Appetizers',
-      mrp: '150',
-      type: 'veg',
-      available: false,
-      ingredients: 'Lettuce, Croutons, Parmesan, Caesar Dressing',
-      description: 'A refreshing Caesar salad.',
-      kcal: '350',
-      duration: '10',
-      addons: [],
-      modifiers: [],
-    },
-];
 
 const daysOfWeek = [
     { id: 'monday', label: 'Monday' },
@@ -128,43 +100,18 @@ const daysOfWeek = [
     { id: 'sunday', label: 'Sunday' },
 ];
 
-const initialCategories = [
-    {
-      id: '1',
-      name: 'Appetizers',
-      description: 'Start your meal with our delicious appetizers.',
-      imageUrl: 'https://picsum.photos/seed/cat1/600/400',
-      imageHint: 'appetizer food',
-      active: true,
-      availableDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
-      fromTime: '11:00',
-      toTime: '23:00',
-    },
-    {
-      id: '2',
-      name: 'Main Course',
-      description: 'Hearty and satisfying main courses.',
-      imageUrl: 'https://picsum.photos/seed/cat2/600/400',
-      imageHint: 'main course food',
-      active: true,
-      availableDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
-      fromTime: '11:00',
-      toTime: '23:00',
-    },
-    {
-      id: '3',
-      name: 'Desserts',
-      description: 'Sweet treats to end your meal.',
-      imageUrl: 'https://picsum.photos/seed/cat3/600/400',
-      imageHint: 'dessert food',
-      active: false,
-      availableDays: ['friday', 'saturday', 'sunday'],
-      fromTime: '18:00',
-      toTime: '23:00',
-    },
-];
+type Category = {
+    id: string;
+    name: string;
+    description: string;
+    imageUrl: string;
+    imageHint: string;
+    active: boolean;
+    availableDays: string[];
+    fromTime: string;
+    toTime: string;
+};
 
-type Category = typeof initialCategories[0];
 const defaultCategory: Omit<Category, 'id' | 'imageUrl' | 'imageHint'> = {
     name: '',
     description: '',
@@ -174,41 +121,37 @@ const defaultCategory: Omit<Category, 'id' | 'imageUrl' | 'imageHint'> = {
     toTime: '',
 };
 
-const initialCombos = [
-  {
-    id: '1',
-    name: 'Super Saver Combo',
-    items: ['Margherita Pizza', 'Coke'],
-    price: '299',
-    available: true,
-  },
-  {
-    id: '2',
-    name: 'Burger Feast',
-    items: ['Chicken Burger', 'Fries', 'Coke'],
-    price: '250',
-    available: true,
-  },
-  {
-    id: '3',
-    name: 'Healthy Delight',
-    items: ['Caesar Salad', 'Fresh Juice'],
-    price: '200',
-    available: false,
-  },
-]
+type Combo = {
+  id: string;
+  name: string;
+  items: string[];
+  price: string;
+  available: boolean;
+}
 
 const ITEMS_PER_PAGE = 15;
 
 export default function MenuPage() {
+  const { firestore, user } = useFirebase();
+  const { toast } = useToast();
+
+  // Firestore hooks
+  const categoriesRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'menuCategories') : null, [firestore, user]);
+  const menuItemsRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'menuItems') : null, [firestore, user]);
+  const combosRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'combos') : null, [firestore, user]);
+
+  const { data: categories = [], isLoading: categoriesLoading } = useCollection<Category>(categoriesRef);
+  const { data: items = [], isLoading: itemsLoading } = useCollection<MenuItem>(menuItemsRef);
+  const { data: combos = [], isLoading: combosLoading } = useCollection<Combo>(combosRef);
+
+
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isEditingItem, setIsEditingItem] = useState(false);
   const [isCategorySheetOpen, setIsCategorySheetOpen] = useState(false);
   const [isEditingCategory, setIsEditingCategory] = useState(false);
-  const [items, setItems] = useState(initialItems);
-  const [currentItem, setCurrentItem] = useState(initialItemState);
-  const [categories, setCategories] = useState(initialCategories);
-  const [currentCategory, setCurrentCategory] = useState<Omit<Category, 'id' | 'imageUrl' | 'imageHint'> & { id?: string }>(defaultCategory);
+  
+  const [currentItem, setCurrentItem] = useState<Partial<MenuItem>>(initialItemState);
+  const [currentCategory, setCurrentCategory] = useState<Partial<Category>>(defaultCategory);
   
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
@@ -221,6 +164,7 @@ export default function MenuPage() {
   const { format } = useCurrency();
   
   const handleGenerateDetails = async () => {
+    if (!currentItem.name || !currentItem.ingredients || !currentItem.type) return;
     setIsGenerating(true);
     try {
       const result = await generateMenuItemDetails({
@@ -235,7 +179,7 @@ export default function MenuPage() {
       }));
     } catch (error) {
       console.error('Failed to generate menu item details:', error);
-      // Optionally, show a toast notification to the user
+      toast({ variant: "destructive", title: "AI Generation Failed", description: "Could not generate item details." });
     } finally {
       setIsGenerating(false);
     }
@@ -243,9 +187,9 @@ export default function MenuPage() {
 
   const filteredComboItems = items.filter(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
-  const handleItemCheckboxChange = (itemId: string, checked: boolean) => {
+  const handleItemCheckboxChange = (itemName: string, checked: boolean) => {
     setSelectedItems(prev => 
-      checked ? [...prev, itemId] : prev.filter(id => id !== itemId)
+      checked ? [...prev, itemName] : prev.filter(name => name !== itemName)
     );
   };
 
@@ -256,44 +200,75 @@ export default function MenuPage() {
   };
   
   const handleRadioChange = (value: string) => {
-    setCurrentItem(prev => ({ ...prev, type: value }));
+    setCurrentItem(prev => ({ ...prev, type: value as 'veg' | 'non-veg' }));
   };
 
   const handleAddonChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    const addons = [...currentItem.addons];
+    const addons = [...(currentItem.addons || [])];
     addons[index] = { ...addons[index], [name]: value };
     setCurrentItem(prev => ({ ...prev, addons }));
   };
 
   const handleModifierChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    const modifiers = [...currentItem.modifiers];
+    const modifiers = [...(currentItem.modifiers || [])];
     modifiers[index] = { ...modifiers[index], [name]: value };
     setCurrentItem(prev => ({ ...prev, modifiers }));
   };
 
   const addAddonField = () => {
-    setCurrentItem(prev => ({ ...prev, addons: [...prev.addons, { name: '', price: '' }] }));
+    setCurrentItem(prev => ({ ...prev, addons: [...(prev.addons || []), { name: '', price: '' }] }));
   };
 
   const addModifierField = () => {
-    setCurrentItem(prev => ({ ...prev, modifiers: [...prev.modifiers, { name: '', price: '' }] }));
+    setCurrentItem(prev => ({ ...prev, modifiers: [...(prev.modifiers || []), { name: '', price: '' }] }));
   };
   
   const removeAddonField = (index: number) => {
-    const addons = [...currentItem.addons];
+    const addons = [...(currentItem.addons || [])];
     addons.splice(index, 1);
     setCurrentItem(prev => ({ ...prev, addons }));
   };
 
   const removeModifierField = (index: number) => {
-    const modifiers = [...currentItem.modifiers];
+    const modifiers = [...(currentItem.modifiers || [])];
     modifiers.splice(index, 1);
     setCurrentItem(prev => ({ ...prev, modifiers }));
   };
 
-  const handleEditItemClick = (item: typeof initialItems[0]) => {
+  const handleSaveItem = async () => {
+    if (!menuItemsRef) return;
+    try {
+        if (isEditingItem && currentItem.id) {
+            const itemDoc = doc(menuItemsRef, currentItem.id);
+            await updateDoc(itemDoc, { ...currentItem, updatedAt: serverTimestamp() });
+            toast({ title: "Success", description: "Menu item updated." });
+        } else {
+            await addDoc(menuItemsRef, { ...currentItem, createdAt: serverTimestamp() });
+            toast({ title: "Success", description: "Menu item added." });
+        }
+        setIsSheetOpen(false);
+    } catch(e) {
+        toast({ variant: "destructive", title: "Error", description: "Could not save menu item." });
+        console.error(e);
+    }
+  };
+
+  const handleDeleteItem = async (itemId: string) => {
+    if (!menuItemsRef) return;
+    try {
+        const itemDoc = doc(menuItemsRef, itemId);
+        await deleteDoc(itemDoc);
+        toast({ title: "Success", description: "Menu item deleted." });
+    } catch(e) {
+        toast({ variant: "destructive", title: "Error", description: "Could not delete menu item." });
+        console.error(e);
+    }
+  };
+
+
+  const handleEditItemClick = (item: MenuItem) => {
     setIsEditingItem(true);
     setCurrentItem(item);
     setIsSheetOpen(true);
@@ -305,8 +280,15 @@ export default function MenuPage() {
     setIsSheetOpen(true);
   };
 
-  const handleItemAvailabilityToggle = (itemId: string, available: boolean) => {
-    setItems(items.map(item => item.id === itemId ? { ...item, available } : item));
+  const handleItemAvailabilityToggle = async (itemId: string, available: boolean) => {
+    if (!menuItemsRef) return;
+    const itemDoc = doc(menuItemsRef, itemId);
+    try {
+        await updateDoc(itemDoc, { available });
+    } catch (e) {
+        toast({ variant: "destructive", title: "Error", description: "Could not update availability." });
+        console.error(e);
+    }
   };
 
 
@@ -316,8 +298,15 @@ export default function MenuPage() {
     setIsCategorySheetOpen(true);
   };
 
-  const handleCategoryToggleSwitch = (categoryId: string, active: boolean) => {
-    setCategories(categories.map(cat => cat.id === categoryId ? { ...cat, active } : cat));
+  const handleCategoryToggleSwitch = async (categoryId: string, active: boolean) => {
+    if (!categoriesRef) return;
+    const catDoc = doc(categoriesRef, categoryId);
+    try {
+        await updateDoc(catDoc, { active });
+    } catch (e) {
+        toast({ variant: "destructive", title: "Error", description: "Could not update category status." });
+        console.error(e);
+    }
   };
   
   const handleCategoryInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -331,10 +320,72 @@ export default function MenuPage() {
     setCurrentCategory(prev => ({ ...prev, availableDays: newDays }));
   }
 
-  const handleSaveCategory = () => {
-    // Logic to save category will go here
-    setIsCategorySheetOpen(false);
-  }
+  const handleSaveCategory = async () => {
+    if (!categoriesRef) return;
+    try {
+        if (isEditingCategory && currentCategory.id) {
+            const catDoc = doc(categoriesRef, currentCategory.id);
+            await updateDoc(catDoc, { ...currentCategory, updatedAt: serverTimestamp() });
+            toast({ title: "Success", description: "Category updated." });
+        } else {
+             await addDoc(categoriesRef, { 
+                ...currentCategory,
+                imageUrl: `https://picsum.photos/seed/cat${categories.length + 1}/600/400`,
+                imageHint: 'new category',
+                createdAt: serverTimestamp() 
+            });
+            toast({ title: "Success", description: "Category added." });
+        }
+        setIsCategorySheetOpen(false);
+        setCurrentCategory(defaultCategory);
+    } catch(e) {
+        toast({ variant: "destructive", title: "Error", description: "Could not save category." });
+        console.error(e);
+    }
+  };
+
+  const handleDeleteCategory = async (categoryId: string) => {
+    if (!categoriesRef) return;
+    try {
+        await deleteDoc(doc(categoriesRef, categoryId));
+        toast({ title: "Success", description: "Category deleted." });
+    } catch (e) {
+        toast({ variant: "destructive", title: "Error", description: "Could not delete category." });
+        console.error(e);
+    }
+  };
+
+  const handleSaveCombo = async (comboData: Omit<Combo, 'id'>) => {
+    if (!combosRef) return;
+    try {
+        await addDoc(combosRef, { ...comboData, createdAt: serverTimestamp() });
+        toast({ title: "Success", description: "Combo added." });
+    } catch (e) {
+        toast({ variant: "destructive", title: "Error", description: "Could not save combo." });
+        console.error(e);
+    }
+  };
+
+  const handleDeleteCombo = async (comboId: string) => {
+    if (!combosRef) return;
+    try {
+        await deleteDoc(doc(combosRef, comboId));
+        toast({ title: "Success", description: "Combo deleted." });
+    } catch (e) {
+        toast({ variant: "destructive", title: "Error", description: "Could not delete combo." });
+        console.error(e);
+    }
+  };
+
+  const handleComboAvailabilityToggle = async (comboId: string, available: boolean) => {
+    if (!combosRef) return;
+    try {
+        await updateDoc(doc(combosRef, comboId), { available });
+    } catch (e) {
+        toast({ variant: "destructive", title: "Error", description: "Could not update combo availability." });
+        console.error(e);
+    }
+  };
 
   const filteredItems = items
     .filter(item => item.name.toLowerCase().includes(itemSearch.toLowerCase()))
@@ -448,7 +499,7 @@ export default function MenuPage() {
                       <AccordionItem value="add-ons">
                         <AccordionTrigger>Add-ons</AccordionTrigger>
                         <AccordionContent className="space-y-4">
-                          {currentItem.addons.map((addon, index) => (
+                          {(currentItem.addons || []).map((addon, index) => (
                             <div key={index} className="flex gap-2 items-end">
                               <div className="grid w-full gap-2">
                                 <Label htmlFor={`addon-name-${index}`}>Name</Label>
@@ -458,7 +509,7 @@ export default function MenuPage() {
                                 <Label htmlFor={`addon-price-${index}`}>Price</Label>
                                 <Input id={`addon-price-${index}`} name="price" type="number" value={addon.price} onChange={(e) => handleAddonChange(index, e)} placeholder="e.g. 30" />
                               </div>
-                              <Button variant="ghost" size="icon" onClick={() => removeAddonField(index)} disabled={currentItem.addons.length === 1}>
+                              <Button variant="ghost" size="icon" onClick={() => removeAddonField(index)} disabled={(currentItem.addons || []).length === 1}>
                                 <Trash2 className="h-4 w-4 text-destructive" />
                               </Button>
                             </div>
@@ -471,7 +522,7 @@ export default function MenuPage() {
                       <AccordionItem value="modifiers">
                         <AccordionTrigger>Modifiers</AccordionTrigger>
                         <AccordionContent className="space-y-4">
-                          {currentItem.modifiers.map((modifier, index) => (
+                          {(currentItem.modifiers || []).map((modifier, index) => (
                             <div key={index} className="flex gap-2 items-end">
                               <div className="grid w-full gap-2">
                                 <Label htmlFor={`modifier-name-${index}`}>Name</Label>
@@ -481,7 +532,7 @@ export default function MenuPage() {
                                 <Label htmlFor={`modifier-price-${index}`}>Price</Label>
                                 <Input id={`modifier-price-${index}`} name="price" type="number" value={modifier.price} onChange={(e) => handleModifierChange(index, e)} placeholder="e.g. 90" />
                               </div>
-                              <Button variant="ghost" size="icon" onClick={() => removeModifierField(index)} disabled={currentItem.modifiers.length === 1}>
+                              <Button variant="ghost" size="icon" onClick={() => removeModifierField(index)} disabled={(currentItem.modifiers || []).length === 1}>
                                 <Trash2 className="h-4 w-4 text-destructive" />
                               </Button>
                             </div>
@@ -496,7 +547,7 @@ export default function MenuPage() {
                 </ScrollArea>
                 <SheetFooter>
                   <Button variant="outline" onClick={() => setIsSheetOpen(false)}>Cancel</Button>
-                  <Button onClick={() => { /* Handle Save */ setIsSheetOpen(false); }}>{isEditingItem ? 'Save Changes' : 'Save Item'}</Button>
+                  <Button onClick={handleSaveItem}>{isEditingItem ? 'Save Changes' : 'Save Item'}</Button>
                 </SheetFooter>
               </SheetContent>
             </Sheet>
@@ -551,7 +602,9 @@ export default function MenuPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {paginatedItems.map((item, index) => (
+                            {itemsLoading ? (
+                                <TableRow><TableCell colSpan={7} className="text-center">Loading...</TableCell></TableRow>
+                            ) : paginatedItems.map((item, index) => (
                                 <TableRow key={item.id}>
                                     <TableCell>{(currentPage - 1) * ITEMS_PER_PAGE + index + 1}</TableCell>
                                     <TableCell className="font-medium">{item.name}</TableCell>
@@ -573,7 +626,7 @@ export default function MenuPage() {
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuItem onClick={() => handleEditItemClick(item)}>Edit</DropdownMenuItem>
-                                                <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+                                                <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteItem(item.id)}>Delete</DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     </TableCell>
@@ -582,7 +635,7 @@ export default function MenuPage() {
                         </TableBody>
                     </Table>
                 </div>
-                 {filteredItems.length === 0 && (
+                 {filteredItems.length === 0 && !itemsLoading && (
                     <div className="mt-4 text-center text-muted-foreground">
                         <p>No items have been added yet.</p>
                     </div>
@@ -613,70 +666,17 @@ export default function MenuPage() {
         </TabsContent>
         <TabsContent value="category">
            <div className="flex justify-end mb-4">
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button>
-                  <PlusCircle className="mr-2" /> Add Category
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Add New Category</DialogTitle>
-                  <DialogDescription>
-                    Fill in the details for your new menu category.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="category-name">Category Name</Label>
-                    <Input id="category-name" placeholder="e.g. Appetizers" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="category-image">Category Image</Label>
-                    <Input id="category-image" type="file" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="category-description">Description (Optional)</Label>
-                    <Textarea id="category-description" placeholder="Describe the category..." />
-                  </div>
-                  <div className="space-y-3">
-                    <Label>Available Days of Week</Label>
-                    <div className="grid grid-cols-3 gap-2 rounded-md border p-4">
-                        {daysOfWeek.map((day) => (
-                            <div key={day.id} className="flex items-center space-x-2">
-                                <Checkbox id={day.id} />
-                                <Label htmlFor={day.id} className="font-normal text-sm">{day.label}</Label>
-                            </div>
-                        ))}
-                    </div>
-                  </div>
-                   <div className="space-y-2">
-                    <Label>Available Duration</Label>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <Label htmlFor="from-time" className="text-xs">From</Label>
-                        <Input id="from-time" type="time" />
-                      </div>
-                      <div className="space-y-1">
-                        <Label htmlFor="to-time" className="text-xs">To</Label>
-                        <Input id="to-time" type="time" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button type="submit">Save Category</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
-          
-            <Sheet open={isCategorySheetOpen} onOpenChange={setIsCategorySheetOpen}>
+             <Sheet open={isCategorySheetOpen} onOpenChange={setIsCategorySheetOpen}>
+                <SheetTrigger asChild>
+                   <Button onClick={() => { setIsEditingCategory(false); setCurrentCategory(defaultCategory); setIsCategorySheetOpen(true);}}>
+                    <PlusCircle className="mr-2" /> Add Category
+                  </Button>
+                </SheetTrigger>
                 <SheetContent className="w-full sm:max-w-md">
                     <SheetHeader>
-                    <SheetTitle>Edit Category</SheetTitle>
+                    <SheetTitle>{isEditingCategory ? 'Edit Category' : 'Add New Category'}</SheetTitle>
                     <SheetDescription>
-                        Update the details for your menu category.
+                        {isEditingCategory ? 'Update the details for your menu category.' : 'Fill in the details for your new menu category.'}
                     </SheetDescription>
                     </SheetHeader>
                     <ScrollArea className="h-[calc(100%-120px)] pr-4">
@@ -700,7 +700,7 @@ export default function MenuPage() {
                                     <div key={day.id} className="flex items-center space-x-2">
                                         <Checkbox 
                                             id={`edit-${day.id}`}
-                                            checked={currentCategory.availableDays.includes(day.id)}
+                                            checked={(currentCategory.availableDays || []).includes(day.id)}
                                             onCheckedChange={(checked) => handleCategoryDayChange(day.id, !!checked)}
                                         />
                                         <Label htmlFor={`edit-${day.id}`} className="font-normal text-sm">{day.label}</Label>
@@ -725,17 +725,17 @@ export default function MenuPage() {
                     </ScrollArea>
                     <SheetFooter>
                     <Button variant="outline" onClick={() => setIsCategorySheetOpen(false)}>Cancel</Button>
-                    <Button onClick={handleSaveCategory}><Save className="mr-2" />Save Changes</Button>
+                    <Button onClick={handleSaveCategory}><Save className="mr-2" />{isEditingCategory ? 'Save Changes' : 'Save Category'}</Button>
                     </SheetFooter>
                 </SheetContent>
             </Sheet>
-
+          </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {categories.map((category) => (
+                {categoriesLoading ? <p>Loading categories...</p> : categories.map((category) => (
                 <Card key={category.id} className="overflow-hidden flex flex-col">
                     <div className="relative w-full h-40">
                         <Image
-                            src={category.imageUrl}
+                            src={category.imageUrl || `https://picsum.photos/seed/${category.id}/600/400`}
                             alt={category.name}
                             fill
                             style={{objectFit: 'cover'}}
@@ -765,14 +765,14 @@ export default function MenuPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => handleEditCategoryClick(category)}>Edit</DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteCategory(category.id)}>Delete</DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </CardFooter>
                 </Card>
                 ))}
             </div>
-            {categories.length === 0 && (
+            {categories.length === 0 && !categoriesLoading && (
                  <div className="mt-4 text-center text-muted-foreground">
                     <p>No categories have been added yet.</p>
                 </div>
@@ -825,8 +825,8 @@ export default function MenuPage() {
                                             <div key={item.id} className="flex items-center space-x-2 py-2">
                                                 <Checkbox 
                                                     id={`item-${item.id}`}
-                                                    onCheckedChange={(checked) => handleItemCheckboxChange(item.id, !!checked)}
-                                                    checked={selectedItems.includes(item.id)}
+                                                    onCheckedChange={(checked) => handleItemCheckboxChange(item.name, !!checked)}
+                                                    checked={selectedItems.includes(item.name)}
                                                 />
                                                 <Label htmlFor={`item-${item.id}`} className="flex-1 font-normal cursor-pointer">
                                                     {item.name}
@@ -860,7 +860,7 @@ export default function MenuPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {initialCombos.map((combo, index) => (
+                    {combosLoading ? <TableRow><TableCell colSpan={6}>Loading...</TableCell></TableRow> : combos.map((combo, index) => (
                       <TableRow key={combo.id}>
                         <TableCell>{index + 1}</TableCell>
                         <TableCell className="font-medium">{combo.name}</TableCell>
@@ -875,7 +875,7 @@ export default function MenuPage() {
                         <TableCell>
                           <Switch
                             checked={combo.available}
-                            // onCheckedChange={(checked) => handleComboAvailabilityToggle(combo.id, checked)}
+                            onCheckedChange={(checked) => handleComboAvailabilityToggle(combo.id, checked)}
                           />
                         </TableCell>
                         <TableCell className="text-right">
@@ -887,7 +887,7 @@ export default function MenuPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem>Edit</DropdownMenuItem>
-                              <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+                              <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteCombo(combo.id)}>Delete</DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
