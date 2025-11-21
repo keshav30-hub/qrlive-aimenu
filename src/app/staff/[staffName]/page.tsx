@@ -21,7 +21,7 @@ import { useParams } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -188,7 +188,7 @@ export default function StaffDetailsPage() {
     <div className="space-y-6">
         <div className="flex items-center gap-4">
             <Link href="/staff">
-            <Button variant="outline" size="icon">
+             <Button size="icon" className="bg-primary text-primary-foreground">
                 <ChevronLeft className="h-4 w-4" />
                 <span className="sr-only">Back to Staff</span>
             </Button>

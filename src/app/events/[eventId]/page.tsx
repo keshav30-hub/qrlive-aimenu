@@ -181,7 +181,7 @@ export default function EventDetailsPage({
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Link href="/events">
-          <Button variant="outline" size="icon">
+           <Button size="icon" className="bg-primary text-primary-foreground">
             <ChevronLeft className="h-4 w-4" />
             <span className="sr-only">Back to Events</span>
           </Button>
