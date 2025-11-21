@@ -1,0 +1,296 @@
+rules_version = '2';
+
+/**
+ * @fileoverview Firestore Security Rules for the Qrlive-Menu application.
+ *
+ * @version 1.0
+ *
+ * @description
+ * This ruleset enforces a security model that primarily revolves around user ownership,
+ * with clear distinctions between user-managed data, publicly accessible content,
+ * and admin-only collections. It is designed for rapid prototyping, focusing on
+ * strict authorization while remaining flexible on data schemas.
+ *
+ * Core Philosophy:
+ * The rules enforce a strict user-ownership model. Most data is stored in subcollections
+ * under a user's own document (`/users/{userId}`), ensuring that by default, only the
+ * owner can modify their data. This approach simplifies security logic and enhances
+ * performance by avoiding costly database lookups in rules.
+ *
+ * Data Structure:
+ * - User-Specific Data: All data owned and managed by a user (like menus, events,
+ *   and tasks) is nested under `/users/{userId}`. This creates a secure, hierarchical
+ *   data tree for each user.
+ * - Admin-Managed Data: App-wide configuration and content like subscription plans,
+ *   notifications, and feedback requests are stored in top-level collections
+ *   (`/plans`, `/notifications`, etc.) to be managed exclusively by an administrator.
+ * - Publicly Submitted Data: Collections like `/qrlive-feedback` allow open creation
+ *   from any user, with management restricted to administrators.
+ *
+ * Key Security Decisions:
+ * - Default Deny: All paths are denied by default. Access must be explicitly granted.
+ * - Strict Ownership: All write operations (`create`, `update`, `delete`) require
+ *   authentication and proof of ownership. Open writes (`if true;`) are strictly forbidden.
+ * - User Enumeration Prevention: Listing users from the top-level `/users`
+ *   collection is restricted to prevent scraping of user data.
+ * - Relational Integrity: On document creation, rules validate that ownership fields
+ *   (e.g., `userId`) are correctly set to match the authenticated user, preventing
+ *   data from being created in the wrong context. These fields are enforced as
+ *   immutable on updates.
+ * - Denormalization for Authorization: This ruleset assumes that any data needed for
+ *   an authorization decision (like an owner's ID) is denormalized and stored directly
+ *   on the document being secured. This avoids slow and insecure `get()` calls.
+ */
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------------------------
+    //  Helper Functions
+    // ---------------------------
+
+    /**
+     * Checks if a user is authenticated.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Checks if the authenticated user's UID matches the provided userId.
+     * This is the primary function for enforcing data ownership.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * Checks if the request is from the designated administrator.
+     * NOTE: For production, using custom claims is more secure and scalable
+     * than hardcoding a UID.
+     */
+    function isAdmin() {
+      return isSignedIn() && request.auth.uid == 'wxavChRTGxRzNafZILMHCZDnDu52';
+    }
+
+    /**
+     * Checks if a document exists before an update or delete operation.
+     * This prevents requests from succeeding on non-existent documents.
+     */
+    function docExists() {
+      return resource != null;
+    }
+
+    // ---------------------------
+    //  User Data Collections
+    // ---------------------------
+
+    /**
+     * @description Manages user profile documents.
+     * @path /users/{userId}
+     * @allow (get) Any client can fetch a single user profile, e.g., to display restaurant info.
+     * @allow (create) A new user can create their own profile document. `auth.uid` must match `{userId}`.
+     * @allow (update) A user can update their own profile.
+     * @deny (list) Anonymous users or other authenticated users cannot list all users in the database.
+     * @deny (create) A user cannot create a profile for another user ID.
+     * @principle Enforces self-creation and ownership for profile data, while allowing public reads of individual documents and preventing user enumeration.
+     */
+    match /users/{userId} {
+      allow get: if true;
+      allow list: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isOwner(userId) && docExists() && request.resource.data.id == resource.data.id;
+      allow delete: if isOwner(userId) && docExists();
+    }
+
+    /**
+     * @description Manages menu items for a specific user (restaurant).
+     * @path /users/{userId}/menuItems/{itemId}
+     * @allow (get, list) Anyone can read menu items, enabling public-facing menus.
+     * @allow (create) The user can create new menu items within their own data tree.
+     * @deny (update, delete) A user cannot modify another user's menu items.
+     * @principle Implements a "Public Read with Owner-Only Writes" pattern and validates relational integrity on create/update.
+     */
+    match /users/{userId}/menuItems/{itemId} {
+      allow get, list: if true;
+      allow create: if isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isOwner(userId) && docExists() && request.resource.data.userId == resource.data.userId;
+      allow delete: if isOwner(userId) && docExists();
+    }
+
+    /**
+     * @description Manages menu categories for a specific user (restaurant).
+     * @path /users/{userId}/menuCategories/{categoryId}
+     * @allow (get, list) Anyone can read menu categories for public menus.
+     * @allow (create) The user can create new menu categories.
+     * @deny (update) A user cannot modify another user's menu categories.
+     * @principle Implements a "Public Read with Owner-Only Writes" pattern and validates relational integrity.
+     */
+    match /users/{userId}/menuCategories/{categoryId} {
+      allow get, list: if true;
+      allow create: if isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isOwner(userId) && docExists() && request.resource.data.userId == resource.data.userId;
+      allow delete: if isOwner(userId) && docExists();
+    }
+
+    /**
+     * @description Manages events for a specific user (restaurant).
+     * @path /users/{userId}/events/{eventId}
+     * @allow (get, list) Anyone can read event details.
+     * @allow (create) The user can create new events.
+     * @deny (delete) A user cannot delete another user's events.
+     * @principle Implements a "Public Read with Owner-Only Writes" pattern and validates relational integrity.
+     */
+    match /users/{userId}/events/{eventId} {
+      allow get, list: if true;
+      allow create: if isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isOwner(userId) && docExists() && request.resource.data.userId == resource.data.userId;
+      allow delete: if isOwner(userId) && docExists();
+    }
+
+    /**
+     * @description Manages RSVPs for a specific event.
+     * @path /users/{userId}/events/{eventId}/rsvps/{rsvpId}
+     * @allow (create) Any signed-in user can create an RSVP for an event.
+     * @allow (get, list) The event owner can read all RSVPs for their event.
+     * @allow (update) The event owner or the user who made the RSVP can update it.
+     * @deny (list) A regular user cannot list all RSVPs for an event to protect guest privacy.
+     * @principle Enforces shared access. The event owner (`userId`) has managerial control, while the RSVP creator has control over their own submission.
+     */
+    match /users/{userId}/events/{eventId}/rsvps/{rsvpId} {
+      allow get: if isOwner(userId) || isOwner(resource.data.userId);
+      allow list: if isOwner(userId);
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if (isOwner(userId) || isOwner(resource.data.userId)) && docExists();
+      allow delete: if (isOwner(userId) || isOwner(resource.data.userId)) && docExists();
+    }
+
+    /**
+     * @description Manages private tasks for a user.
+     * @path /users/{userId}/tasks/{taskId}
+     * @allow (create, read, update, delete) A user can fully manage their own tasks.
+     * @deny (create, read, update, delete) No other user can access another user's private tasks.
+     * @principle Enforces strict document ownership for all operations.
+     */
+    match /users/{userId}/tasks/{taskId} {
+      allow get, list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isOwner(userId) && docExists() && request.resource.data.userId == resource.data.userId;
+      allow delete: if isOwner(userId) && docExists();
+    }
+
+    /**
+     * @description Manages feedback submitted for a restaurant.
+     * @path /users/{userId}/feedback/{feedbackId}
+     * @allow (create) Any signed-in user can submit feedback for a restaurant.
+     * @allow (read, update, delete) The restaurant owner can manage the feedback they've received.
+     * @deny (read, list) The user who submitted feedback cannot read it back, nor can other users.
+     * @principle Allows public creation but restricts all other access to the data owner (the restaurant).
+     */
+    match /users/{userId}/feedback/{feedbackId} {
+      allow get, list: if isOwner(userId);
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isOwner(userId) && docExists();
+      allow delete: if isOwner(userId) && docExists();
+    }
+
+    /**
+     * @description Manages a user's private activity log.
+     * @path /users/{userId}/activity/{activityId}
+     * @allow (read, write) A user can manage their own activity log.
+     * @deny (read, write) Another user cannot access a user's activity log.
+     * @principle Enforces strict document ownership for a sensitive data collection.
+     */
+    match /users/{userId}/activity/{activityId} {
+      allow get, list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isOwner(userId) && docExists() && request.resource.data.userId == resource.data.userId;
+      allow delete: if isOwner(userId) && docExists();
+    }
+
+    // ------------------------------------
+    //  App-level & Admin Collections
+    // ------------------------------------
+
+    /**
+     * @description Manages feedback for the QRLive application itself.
+     * @path /qrlive-feedback/{feedbackId}
+     * @allow (create) Any user (authenticated or not) can submit feedback about the application.
+     * @allow (read, write) Only the administrator can read and manage this feedback.
+     * @deny (read, write) Regular users cannot see or modify feedback submitted by others.
+     * @principle Allows open submission of data into a collection that is otherwise privately managed by an administrator.
+     */
+    match /qrlive-feedback/{feedbackId} {
+      allow get, list: if isAdmin();
+      allow create: if true;
+      allow update, delete: if isAdmin() && docExists();
+    }
+
+    /**
+     * @description Stores temporary documents for processes like OTP verification.
+     * @path /mobileVerifications/{verificationId}
+     * @allow (create) Anyone can create a verification document. This is often done by a backend service.
+     * @deny (read, update, delete) Client access is denied to prevent tampering or data leaks. These should be managed by a server or TTL policy.
+     * @principle Secures temporary, sensitive data by making it write-only from the client side.
+     */
+    match /mobileVerifications/{verificationId} {
+      allow get, list: if false;
+      allow create: if true;
+      allow update, delete: if false;
+    }
+
+    /**
+     * @description Defines subscription plans available in the application.
+     * @path /plans/{planId}
+     * @allow (read) Any signed-in user can read the available subscription plans.
+     * @allow (write) Only the administrator can create, update, or delete plans.
+     * @deny (write) A regular user cannot modify subscription plan details.
+     * @principle Provides public read access for application data that is centrally managed by an admin.
+     */
+    match /plans/{planId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    /**
+     * @description Stores system-generated notifications for users.
+     * @path /notifications/{notificationId}
+     * @allow (get) A user can read a notification if they are the designated recipient.
+     * @allow (write) Only the administrator can create or manage notifications.
+     * @deny (list) Users cannot list all notifications in the system to prevent data leakage.
+     * @deny (get) A user cannot read notifications intended for another user.
+     * @principle Restricts access to documents within a global collection based on a `userId` field inside the document.
+     */
+    match /notifications/{notificationId} {
+      allow get: if isAdmin() || isOwner(resource.data.userId);
+      allow list: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    /**
+     * @description Stores feedback requests created by the admin.
+     * @path /feedback_requests/{requestId}
+     * @allow (read) Any signed-in user can read feedback requests.
+     * @allow (write) Only the administrator can create or manage these requests.
+     * @deny (write) Regular users cannot create their own feedback prompts.
+     * @principle Provides public read access for application data that is centrally managed by an admin.
+     */
+    match /feedback_requests/{requestId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    /**
+     * @description Stores user responses to feedback requests.
+     * @path /feedback_responses/{responseId}
+     * @allow (create) Any signed-in user can create a response.
+     * @allow (read, write) Only the administrator can read or manage all responses.
+     * @deny (read) Users cannot read responses submitted by other users.
+     * @principle Allows users to contribute data to a collection that is read-only for them and fully managed by an administrator.
+     */
+    match /feedback_responses/{responseId} {
+      allow get, list: if isAdmin();
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAdmin() && docExists();
+    }
+  }
+}

@@ -1,0 +1,778 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the Qrlive-Menu application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user."
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the user.",
+          "format": "email"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the user account was created.",
+          "format": "date-time"
+        },
+        "lastLoginAt": {
+          "type": "string",
+          "description": "Timestamp indicating the user's last login.",
+          "format": "date-time"
+        },
+        "onboardingComplete": {
+          "type": "boolean",
+          "description": "Indicates whether the user has completed the onboarding process."
+        },
+        "businessId": {
+          "type": "string",
+          "description": "The ID of the business associated with the user (e.g., is-Menu-25-DFCV68)."
+        },
+        "latitude": {
+          "type": "number",
+          "description": "Latitude of the user's location."
+        },
+        "longitude": {
+          "type": "number",
+          "description": "Longitude of the user's location."
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "createdAt",
+        "lastLoginAt",
+        "onboardingComplete",
+        "businessId",
+        "latitude",
+        "longitude"
+      ]
+    },
+    "MenuItem": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "MenuItem",
+      "type": "object",
+      "description": "Represents a menu item offered by a restaurant.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the menu item."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N MenuItem)"
+        },
+        "categoryId": {
+          "type": "string",
+          "description": "Reference to MenuCategory. (Relationship: MenuCategory 1:N MenuItem)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the menu item."
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the menu item."
+        },
+        "price": {
+          "type": "number",
+          "description": "Price of the menu item."
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "URL of the image for the menu item."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "categoryId",
+        "name",
+        "description",
+        "price"
+      ]
+    },
+    "MenuCategory": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "MenuCategory",
+      "type": "object",
+      "description": "Represents a category of menu items.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the menu category."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N MenuCategory)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the menu category (e.g., Appetizers, Main Courses)."
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the menu category."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "name",
+        "description"
+      ]
+    },
+    "Event": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Event",
+      "type": "object",
+      "description": "Represents an event hosted by the restaurant.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the event."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Event)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the event."
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the event."
+        },
+        "dateTime": {
+          "type": "string",
+          "description": "Date and time of the event.",
+          "format": "date-time"
+        },
+        "location": {
+          "type": "string",
+          "description": "Location of the event."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "name",
+        "description",
+        "dateTime",
+        "location"
+      ]
+    },
+    "Rsvp": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Rsvp",
+      "type": "object",
+      "description": "Represents a user's RSVP to an event.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the RSVP."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Rsvp)"
+        },
+        "eventId": {
+          "type": "string",
+          "description": "Reference to Event. (Relationship: Event 1:N Rsvp)"
+        },
+        "status": {
+          "type": "string",
+          "description": "The status of the RSVP (e.g., 'going', 'not going', 'maybe')."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "eventId",
+        "status"
+      ]
+    },
+    "Task": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Task",
+      "type": "object",
+      "description": "Represents a task assigned to a user.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the task."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Task)"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the task."
+        },
+        "dueDate": {
+          "type": "string",
+          "description": "The date when the task is due.",
+          "format": "date-time"
+        },
+        "completed": {
+          "type": "boolean",
+          "description": "Indicates whether the task is completed or not."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "description",
+        "dueDate",
+        "completed"
+      ]
+    },
+    "Feedback": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Feedback",
+      "type": "object",
+      "description": "Represents feedback submitted by a user for a restaurant.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the feedback."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Feedback)"
+        },
+        "comment": {
+          "type": "string",
+          "description": "The comment provided as feedback."
+        },
+        "rating": {
+          "type": "number",
+          "description": "The rating provided as feedback (e.g., 1-5 stars)."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Timestamp when the feedback was submitted.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "comment",
+        "rating",
+        "timestamp"
+      ]
+    },
+    "QrliveFeedback": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "QrliveFeedback",
+      "type": "object",
+      "description": "Represents feedback for the QRLive app itself.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the QRLive feedback."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N QrliveFeedback)"
+        },
+        "comment": {
+          "type": "string",
+          "description": "The comment provided as feedback for the app."
+        },
+        "rating": {
+          "type": "number",
+          "description": "The rating provided as feedback for the app (e.g., 1-5 stars)."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Timestamp when the feedback was submitted.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "comment",
+        "rating",
+        "timestamp"
+      ]
+    },
+    "MobileVerification": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "MobileVerification",
+      "type": "object",
+      "description": "Represents a mobile verification entry.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the verification entry."
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "The phone number being verified."
+        },
+        "verificationCode": {
+          "type": "string",
+          "description": "The verification code sent to the phone number."
+        },
+        "expiryTime": {
+          "type": "string",
+          "description": "Timestamp when the verification code expires.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "phoneNumber",
+        "verificationCode",
+        "expiryTime"
+      ]
+    },
+    "Activity": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Activity",
+      "type": "object",
+      "description": "Represents a user activity log entry.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the activity log entry."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Activity)"
+        },
+        "activityType": {
+          "type": "string",
+          "description": "Type of activity (e.g., 'login', 'menu item created')."
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the activity."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Timestamp when the activity occurred.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "activityType",
+        "description",
+        "timestamp"
+      ]
+    },
+    "Plan": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Plan",
+      "type": "object",
+      "description": "Represents a subscription plan.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the subscription plan."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the subscription plan."
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the subscription plan."
+        },
+        "price": {
+          "type": "number",
+          "description": "Price of the subscription plan."
+        },
+        "features": {
+          "type": "array",
+          "description": "List of features included in the plan.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description",
+        "price",
+        "features"
+      ]
+    },
+    "Notification": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Notification",
+      "type": "object",
+      "description": "Represents a notification to be sent to a user.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the notification."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Notification)"
+        },
+        "message": {
+          "type": "string",
+          "description": "The message content of the notification."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Timestamp when the notification was created.",
+          "format": "date-time"
+        },
+        "read": {
+          "type": "boolean",
+          "description": "Indicates whether the user has read the notification."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "message",
+        "timestamp",
+        "read"
+      ]
+    },
+    "FeedbackRequest": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "FeedbackRequest",
+      "type": "object",
+      "description": "Represents a request for feedback, created by the admin.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the feedback request."
+        },
+        "question": {
+          "type": "string",
+          "description": "The question being asked in the feedback request."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Timestamp when the feedback request was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "question",
+        "timestamp"
+      ]
+    },
+    "FeedbackResponse": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "FeedbackResponse",
+      "type": "object",
+      "description": "Represents a user's response to a feedback request.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the feedback response."
+        },
+        "requestId": {
+          "type": "string",
+          "description": "Reference to FeedbackRequest. (Relationship: FeedbackRequest 1:N FeedbackResponse)"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N FeedbackResponse)"
+        },
+        "answer": {
+          "type": "string",
+          "description": "The user's answer to the feedback request."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Timestamp when the feedback response was submitted.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "requestId",
+        "answer",
+        "timestamp"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user data including email, creation timestamp, last login, onboarding status, business ID, latitude, and longitude.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/menuItems/{itemId}",
+        "definition": {
+          "entityName": "MenuItem",
+          "schema": {
+            "$ref": "#/backend/entities/MenuItem"
+          },
+          "description": "Stores menu items associated with a user.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "itemId",
+              "description": "The unique identifier for the menu item."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/menuCategories/{categoryId}",
+        "definition": {
+          "entityName": "MenuCategory",
+          "schema": {
+            "$ref": "#/backend/entities/MenuCategory"
+          },
+          "description": "Stores menu categories created by a user.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "categoryId",
+              "description": "The unique identifier for the menu category."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/events/{eventId}",
+        "definition": {
+          "entityName": "Event",
+          "schema": {
+            "$ref": "#/backend/entities/Event"
+          },
+          "description": "Stores events created by a user.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "eventId",
+              "description": "The unique identifier for the event."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/events/{eventId}/rsvps/{rsvpId}",
+        "definition": {
+          "entityName": "Rsvp",
+          "schema": {
+            "$ref": "#/backend/entities/Rsvp"
+          },
+          "description": "Stores RSVPs for events.  User ID is denormalized.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "eventId",
+              "description": "The unique identifier for the event."
+            },
+            {
+              "name": "rsvpId",
+              "description": "The unique identifier for the RSVP."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/tasks/{taskId}",
+        "definition": {
+          "entityName": "Task",
+          "schema": {
+            "$ref": "#/backend/entities/Task"
+          },
+          "description": "Stores tasks assigned to a user.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "taskId",
+              "description": "The unique identifier for the task."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/feedback/{feedbackId}",
+        "definition": {
+          "entityName": "Feedback",
+          "schema": {
+            "$ref": "#/backend/entities/Feedback"
+          },
+          "description": "Stores feedback provided by a user.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "feedbackId",
+              "description": "The unique identifier for the feedback."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/qrlive-feedback/{feedbackId}",
+        "definition": {
+          "entityName": "QrliveFeedback",
+          "schema": {
+            "$ref": "#/backend/entities/QrliveFeedback"
+          },
+          "description": "Stores feedback for the QRLive app.",
+          "params": [
+            {
+              "name": "feedbackId",
+              "description": "The unique identifier for the QRLive feedback."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/mobileVerifications/{verificationId}",
+        "definition": {
+          "entityName": "MobileVerification",
+          "schema": {
+            "$ref": "#/backend/entities/MobileVerification"
+          },
+          "description": "Stores mobile verification entries.",
+          "params": [
+            {
+              "name": "verificationId",
+              "description": "The unique identifier for the verification entry."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/activity/{activityId}",
+        "definition": {
+          "entityName": "Activity",
+          "schema": {
+            "$ref": "#/backend/entities/Activity"
+          },
+          "description": "Stores activity logs for a user.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "activityId",
+              "description": "The unique identifier for the activity log entry."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/plans/{planId}",
+        "definition": {
+          "entityName": "Plan",
+          "schema": {
+            "$ref": "#/backend/entities/Plan"
+          },
+          "description": "Stores subscription plans.",
+          "params": [
+            {
+              "name": "planId",
+              "description": "The unique identifier for the subscription plan."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/notifications/{notificationId}",
+        "definition": {
+          "entityName": "Notification",
+          "schema": {
+            "$ref": "#/backend/entities/Notification"
+          },
+          "description": "Stores notifications.",
+          "params": [
+            {
+              "name": "notificationId",
+              "description": "The unique identifier for the notification."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/feedback_requests/{requestId}",
+        "definition": {
+          "entityName": "FeedbackRequest",
+          "schema": {
+            "$ref": "#/backend/entities/FeedbackRequest"
+          },
+          "description": "Stores feedback requests created by the admin.",
+          "params": [
+            {
+              "name": "requestId",
+              "description": "The unique identifier for the feedback request."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/feedback_responses/{responseId}",
+        "definition": {
+          "entityName": "FeedbackResponse",
+          "schema": {
+            "$ref": "#/backend/entities/FeedbackResponse"
+          },
+          "description": "Stores feedback responses provided by users.",
+          "params": [
+            {
+              "name": "responseId",
+              "description": "The unique identifier for the feedback response."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore data structure is designed to support the Qrlive-Menu application, focusing on user-owned data and admin-managed content. The structure is optimized for security, scalability, and debuggability, adhering to the principles of Authorization Independence, Clarity of Intent, DBAC (Database-Based Access Control), and QAPs (Rules are not Filters). \n\n**Authorization Independence:** Achieved by structuring user-owned data under `/users/{userId}` paths. For example, menu items, categories, and events are stored as subcollections under the user's document. This eliminates the need for `get()` calls in security rules, as all necessary authorization context is available within the document path.\n\n**QAPs (Rules are not Filters):** The structure supports secure `list` operations. For example, listing menu items is restricted to the owner of the menu items, preventing unauthorized access to other users' data.  Admin-managed content (plans, notifications, feedback requests/responses) is stored in root-level collections, allowing for distinct security rules without impacting user-owned data.\n\nThe `users` collection stores core user data, including onboarding status and business ID. Subcollections like `menuItems`, `menuCategories`, `events`, `tasks`, and `feedback` are organized under each user, providing a clear ownership structure. This design simplifies security rules, allowing for easy enforcement of owner-based access control.\n\nAdmin-managed data, such as `plans`, `notifications`, `feedback_requests`, and `feedback_responses`, are stored in root-level collections to isolate their security contexts. This ensures that only admins can write to these collections, while users can read or create responses as needed.\n\n**Denormalization**: This architecture assumes the need to denormalize data for authorization independence. For example, if `menuItems` needed to know the status of the `User`'s account, then this field from the user document would need to be copied into the `menuItems` documents. This would provide Authorization Independence for these `menuItems` documents.  The current design is optimized for ownership, where the user ID is sufficient to establish authorization."
+  }
+}
