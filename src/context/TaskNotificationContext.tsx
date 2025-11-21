@@ -47,17 +47,27 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
   };
 
   const toggleMute = () => {
-    setIsMuted(prev => !prev);
+    setIsMuted(prev => {
+        if (!prev === true && audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current.currentTime = 0;
+        }
+        return !prev;
+    });
   };
 
   const closeDialog = () => {
     setTask(null);
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
   };
 
   return (
     <TaskNotificationContext.Provider value={{ showNewTask, isMuted, toggleMute }}>
       {children}
-      <audio ref={audioRef} src="/notification.mp3" preload="auto" />
+      <audio ref={audioRef} src="/notificationalert.mp3" preload="auto" loop />
       <AlertDialog open={!!task} onOpenChange={(open) => !open && closeDialog()}>
         <AlertDialogContent>
           <AlertDialogHeader>
