@@ -13,6 +13,7 @@ import Image from "next/image";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { runAifaFlow } from "@/ai/flows/aifa-flow";
+import { type AIFALowInput } from "@/ai/flows/aifa-schema";
 import { menu as menuData, events as allEvents, businessData } from '@/lib/qrmenu-mock';
 
 
@@ -166,14 +167,15 @@ export default function AIFAPage() {
         }));
         
         try {
-            const response = await runAifaFlow({
+            const flowInput: AIFALowInput = {
                 businessName: businessNameParam,
-                menuCategories: menuData.categories,
-                menuItems: menuData.items,
+                menuCategories: menuData.categories.map(c => ({name: c.name, description: c.description})),
+                menuItems: menuData.items.map(i => ({...i, price: i.price.toString()})),
                 events: allEvents,
                 history: historyForAI,
                 prompt,
-            });
+            };
+            const response = await runAifaFlow(flowInput);
 
             if (prompt === "Events") {
                  addMessage('aifa', "You're in for a treat! Here are our upcoming events. Let me know if you'd like to RSVP.");
@@ -200,6 +202,7 @@ export default function AIFAPage() {
             const userMessage = inputValue.trim();
             addMessage('user', userMessage);
             setInputValue('');
+            setShowInitialActions(false);
             await getAIResponse(userMessage);
         }
     };
