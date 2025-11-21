@@ -22,7 +22,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { CalendarIcon, ChevronLeft, ChevronRight, PlusCircle, Clock, FilePenLine, Trash2, MoreVertical } from 'lucide-react';
+import { CalendarIcon, ChevronLeft, ChevronRight, PlusCircle, Clock, FilePenLine, Trash2, MoreVertical, AlarmClock } from 'lucide-react';
 import { format } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -151,6 +151,9 @@ export default function StaffPage() {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [dob, setDob] = useState<Date>();
   const [shifts, setShifts] = useState(initialShifts);
+  const [reminderTime, setReminderTime] = useState<string | null>('10:00');
+  const [newReminderTime, setNewReminderTime] = useState<string>('10:00');
+  const [isEditingReminder, setIsEditingReminder] = useState(false);
 
   const handleStatusChange = (staffId: string, newStatus: AttendanceStatus) => {
     setStaffList(
@@ -172,74 +175,138 @@ export default function StaffPage() {
     setDate(nextDay);
   };
 
+  const handleSaveReminder = () => {
+    setReminderTime(newReminderTime);
+    setIsEditingReminder(false);
+  };
+
+  const handleDeleteReminder = () => {
+    setReminderTime(null);
+    setIsEditingReminder(false);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Staff Management</h1>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button variant="outline">
-              <Clock className="mr-2 h-4 w-4" />
-              Add Shift
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Manage Shifts</DialogTitle>
-              <DialogDescription>
-                View, create, and edit staff shifts.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                    <Label className="text-sm font-medium text-muted-foreground">Existing Shifts</Label>
-                    <div className="space-y-2">
-                        {shifts.map(shift => (
-                            <div key={shift.id} className="flex items-center justify-between rounded-md border p-3">
-                                <div>
-                                    <p className="font-semibold">{shift.name}</p>
-                                    <p className="text-sm text-muted-foreground">{shift.from} - {shift.to}</p>
-                                </div>
+        <div className="flex gap-2">
+            <Dialog>
+                <DialogTrigger asChild>
+                    <Button variant="outline">
+                    <AlarmClock className="mr-2 h-4 w-4" />
+                    Attendance Reminder
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                    <DialogTitle>Attendance Reminder</DialogTitle>
+                    <DialogDescription>
+                        Set, edit, or delete your daily attendance reminder.
+                    </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">
+                    {reminderTime && !isEditingReminder ? (
+                        <div className="space-y-4">
+                            <Label>Current Reminder</Label>
+                            <div className="flex items-center justify-between rounded-md border p-3">
+                                <p className="text-lg font-semibold">{format(new Date(`1970-01-01T${reminderTime}`), 'hh:mm a')}</p>
                                 <div className="flex gap-2">
-                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setNewReminderTime(reminderTime); setIsEditingReminder(true); }}>
                                         <FilePenLine className="h-4 w-4" />
                                     </Button>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={handleDeleteReminder}>
                                         <Trash2 className="h-4 w-4" />
                                     </Button>
                                 </div>
                             </div>
-                        ))}
+                        </div>
+                    ) : (
+                        <div className="space-y-2">
+                            <Label htmlFor="reminder-time">{isEditingReminder ? 'Edit Reminder Time' : 'Set Reminder Time'}</Label>
+                            <Input 
+                                id="reminder-time" 
+                                type="time"
+                                value={newReminderTime}
+                                onChange={(e) => setNewReminderTime(e.target.value)}
+                            />
+                        </div>
+                    )}
                     </div>
-                </div>
-
-                <Separator />
-                
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="shift-name" className="text-sm font-medium text-muted-foreground">Add New Shift</Label>
-                  </div>
+                    <DialogFooter>
+                        {isEditingReminder || !reminderTime ? (
+                            <>
+                                {isEditingReminder && <Button variant="ghost" onClick={() => setIsEditingReminder(false)}>Cancel</Button>}
+                                <Button onClick={handleSaveReminder}>Save</Button>
+                            </>
+                        ) : null}
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+            <Dialog>
+            <DialogTrigger asChild>
+                <Button variant="outline">
+                <Clock className="mr-2 h-4 w-4" />
+                Add Shift
+                </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                <DialogTitle>Manage Shifts</DialogTitle>
+                <DialogDescription>
+                    View, create, and edit staff shifts.
+                </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
                     <div className="space-y-2">
-                        <Label htmlFor="shift-name">Shift Name</Label>
-                        <Input id="shift-name" placeholder="e.g. Lunch Shift" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
+                        <Label className="text-sm font-medium text-muted-foreground">Existing Shifts</Label>
                         <div className="space-y-2">
-                            <Label htmlFor="from-time">From</Label>
-                            <Input id="from-time" type="time" />
+                            {shifts.map(shift => (
+                                <div key={shift.id} className="flex items-center justify-between rounded-md border p-3">
+                                    <div>
+                                        <p className="font-semibold">{shift.name}</p>
+                                        <p className="text-sm text-muted-foreground">{shift.from} - {shift.to}</p>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                                            <FilePenLine className="h-4 w-4" />
+                                        </Button>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
+                    </div>
+
+                    <Separator />
+                    
+                    <div className="space-y-4">
+                    <div>
+                        <Label htmlFor="shift-name" className="text-sm font-medium text-muted-foreground">Add New Shift</Label>
+                    </div>
                         <div className="space-y-2">
-                            <Label htmlFor="to-time">To</Label>
-                            <Input id="to-time" type="time" />
+                            <Label htmlFor="shift-name">Shift Name</Label>
+                            <Input id="shift-name" placeholder="e.g. Lunch Shift" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="from-time">From</Label>
+                                <Input id="from-time" type="time" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="to-time">To</Label>
+                                <Input id="to-time" type="time" />
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-            <DialogFooter>
-              <Button type="submit">Save Shift</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+                <DialogFooter>
+                <Button type="submit">Save Shift</Button>
+                </DialogFooter>
+            </DialogContent>
+            </Dialog>
+        </div>
       </div>
       <Tabs defaultValue="attendance" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
