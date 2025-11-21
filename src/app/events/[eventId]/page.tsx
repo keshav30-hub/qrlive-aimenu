@@ -38,6 +38,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { useState } from 'react';
 
 const eventDetails = {
   id: '1',
@@ -49,7 +56,7 @@ const eventDetails = {
   organizers: ['The Velvet Note Club', 'City Jazz Association'],
 };
 
-const rsvpList = [
+const initialRsvpList = [
   {
     seq: 1,
     name: 'Alice Johnson',
@@ -100,6 +107,8 @@ const rsvpList = [
   },
 ];
 
+const statusOptions = ['Attended', 'Interested', 'No Show'];
+
 const statusVariant = (status: string) => {
   switch (status) {
     case 'Attended':
@@ -120,6 +129,11 @@ export default function EventDetailsPage({
   params: { eventId: string };
 }) {
   const date = new Date(eventDetails.datetime);
+  const [rsvpList, setRsvpList] = useState(initialRsvpList);
+
+  const handleStatusChange = (seq: number, newStatus: string) => {
+    setRsvpList(rsvpList.map(rsvp => rsvp.seq === seq ? { ...rsvp, status: newStatus } : rsvp));
+  };
 
   return (
     <div className="space-y-6">
@@ -255,9 +269,22 @@ export default function EventDetailsPage({
                   <TableCell>{rsvp.email}</TableCell>
                   <TableCell className="text-center">{rsvp.people}</TableCell>
                   <TableCell>
-                    <Badge variant={statusVariant(rsvp.status)} className="capitalize">
-                      {rsvp.status}
-                    </Badge>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="capitalize w-28 justify-start">
+                          <Badge variant={statusVariant(rsvp.status)} className="w-full">
+                            {rsvp.status}
+                          </Badge>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        {statusOptions.map(status => (
+                          <DropdownMenuItem key={status} onSelect={() => handleStatusChange(rsvp.seq, status)}>
+                            {status}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))}
