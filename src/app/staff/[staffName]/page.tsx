@@ -22,6 +22,8 @@ import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { startOfMonth } from 'date-fns';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+
 
 const staffData: { [key: string]: any } = {
     'john-doe': {
@@ -217,7 +219,7 @@ export default function StaffDetailsPage() {
                                 const monthIndex = date.getMonth();
                                 const status = attendanceData[monthIndex]?.[dayOfMonth] as AttendanceStatus | undefined;
                                 
-                                if (!status) return <div {...props.dayProps}>{dayOfMonth}</div>;
+                                if (!status) return <div {...props}>{dayOfMonth}</div>;
 
                                 return (
                                     <TooltipProvider>
