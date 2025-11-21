@@ -246,7 +246,7 @@ export default function AIFAPage() {
                     </Button>
                     <div>
                         <h1 className="text-xl font-bold">AIFA</h1>
-                        <p className="text-xs text-muted-foreground">powered by QRLIVE</p>
+                        <p className="text-xs font-bold text-foreground/80">powered by QRLIVE</p>
                     </div>
                 </header>
                 
@@ -305,5 +305,3 @@ export default function AIFAPage() {
         </div>
     );
 }
-
-    
