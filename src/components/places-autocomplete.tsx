@@ -15,7 +15,7 @@ interface PlacesAutocompleteProps {
 declare global {
   namespace JSX {
     interface IntrinsicElements {
-      'gmp-place-autocomplete': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
+      'gmp-place-autocomplete': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement> & { 'input-style'?: string }, HTMLElement>;
     }
   }
 }
@@ -23,7 +23,7 @@ declare global {
 export function PlacesAutocomplete({ onPlaceSelect, value, onChange }: PlacesAutocompleteProps) {
   const [isApiLoaded, setIsApiLoaded] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const autocompleteRef = useRef<HTMLElement>(null);
+  const autocompleteRef = useRef<any>(null); // Use `any` for web component
 
   useEffect(() => {
     const apiKey = process.env.NEXT_PUBLIC_PLACES_API_KEY;
@@ -71,11 +71,11 @@ export function PlacesAutocomplete({ onPlaceSelect, value, onChange }: PlacesAut
         const autocompleteElement = autocompleteRef.current;
         const inputElement = inputRef.current;
 
-        autocompleteElement.appendChild(inputElement);
+        // Programmatically connect our input to the autocomplete service
+        autocompleteElement.setInputElement(inputElement);
 
         const handlePlaceChange = async (event: Event) => {
-            const autocomplete = (event.target as any);
-            const place = await autocomplete.getPlace(); // This is PlaceResult
+            const place = await autocompleteElement.getPlace();
             if (place) {
                 onPlaceSelect(place);
             } else {
@@ -103,23 +103,23 @@ export function PlacesAutocomplete({ onPlaceSelect, value, onChange }: PlacesAut
 
   return (
     <>
-      <style>{`
-        gmp-place-autocomplete input {
-          color: hsl(var(--foreground)) !important;
-          background-color: hsl(var(--background)) !important;
-        }
-      `}</style>
-      <gmp-place-autocomplete ref={autocompleteRef} country="in">
-          <Input 
-              ref={inputRef}
-              type="text"
-              id="full-address" 
-              placeholder="Start typing your address..." 
-              className="pl-10"
-              value={value}
-              onChange={(e) => onChange(e.target.value)}
-          />
+      {/* This element is now hidden and only provides functionality */}
+      <gmp-place-autocomplete 
+        ref={autocompleteRef} 
+        country="in"
+        input-style="none"
+      >
       </gmp-place-autocomplete>
+      {/* This is our visible, themed input field */}
+      <Input 
+          ref={inputRef}
+          type="text"
+          id="full-address" 
+          placeholder="Start typing your address..." 
+          className="pl-10"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+      />
     </>
   );
 }
