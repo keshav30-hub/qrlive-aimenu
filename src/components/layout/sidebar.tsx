@@ -49,7 +49,7 @@ export function AppSidebar() {
             </Link>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <Link href="/menu">
+            <Link href="/dashboard/menu">
               <SidebarMenuButton>
                 <BookOpen />
                 <span>Menu</span>
@@ -57,7 +57,7 @@ export function AppSidebar() {
             </Link>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <Link href="/tasks">
+            <Link href="/dashboard/tasks">
               <SidebarMenuButton>
                 <ListTodo />
                 <span>Tasks</span>
@@ -65,7 +65,7 @@ export function AppSidebar() {
             </Link>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <Link href="/feedback">
+            <Link href="/dashboard/feedback">
               <SidebarMenuButton>
                 <MessageSquare />
                 <span>Feedback</span>
@@ -73,7 +73,7 @@ export function AppSidebar() {
             </Link>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <Link href="/setupqrmenu">
+            <Link href="/dashboard/setupqrmenu">
               <SidebarMenuButton>
                 <QrCode />
                 <span>QR Menu</span>
@@ -81,7 +81,7 @@ export function AppSidebar() {
             </Link>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <Link href="/events">
+            <Link href="/dashboard/events">
               <SidebarMenuButton>
                 <Calendar />
                 <span>Events</span>
@@ -89,7 +89,7 @@ export function AppSidebar() {
             </Link>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <Link href="/staff">
+            <Link href="/dashboard/staff">
               <SidebarMenuButton>
                 <Users />
                 <span>Staff</span>
@@ -97,7 +97,7 @@ export function AppSidebar() {
             </Link>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <Link href="/settings">
+            <Link href="/dashboard/settings">
               <SidebarMenuButton>
                 <Settings />
                 <span>Settings</span>
