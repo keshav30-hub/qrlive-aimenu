@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useParams } from 'next/navigation';
@@ -53,8 +52,7 @@ import {
   GlassWater,
   Spray,
 } from 'lucide-react';
-import { useState, useRef } from 'react';
-import Autoplay from "embla-carousel-autoplay";
+import { useState } from 'react';
 
 
 const businessData = {
@@ -177,10 +175,6 @@ export default function QrMenuPage() {
   const { format } = useCurrency();
   const [cart, setCart] = useState<any[]>([]);
 
-  const autoplayPlugin = useRef(
-    Autoplay({ delay: 3000, stopOnInteraction: true })
-  );
-
   const addToCart = (item: any) => {
     setCart((prevCart) => {
       const existingItem = prevCart.find((cartItem) => cartItem.id === item.id);
@@ -260,14 +254,11 @@ export default function QrMenuPage() {
 
         <section className="px-4 pb-4">
           <Carousel
-            plugins={[autoplayPlugin.current]}
             opts={{
               align: 'start',
               loop: true,
             }}
             className="w-full"
-            onMouseEnter={autoplayPlugin.current.stop}
-            onMouseLeave={autoplayPlugin.current.reset}
           >
             <CarouselContent>
               {events.map((event) => (
