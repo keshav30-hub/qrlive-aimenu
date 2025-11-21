@@ -12,7 +12,6 @@ import {
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Carousel,
   CarouselContent,
@@ -54,142 +53,8 @@ import {
   SprayCan,
 } from 'lucide-react';
 import { useState } from 'react';
+import { businessData, events, menu } from '@/lib/qrmenu-mock';
 
-
-const businessData = {
-  name: 'The Gourmet Place',
-  logo: 'https://picsum.photos/seed/logo/100/100',
-};
-
-const events = [
-  {
-    id: '1',
-    name: 'Jazz Night',
-    description: 'Enjoy a relaxing evening with live jazz music.',
-    imageUrl: 'https://picsum.photos/seed/event1/600/400',
-    imageHint: 'jazz band',
-  },
-  {
-    id: '3',
-    name: 'Wine Tasting',
-    description: 'Explore a selection of fine wines.',
-    imageUrl: 'https://picsum.photos/seed/event3/600/400',
-    imageHint: 'wine glasses',
-  },
-];
-
-const menu = {
-  categories: [
-    { name: 'Appetizers', imageUrl: 'https://picsum.photos/seed/cat1/300/200', imageHint: 'appetizers food' },
-    { name: 'Main Course', imageUrl: 'https://picsum.photos/seed/cat2/300/200', imageHint: 'main course' },
-    { name: 'Desserts', imageUrl: 'https://picsum.photos/seed/cat3/300/200', imageHint: 'dessert' },
-    { name: 'Beverages', imageUrl: 'https://picsum.photos/seed/cat4/300/200', imageHint: 'beverages' },
-    { name: 'Soups', imageUrl: 'https://picsum.photos/seed/cat5/300/200', imageHint: 'soup bowl' },
-    { name: 'Salads', imageUrl: 'https://picsum.photos/seed/cat6/300/200', imageHint: 'fresh salad' },
-    { name: 'Seafood', imageUrl: 'https://picsum.photos/seed/cat7/300/200', imageHint: 'seafood platter' },
-    { name: 'Breads', imageUrl: 'https://picsum.photos/seed/cat8/300/200', imageHint: 'artisan bread' },
-  ],
-  items: [
-    {
-      id: '1',
-      name: 'Margherita Pizza',
-      category: 'Main Course',
-      price: '250',
-      type: 'veg',
-      description:
-        'A classic pizza with fresh mozzarella, tomatoes, and basil.',
-      kcal: '750',
-      imageUrl: 'https://picsum.photos/seed/item1/400/300',
-      imageHint: 'margherita pizza',
-      tags: ['bestseller'],
-    },
-    {
-      id: '2',
-      name: 'Chicken Burger',
-      category: 'Main Course',
-      price: '180',
-      type: 'non-veg',
-      description:
-        'A juicy chicken patty with lettuce, tomato, and our special sauce.',
-      kcal: '550',
-      imageUrl: 'https://picsum.photos/seed/item2/400/300',
-      imageHint: 'chicken burger',
-      tags: [],
-    },
-    {
-      id: '3',
-      name: 'Caesar Salad',
-      category: 'Salads',
-      price: '150',
-      type: 'veg',
-      description: 'Crisp romaine lettuce with croutons and parmesan cheese.',
-      kcal: '350',
-      imageUrl: 'https://picsum.photos/seed/item3/400/300',
-      imageHint: 'caesar salad',
-      tags: ['healthy'],
-    },
-    {
-      id: '4',
-      name: 'Chocolate Lava Cake',
-      category: 'Desserts',
-      price: '120',
-      type: 'veg',
-      description: 'Warm chocolate cake with a gooey molten center.',
-      kcal: '450',
-      imageUrl: 'https://picsum.photos/seed/item4/400/300',
-      imageHint: 'lava cake',
-      tags: ['bestseller'],
-    },
-    {
-      id: '5',
-      name: 'Mojito',
-      category: 'Beverages',
-      price: '90',
-      type: 'veg',
-      description: 'A refreshing mix of mint, lime, and soda.',
-      kcal: '150',
-      imageUrl: 'https://picsum.photos/seed/item5/400/300',
-      imageHint: 'mojito drink',
-      tags: [],
-    },
-    {
-      id: '6',
-      name: 'Tomato Soup',
-      category: 'Soups',
-      price: '110',
-      type: 'veg',
-      description: 'Creamy tomato soup served with croutons.',
-      kcal: '200',
-      imageUrl: 'https://picsum.photos/seed/item6/400/300',
-      imageHint: 'tomato soup',
-      tags: [],
-    },
-    {
-      id: '7',
-      name: 'Grilled Salmon',
-      category: 'Seafood',
-      price: '450',
-      type: 'non-veg',
-      description: 'Perfectly grilled salmon fillet with a lemon-dill sauce.',
-      kcal: '600',
-      imageUrl: 'https://picsum.photos/seed/item7/400/300',
-      imageHint: 'grilled salmon',
-      tags: ['healthy'],
-    },
-    {
-      id: '8',
-      name: 'Garlic Bread',
-      category: 'Breads',
-      price: '90',
-      type: 'veg',
-      description: 'Toasted bread with garlic butter and herbs.',
-      kcal: '300',
-      imageUrl: 'https://picsum.photos/seed/item8/400/300',
-      imageHint: 'garlic bread',
-      tags: [],
-    },
-  ],
-};
 
 const getTagIcon = (tag: string) => {
   switch (tag) {

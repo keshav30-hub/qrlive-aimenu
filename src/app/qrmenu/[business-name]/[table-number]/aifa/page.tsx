@@ -12,34 +12,8 @@ import { Card } from "@/components/ui/card";
 import Image from "next/image";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-
-// Mock data for events - in a real app, this would be fetched
-const allEvents = [
-  {
-    id: '1',
-    name: 'Jazz Night',
-    description: 'Enjoy a relaxing evening with live jazz music.',
-    imageUrl: 'https://picsum.photos/seed/event1/600/400',
-    imageHint: 'jazz band',
-    active: true,
-  },
-  {
-    id: '3',
-    name: 'Wine Tasting',
-    description: 'Explore a selection of fine wines.',
-    imageUrl: 'https://picsum.photos/seed/event3/600/400',
-    imageHint: 'wine glasses',
-    active: true,
-  },
-  {
-    id: '2',
-    name: 'Taco Tuesday',
-    description: 'Special discounts on all tacos and margaritas.',
-    imageUrl: 'https://picsum.photos/seed/event2/600/400',
-    imageHint: 'tacos food',
-    active: false,
-  }
-];
+import { runAifaFlow } from "@/ai/flows/aifa-flow";
+import { menu as menuData, events as allEvents, businessData } from '@/lib/qrmenu-mock';
 
 
 type Message = {
@@ -134,11 +108,12 @@ const FeedbackForm = ({ target }: { target: string }) => {
 export default function AIFAPage() {
     const router = useRouter();
     const params = useParams();
-    const businessName = params['business-name'] ? (params['business-name'] as string).replace(/-/g, ' ') : 'our cafe';
+    const businessNameParam = params['business-name'] ? (params['business-name'] as string).replace(/-/g, ' ') : businessData.name;
     
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputValue, setInputValue] = useState('');
     const [showInitialActions, setShowInitialActions] = useState(true);
+    const [isThinking, setIsThinking] = useState(false);
     const scrollAreaRef = useRef<HTMLDivElement>(null);
 
     const activeEvents = useMemo(() => allEvents.filter(e => e.active), []);
@@ -148,10 +123,10 @@ export default function AIFAPage() {
             {
                 id: 1,
                 sender: 'aifa',
-                content: `Hi! Welcome to ${businessName}. I'm AIFA, your personal food assistant. How can I help you today?`
+                content: `Hi! Welcome to ${businessNameParam}. I'm AIFA, your personal food assistant. How can I help you today?`
             }
         ]);
-    }, [businessName]);
+    }, [businessNameParam]);
 
     useEffect(() => {
         if (scrollAreaRef.current) {
@@ -169,37 +144,63 @@ export default function AIFAPage() {
     
     const handleFeedbackTarget = (target: string) => {
         addMessage('user', `Feedback for ${target}`);
+        setIsThinking(true);
         setTimeout(() => {
             addMessage('aifa', <FeedbackForm target={target} />);
+            setIsThinking(false);
         }, 300);
     }
 
-    const handleInitialAction = (action: string) => {
+    const handleInitialAction = async (action: string) => {
         addMessage('user', action);
         setShowInitialActions(false);
+        await getAIResponse(action);
+    };
 
-        setTimeout(() => {
-            if (action === 'Menu') {
-                addMessage('aifa', "Great choice! To give you the best recommendation, tell me: what's your mood? Or do you have any dietary preferences?");
-            } else if (action === 'Give Feedback') {
-                addMessage('aifa', <div><p>I appreciate you taking the time! Who is this feedback for?</p><FeedbackTargetSelection onSelect={handleFeedbackTarget} /></div>);
-            } else if (action === 'Events') {
-                addMessage('aifa', "You're in for a treat! Here are our upcoming events. Let me know if you'd like to RSVP.");
+    const getAIResponse = async (prompt: string) => {
+        setIsThinking(true);
+
+        const historyForAI = messages.map(msg => ({
+            role: msg.sender === 'user' ? 'user' : 'model' as 'user' | 'model',
+            content: typeof msg.content === 'string' ? msg.content : 'Interactive Component'
+        }));
+        
+        try {
+            const response = await runAifaFlow({
+                businessName: businessNameParam,
+                menuCategories: menuData.categories,
+                menuItems: menuData.items,
+                events: allEvents,
+                history: historyForAI,
+                prompt,
+            });
+
+            if (prompt === "Events") {
+                 addMessage('aifa', "You're in for a treat! Here are our upcoming events. Let me know if you'd like to RSVP.");
                 activeEvents.forEach(event => {
                     addMessage('aifa', <EventCard event={event} />);
                 })
+            } else if (prompt === "Give Feedback") {
+                addMessage('aifa', <div><p>I appreciate you taking the time! Who is this feedback for?</p><FeedbackTargetSelection onSelect={handleFeedbackTarget} /></div>);
             }
-        }, 500);
+            else {
+                addMessage('aifa', response);
+            }
+        } catch(e) {
+            console.error(e);
+            addMessage('aifa', "Oops! My circuits are a bit scrambled. Could you try asking that again?");
+        } finally {
+            setIsThinking(false);
+        }
     };
 
-    const handleSendMessage = () => {
+
+    const handleSendMessage = async () => {
         if (inputValue.trim()) {
-            addMessage('user', inputValue.trim());
+            const userMessage = inputValue.trim();
+            addMessage('user', userMessage);
             setInputValue('');
-            // Here you would typically call your AI flow and get a response
-            setTimeout(() => {
-                 addMessage('aifa', "That's an interesting question! While I'm still learning, why not try our chef's special? It's a crowd-pleaser!");
-            }, 1000);
+            await getAIResponse(userMessage);
         }
     };
 
@@ -233,6 +234,18 @@ export default function AIFAPage() {
                                 </div>
                              </div>
                         ))}
+                        {isThinking && (
+                             <div className="flex items-start gap-2">
+                                <Avatar className="h-8 w-8 flex-shrink-0">
+                                    <div className="flex h-full w-full items-center justify-center rounded-full bg-primary text-primary-foreground">
+                                        <Sparkles className="h-5 w-5" />
+                                    </div>
+                                </Avatar>
+                                <div className="rounded-lg px-4 py-2 max-w-[85%] bg-gray-200 dark:bg-gray-800">
+                                    <p className="text-sm">Thinking...</p>
+                                 </div>
+                            </div>
+                        )}
                          {showInitialActions && <InitialActions onSelect={handleInitialAction} showEventsButton={activeEvents.length > 0} />}
                     </div>
                 </ScrollArea>
@@ -245,9 +258,9 @@ export default function AIFAPage() {
                             value={inputValue}
                             onChange={(e) => setInputValue(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                            disabled={showInitialActions}
+                            disabled={isThinking}
                         />
-                        <Button size="icon" onClick={handleSendMessage} disabled={showInitialActions}>
+                        <Button size="icon" onClick={handleSendMessage} disabled={isThinking || !inputValue.trim()}>
                             <Send className="h-5 w-5" />
                         </Button>
                     </div>
