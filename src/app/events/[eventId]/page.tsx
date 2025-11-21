@@ -45,7 +45,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { Textarea } from '@/components/ui/textarea';
@@ -61,56 +61,21 @@ const eventDetailsData = {
   organizers: ['The Velvet Note Club', 'City Jazz Association'],
 };
 
-const initialRsvpList = [
-  {
-    seq: 1,
-    name: 'Alice Johnson',
-    mobile: '555-0101',
-    email: 'alice@example.com',
-    people: 2,
-    status: 'Attended',
-  },
-  {
-    seq: 2,
-    name: 'Bob Williams',
-    mobile: '555-0102',
-    email: 'bob@example.com',
-    people: 1,
-    status: 'Interested',
-  },
-  {
-    seq: 3,
-    name: 'Charlie Brown',
-    mobile: '555-0103',
-    email: 'charlie@example.com',
-    people: 4,
-    status: 'Attended',
-  },
-  {
-    seq: 4,
-    name: 'Diana Prince',
-    mobile: '555-0104',
-    email: 'diana@example.com',
-    people: 2,
-    status: 'No Show',
-  },
-    {
-    seq: 5,
-    name: 'Ethan Hunt',
-    mobile: '555-0105',
-    email: 'ethan@example.com',
-    people: 3,
-    status: 'Attended',
-  },
-   {
-    seq: 6,
-    name: 'Fiona Glenanne',
-    mobile: '555-0106',
-    email: 'fiona@example.com',
-    people: 1,
-    status: 'Attended',
-  },
-];
+const initialRsvpList = Array.from({ length: 25 }, (_, i) => {
+  const statusTypes = ['Attended', 'Interested', 'No Show'] as const;
+  const firstNames = ['Alice', 'Bob', 'Charlie', 'Diana', 'Ethan', 'Fiona', 'George', 'Hannah', 'Ian', 'Julia'];
+  const lastNames = ['Johnson', 'Williams', 'Brown', 'Prince', 'Hunt', 'Glenanne', 'Costanza', 'Benes', 'Malcolm', 'Roberts'];
+  const status = statusTypes[i % statusTypes.length];
+  return {
+    seq: i + 1,
+    name: `${firstNames[i % firstNames.length]} ${lastNames[i % lastNames.length]}`,
+    mobile: `555-01${(i + 1).toString().padStart(2, '0')}`,
+    email: `${firstNames[i % firstNames.length].toLowerCase()}@example.com`,
+    people: (i % 4) + 1,
+    status: status,
+  }
+});
+
 
 const statusOptions = ['Attended', 'Interested', 'No Show'];
 
@@ -127,6 +92,8 @@ const statusVariant = (status: string) => {
   }
 };
 
+const ITEMS_PER_PAGE = 15;
+
 
 export default function EventDetailsPage({
   params,
@@ -138,6 +105,24 @@ export default function EventDetailsPage({
   const [editedDetails, setEditedDetails] = useState(eventDetailsData);
   
   const [rsvpList, setRsvpList] = useState(initialRsvpList);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const totalPages = Math.ceil(rsvpList.length / ITEMS_PER_PAGE);
+
+  const paginatedRsvpList = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return rsvpList.slice(startIndex, endIndex);
+  }, [currentPage, rsvpList]);
+
+  const handlePreviousPage = () => {
+    setCurrentPage((prev) => Math.max(prev - 1, 1));
+  };
+
+  const handleNextPage = () => {
+    setCurrentPage((prev) => Math.min(prev + 1, totalPages));
+  };
+
 
   const handleStatusChange = (seq: number, newStatus: string) => {
     setRsvpList(rsvpList.map(rsvp => rsvp.seq === seq ? { ...rsvp, status: newStatus } : rsvp));
@@ -398,7 +383,7 @@ export default function EventDetailsPage({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rsvpList.map((rsvp) => (
+              {paginatedRsvpList.map((rsvp) => (
                 <TableRow key={rsvp.seq}>
                   <TableCell>{rsvp.seq}</TableCell>
                   <TableCell>{rsvp.name}</TableCell>
@@ -426,6 +411,27 @@ export default function EventDetailsPage({
               ))}
             </TableBody>
           </Table>
+           <div className="flex items-center justify-end space-x-2 pt-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handlePreviousPage}
+              disabled={currentPage === 1}
+            >
+              Previous
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              Page {currentPage} of {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleNextPage}
+              disabled={currentPage === totalPages}
+            >
+              Next
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>
