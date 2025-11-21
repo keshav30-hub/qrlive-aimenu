@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -29,7 +30,11 @@ export async function signInWithGoogle(): Promise<User | null> {
     }
 
     return user;
-  } catch (error) {
+  } catch (error: any) {
+    // Don't log an error if the user cancelled the popup
+    if (error.code === 'auth/cancelled-popup-request') {
+      return null;
+    }
     console.error('Error during Google sign-in:', error);
     return null;
   }
