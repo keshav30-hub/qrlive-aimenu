@@ -125,8 +125,6 @@ export default function AIFAPage() {
           if (savedMessages) {
             const parsedMessages = JSON.parse(savedMessages);
             if (Array.isArray(parsedMessages) && parsedMessages.length > 0) {
-              // We can't persist React components, so we just restore the text messages.
-              // This means interactive components won't reappear on reload, which is acceptable.
               const textMessages = parsedMessages.filter((msg: any) => typeof msg.content === 'string');
               if (textMessages.length > 0) {
                 setMessages(textMessages);
@@ -139,7 +137,6 @@ export default function AIFAPage() {
           console.error("Failed to load chat history from session storage:", error);
         }
     
-        // If no valid history, set initial message
         const initialMessage = {
           id: 1,
           sender: 'aifa' as const,
@@ -164,7 +161,6 @@ export default function AIFAPage() {
         setMessages(prev => {
             const newMessages = [...prev, { id: Date.now(), sender, content }];
             try {
-                // Only store messages with string content in session storage
                 const serializableMessages = newMessages.filter(msg => typeof msg.content === 'string');
                 sessionStorage.setItem('aifa-chat-history', JSON.stringify(serializableMessages));
             } catch (error) {
@@ -193,7 +189,7 @@ export default function AIFAPage() {
         setIsThinking(true);
 
         const historyForAI = messages
-            .filter(msg => typeof msg.content === 'string') // **CRITICAL FIX: Filter for string content only**
+            .filter(msg => typeof msg.content === 'string')
             .map(msg => ({
                 role: msg.sender === 'user' ? 'user' : 'model' as 'user' | 'model',
                 content: msg.content as string
