@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Edit, Save, X, Upload, Fingerprint, RefreshCw, Crown, ExternalLink, Instagram, Globe } from 'lucide-react';
+import { Edit, Save, X, Upload, Fingerprint, RefreshCw, Crown, ExternalLink, Instagram, Globe, Eye, EyeOff } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -27,6 +27,7 @@ const initialBusinessInfo = {
   phone: '+022 1234 5678',
   logo: 'https://picsum.photos/seed/logo/100/100',
   googleReviewLink: 'https://g.page/r/your-review-link',
+  adminAccessCode: '123456',
 };
 
 function generateBusinessId() {
@@ -44,6 +45,7 @@ export default function SettingsPage() {
   const [businessInfo, setBusinessInfo] = useState(initialBusinessInfo);
   const [editedInfo, setEditedInfo] = useState(initialBusinessInfo);
   const [businessId, setBusinessId] = useState('');
+  const [showAccessCode, setShowAccessCode] = useState(false);
 
   useEffect(() => {
     setBusinessId(generateBusinessId());
@@ -225,12 +227,25 @@ export default function SettingsPage() {
                 <p className="font-medium">{businessInfo.address}</p>
               )}
             </div>
-            <div className="space-y-1 md:col-span-2">
+            <div className="space-y-1">
               <Label htmlFor="googleReviewLink">Google Review Link</Label>
                {isEditing ? (
                 <Input id="googleReviewLink" name="googleReviewLink" value={editedInfo.googleReviewLink} onChange={handleInputChange} />
               ) : (
                 <p className="font-medium">{businessInfo.googleReviewLink}</p>
+              )}
+            </div>
+             <div className="space-y-1">
+              <Label htmlFor="adminAccessCode">Admin Access Code</Label>
+              {isEditing ? (
+                 <div className="relative">
+                    <Input id="adminAccessCode" name="adminAccessCode" type={showAccessCode ? 'text' : 'password'} value={editedInfo.adminAccessCode} onChange={handleInputChange} />
+                    <Button variant="ghost" size="icon" className="absolute right-0 top-0 h-full" onClick={() => setShowAccessCode(!showAccessCode)}>
+                        {showAccessCode ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                </div>
+              ) : (
+                <p className="font-medium">{businessInfo.adminAccessCode ? '********' : 'Not set'}</p>
               )}
             </div>
           </div>
