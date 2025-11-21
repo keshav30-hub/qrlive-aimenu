@@ -10,6 +10,8 @@ import {
   QrCode,
   Calendar,
   Users,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import Link from 'next/link';
 import {
@@ -21,8 +23,16 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from '@/components/ui/sidebar';
+import { useState } from 'react';
 
 export function AppSidebar() {
+  const [isAudioOn, setIsAudioOn] = useState(true);
+
+  const toggleAudio = () => {
+    setIsAudioOn(!isAudioOn);
+    // Logic to play/mute notification sounds will go here
+  };
+
   return (
     <Sidebar className="w-[10%]" collapsible="none">
       <SidebarHeader>
@@ -98,6 +108,12 @@ export function AppSidebar() {
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton onClick={toggleAudio}>
+              {isAudioOn ? <Volume2 /> : <VolumeX />}
+              <span>{isAudioOn ? 'Sound On' : 'Sound Off'}</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <Link href="#">
               <SidebarMenuButton>
