@@ -183,18 +183,26 @@ export default function StaffDetailsPage() {
   const attendanceSummary = useMemo(() => {
     const summary: { [key: string]: any } = {};
     for (let month = 0; month < 12; month++) {
-      const monthData = attendanceData[month] || {};
-      const days = Object.keys(monthData).map(Number);
-      const totalDays = days.length;
-      const present = days.filter(day => monthData[day] === 'Present').length;
-      const absent = days.filter(day => monthData[day] === 'Absent').length;
-      const paidLeave = days.filter(day => monthData[day] === 'Paid Leave').length;
-      const halfDay = days.filter(day => monthData[day] === 'Half Day').length;
+        const monthData = attendanceData[month] || {};
+        const daysWithRecord = Object.keys(monthData).map(Number);
+        const present = daysWithRecord.filter(day => monthData[day] === 'Present').length;
+        const absent = daysWithRecord.filter(day => monthData[day] === 'Absent').length;
+        const paidLeave = daysWithRecord.filter(day => monthData[day] === 'Paid Leave').length;
+        const halfDay = daysWithRecord.filter(day => monthData[day] === 'Half Day').length;
 
-      summary[month] = { totalDays, present, absent, paidLeave, halfDay };
+        const daysInMonth = new Date(selectedYear, month + 1, 0).getDate();
+        let workingDays = 0;
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dayOfWeek = new Date(selectedYear, month, day).getDay();
+            if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Exclude Sunday (0) and Saturday (6)
+                workingDays++;
+            }
+        }
+
+        summary[month] = { totalDays: workingDays, present, absent, paidLeave, halfDay };
     }
     return summary;
-  }, [attendanceData]);
+  }, [attendanceData, selectedYear]);
 
   if (!staffDetails) {
     return (
