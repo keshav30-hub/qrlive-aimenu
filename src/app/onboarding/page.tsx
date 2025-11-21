@@ -29,7 +29,7 @@ export default function OnboardingPage() {
 
   const handlePlaceSelect = (place: google.maps.places.Place | null) => {
     console.log(place);
-    setAddress(place?.formattedAddress || '');
+    setAddress(place?.formatted_address || '');
   }
 
   return (
