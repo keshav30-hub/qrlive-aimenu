@@ -53,7 +53,9 @@ import {
   GlassWater,
   Spray,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import Autoplay from "embla-carousel-autoplay";
+
 
 const businessData = {
   name: 'The Gourmet Place',
@@ -175,6 +177,10 @@ export default function QrMenuPage() {
   const { format } = useCurrency();
   const [cart, setCart] = useState<any[]>([]);
 
+  const autoplayPlugin = useRef(
+    Autoplay({ delay: 3000, stopOnInteraction: true })
+  );
+
   const addToCart = (item: any) => {
     setCart((prevCart) => {
       const existingItem = prevCart.find((cartItem) => cartItem.id === item.id);
@@ -253,19 +259,20 @@ export default function QrMenuPage() {
         </header>
 
         <section className="px-4 pb-4">
-          <h2 className="text-lg font-semibold mb-2">Ongoing Events</h2>
           <Carousel
+            plugins={[autoplayPlugin.current]}
             opts={{
               align: 'start',
               loop: true,
             }}
             className="w-full"
+            onMouseEnter={autoplayPlugin.current.stop}
+            onMouseLeave={autoplayPlugin.current.reset}
           >
             <CarouselContent>
               {events.map((event) => (
-                <CarouselItem key={event.id} className="basis-auto">
-                  <Card className="overflow-hidden">
-                    <div className="relative h-32 w-full">
+                <CarouselItem key={event.id}>
+                    <div className="relative h-40 w-full rounded-lg overflow-hidden">
                       <Image
                         src={event.imageUrl}
                         alt={event.name}
@@ -273,14 +280,11 @@ export default function QrMenuPage() {
                         style={{ objectFit: 'cover' }}
                         data-ai-hint={event.imageHint}
                       />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                      <div className="absolute bottom-0 left-0 p-4">
+                        <h3 className="text-white font-bold text-lg">{event.name}</h3>
+                      </div>
                     </div>
-                    <CardHeader className="p-3">
-                      <CardTitle className="text-base">{event.name}</CardTitle>
-                      <CardDescription className="text-xs line-clamp-2">
-                        {event.description}
-                      </CardDescription>
-                    </CardHeader>
-                  </Card>
                 </CarouselItem>
               ))}
             </CarouselContent>
