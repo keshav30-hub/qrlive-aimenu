@@ -11,19 +11,10 @@ interface PlacesAutocompleteProps {
   onChange: (value: string) => void;
 }
 
-// Extend the JSX IntrinsicElements to include the custom web component
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      'gmp-place-autocomplete': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement> & { 'input-style'?: string }, HTMLElement>;
-    }
-  }
-}
-
 export function PlacesAutocomplete({ onPlaceSelect, value, onChange }: PlacesAutocompleteProps) {
   const [isApiLoaded, setIsApiLoaded] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const autocompleteRef = useRef<any>(null); // Use `any` for web component
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
 
   useEffect(() => {
     const apiKey = process.env.NEXT_PUBLIC_PLACES_API_KEY;
@@ -32,62 +23,44 @@ export function PlacesAutocomplete({ onPlaceSelect, value, onChange }: PlacesAut
       return;
     }
 
-    if (window.google && window.google.maps) {
+    const loadScript = () => {
+      const script = document.createElement('script');
+      script.id = MAP_ID;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&v=beta`;
+      script.async = true;
+      script.defer = true;
+      
+      script.onload = () => {
         setIsApiLoaded(true);
-        return;
-    }
+      };
 
-    const existingScript = document.getElementById(MAP_ID);
-    if (existingScript) {
-        const checkGoogle = setInterval(() => {
-            if (window.google && window.google.maps && window.google.maps.places) {
-                setIsApiLoaded(true);
-                clearInterval(checkGoogle);
-            }
-        }, 100);
-        return;
-    }
-
-    const script = document.createElement('script');
-    script.id = MAP_ID;
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&v=beta`;
-    script.async = true;
-    script.defer = true;
-    
-    script.onload = () => {
-        setIsApiLoaded(true);
-    };
-
-    script.onerror = () => {
+      script.onerror = () => {
         console.error("Failed to load Google Maps script.");
+      };
+
+      document.head.appendChild(script);
     };
 
-    document.head.appendChild(script);
-
+    if (window.google && window.google.maps && window.google.maps.places) {
+      setIsApiLoaded(true);
+    } else if (!document.getElementById(MAP_ID)) {
+      loadScript();
+    }
   }, []);
 
   useEffect(() => {
-    if (isApiLoaded && autocompleteRef.current && inputRef.current) {
-        const autocompleteElement = autocompleteRef.current;
-        const inputElement = inputRef.current;
+    if (isApiLoaded && inputRef.current && !autocompleteRef.current) {
+      const autocomplete = new google.maps.places.Autocomplete(inputRef.current, {
+        fields: ["formatted_address", "geometry", "name"],
+        componentRestrictions: { country: "in" },
+      });
 
-        // Programmatically connect our input to the autocomplete service
-        autocompleteElement.setInputElement(inputElement);
+      autocompleteRef.current = autocomplete;
 
-        const handlePlaceChange = async (event: Event) => {
-            const place = await autocompleteElement.getPlace();
-            if (place) {
-                onPlaceSelect(place);
-            } else {
-                onPlaceSelect(null);
-            }
-        };
-
-        autocompleteElement.addEventListener('gmp-placechange', handlePlaceChange);
-
-        return () => {
-            autocompleteElement.removeEventListener('gmp-placechange', handlePlaceChange);
-        };
+      autocomplete.addListener("place_changed", () => {
+        const place = autocomplete.getPlace();
+        onPlaceSelect(place);
+      });
     }
   }, [isApiLoaded, onPlaceSelect]);
 
@@ -102,24 +75,14 @@ export function PlacesAutocomplete({ onPlaceSelect, value, onChange }: PlacesAut
   }
 
   return (
-    <>
-      {/* This element is now hidden and only provides functionality */}
-      <gmp-place-autocomplete 
-        ref={autocompleteRef} 
-        country="in"
-        input-style="none"
-      >
-      </gmp-place-autocomplete>
-      {/* This is our visible, themed input field */}
-      <Input 
-          ref={inputRef}
-          type="text"
-          id="full-address" 
-          placeholder="Start typing your address..." 
-          className="pl-10"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-      />
-    </>
+    <Input 
+        ref={inputRef}
+        type="text"
+        id="full-address" 
+        placeholder="Start typing your address..." 
+        className="pl-10"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+    />
   );
 }
