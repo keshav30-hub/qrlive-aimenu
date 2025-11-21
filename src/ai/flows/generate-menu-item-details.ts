@@ -10,14 +10,14 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
-export const GenerateMenuItemDetailsInputSchema = z.object({
+const GenerateMenuItemDetailsInputSchema = z.object({
     itemName: z.string().describe('The name of the menu item.'),
     ingredients: z.string().describe('A comma-separated list of ingredients.'),
     type: z.string().describe('The type of the item (e.g., veg, non-veg).'),
 });
 export type GenerateMenuItemDetailsInput = z.infer<typeof GenerateMenuItemDetailsInputSchema>;
 
-export const GenerateMenuItemDetailsOutputSchema = z.object({
+const GenerateMenuItemDetailsOutputSchema = z.object({
     description: z.string().describe('A delicious and appealing description for the menu item, under 30 words.'),
     kcal: z.number().describe('An estimated calorie count (kcal) for the item.'),
 });
@@ -54,5 +54,3 @@ const generateMenuItemDetailsFlow = ai.defineFlow(
 export async function generateMenuItemDetails(input: GenerateMenuItemDetailsInput): Promise<GenerateMenuItemDetailsOutput> {
     return generateMenuItemDetailsFlow(input);
 }
-
-    
