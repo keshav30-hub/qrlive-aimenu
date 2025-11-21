@@ -70,6 +70,7 @@ const initialStaffList = [
     avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026704d',
     status: 'Present' as AttendanceStatus,
     role: 'Manager',
+    active: true,
   },
   {
     id: '2',
@@ -77,6 +78,7 @@ const initialStaffList = [
     avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026705d',
     status: 'Absent' as AttendanceStatus,
     role: 'Captain',
+    active: true,
   },
   {
     id: '3',
@@ -84,6 +86,7 @@ const initialStaffList = [
     avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026706d',
     status: 'Paid Leave' as AttendanceStatus,
     role: 'Captain',
+    active: false,
   },
   {
     id: '4',
@@ -91,6 +94,7 @@ const initialStaffList = [
     avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026707d',
     status: 'Half Day' as AttendanceStatus,
     role: 'Captain',
+    active: true,
   },
   {
     id: '5',
@@ -98,6 +102,7 @@ const initialStaffList = [
     avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026708d',
     status: 'Present' as AttendanceStatus,
     role: 'Manager',
+    active: true,
   },
 ];
 
@@ -184,6 +189,9 @@ export default function StaffPage() {
     setReminderTime(null);
     setIsEditingReminder(false);
   };
+
+  const activeStaffList = staffList.filter(staff => staff.active);
+
 
   return (
     <div className="space-y-6">
@@ -357,7 +365,7 @@ export default function StaffPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {staffList.map((staff) => (
+                  {activeStaffList.map((staff) => (
                     <TableRow key={staff.id}>
                       <TableCell>
                         <div className="flex items-center gap-4">
