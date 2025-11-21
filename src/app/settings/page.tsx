@@ -23,6 +23,7 @@ const initialBusinessInfo = {
   address: '123, Gourmet Lane, Foodie City, 400001',
   phone: '+022 1234 5678',
   logo: 'https://picsum.photos/seed/logo/100/100',
+  googleReviewLink: 'https://g.page/r/your-review-link',
 };
 
 export default function SettingsPage() {
@@ -156,6 +157,14 @@ export default function SettingsPage() {
                 <Textarea id="address" name="address" value={editedInfo.address} onChange={handleInputChange} />
               ) : (
                 <p className="font-medium">{businessInfo.address}</p>
+              )}
+            </div>
+            <div className="space-y-1 md:col-span-2">
+              <Label htmlFor="googleReviewLink">Google Review Link</Label>
+               {isEditing ? (
+                <Input id="googleReviewLink" name="googleReviewLink" value={editedInfo.googleReviewLink} onChange={handleInputChange} />
+              ) : (
+                <p className="font-medium">{businessInfo.googleReviewLink}</p>
               )}
             </div>
           </div>
