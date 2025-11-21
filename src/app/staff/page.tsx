@@ -298,7 +298,7 @@ export default function StaffPage() {
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="access-code">Access Code</Label>
-                            <Input id="access-code" type="password" placeholder="Enter 4-digit code" maxLength={4} />
+                            <Input id="access-code" type="password" placeholder="Enter 6-digit code" maxLength={6} />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="staff-role">Staff Role</Label>
