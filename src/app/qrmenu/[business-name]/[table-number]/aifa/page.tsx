@@ -6,19 +6,20 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar } from "@/components/ui/avatar";
 import { useRouter, useParams } from "next/navigation";
-import { ChevronLeft, Send, Sparkles, Calendar, Ticket } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { ChevronLeft, Send, Sparkles, Ticket } from "lucide-react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import Image from "next/image";
 
 // Mock data for events - in a real app, this would be fetched
-const events = [
+const allEvents = [
   {
     id: '1',
     name: 'Jazz Night',
     description: 'Enjoy a relaxing evening with live jazz music.',
     imageUrl: 'https://picsum.photos/seed/event1/600/400',
     imageHint: 'jazz band',
+    active: true,
   },
   {
     id: '3',
@@ -26,7 +27,16 @@ const events = [
     description: 'Explore a selection of fine wines.',
     imageUrl: 'https://picsum.photos/seed/event3/600/400',
     imageHint: 'wine glasses',
+    active: true,
   },
+  {
+    id: '2',
+    name: 'Taco Tuesday',
+    description: 'Special discounts on all tacos and margaritas.',
+    imageUrl: 'https://picsum.photos/seed/event2/600/400',
+    imageHint: 'tacos food',
+    active: false,
+  }
 ];
 
 
@@ -36,15 +46,15 @@ type Message = {
     content: React.ReactNode;
 };
 
-const InitialActions = ({ onSelect }: { onSelect: (action: string) => void }) => (
+const InitialActions = ({ onSelect, showEventsButton }: { onSelect: (action: string) => void, showEventsButton: boolean }) => (
     <div className="flex gap-2 justify-center py-2">
         <Button variant="outline" onClick={() => onSelect('Menu')}>Suggest from Menu</Button>
         <Button variant="outline" onClick={() => onSelect('Feedback')}>Give Feedback</Button>
-        <Button variant="outline" onClick={() => onSelect('Events')}>Show Events</Button>
+        {showEventsButton && <Button variant="outline" onClick={() => onSelect('Events')}>Show Events</Button>}
     </div>
 );
 
-const EventCard = ({ event }: { event: typeof events[0] }) => (
+const EventCard = ({ event }: { event: typeof allEvents[0] }) => (
     <Card className="w-full overflow-hidden my-2">
         <div className="relative h-32 w-full">
             <Image src={event.imageUrl} alt={event.name} layout="fill" objectFit="cover" data-ai-hint={event.imageHint} />
@@ -69,6 +79,8 @@ export default function AIFAPage() {
     const [inputValue, setInputValue] = useState('');
     const [showInitialActions, setShowInitialActions] = useState(true);
     const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+    const activeEvents = useMemo(() => allEvents.filter(e => e.active), []);
 
     useEffect(() => {
         setMessages([
@@ -105,7 +117,7 @@ export default function AIFAPage() {
                 addMessage('aifa', "I'm all ears! Please tell me about your experience. Your feedback is the secret ingredient to our improvement.");
             } else if (action === 'Events') {
                 addMessage('aifa', "You're in for a treat! Here are our upcoming events. Let me know if you'd like to RSVP.");
-                events.forEach(event => {
+                activeEvents.forEach(event => {
                     addMessage('aifa', <EventCard event={event} />);
                 })
             }
@@ -153,7 +165,7 @@ export default function AIFAPage() {
                                 </div>
                              </div>
                         ))}
-                         {showInitialActions && <InitialActions onSelect={handleInitialAction} />}
+                         {showInitialActions && <InitialActions onSelect={handleInitialAction} showEventsButton={activeEvents.length > 0} />}
                     </div>
                 </ScrollArea>
 
