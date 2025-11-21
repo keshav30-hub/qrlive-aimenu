@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import {
   Card,
   CardContent,
@@ -344,9 +345,9 @@ export default function StaffPage() {
                 </TableHeader>
                 <TableBody>
                   {staffList.map((staff) => (
-                    <TableRow key={staff.id}>
+                    <TableRow key={staff.id} className="cursor-pointer">
                       <TableCell>
-                        <div className="flex items-center gap-4">
+                        <Link href={`/staff/${staff.name.toLowerCase().replace(/ /g, '-')}`} className="flex items-center gap-4 hover:underline">
                           <Avatar>
                             <AvatarImage src={staff.avatar} alt={staff.name} />
                             <AvatarFallback>
@@ -354,7 +355,7 @@ export default function StaffPage() {
                             </AvatarFallback>
                           </Avatar>
                           <span className="font-medium">{staff.name}</span>
-                        </div>
+                        </Link>
                       </TableCell>
                       <TableCell>{staff.role}</TableCell>
                     </TableRow>
