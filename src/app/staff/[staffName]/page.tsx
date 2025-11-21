@@ -219,7 +219,7 @@ export default function StaffDetailsPage() {
                                 const monthIndex = date.getMonth();
                                 const status = attendanceData[monthIndex]?.[dayOfMonth] as AttendanceStatus | undefined;
                                 
-                                if (!status) return <div {...props}>{dayOfMonth}</div>;
+                                if (!status) return <div>{dayOfMonth}</div>;
 
                                 return (
                                     <TooltipProvider>
