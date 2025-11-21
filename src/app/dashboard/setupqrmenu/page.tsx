@@ -76,15 +76,33 @@ export default function SetupQrMenuPage() {
   };
   
   const handleDownloadQr = (tableName: string) => {
-    const url = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(
-      `https://your-restaurant.com/menu?table=${tableName}`
+    // This generates a QR code that links to the menu for the specific table.
+    // In a real application, you would replace `the-gourmet-place` with the actual business slug.
+    const menuUrl = `${window.location.origin}/qrmenu/the-gourmet-place/${tableName.toLowerCase().replace(/ /g, '-')}`;
+    const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(
+      menuUrl
     )}`;
+    
+    // To download the QR code, we can create a temporary link and click it.
     const link = document.createElement('a');
-    link.href = url;
-    link.download = `${tableName.replace(/ /g, '_')}-qr-code.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    link.href = qrApiUrl;
+    // We fetch the image and create a blob URL to enable cross-origin download.
+    fetch(qrApiUrl)
+      .then(response => response.blob())
+      .then(blob => {
+        const blobUrl = window.URL.createObjectURL(blob);
+        link.href = blobUrl;
+        link.download = `${tableName.replace(/ /g, '_')}-qr-code.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(blobUrl);
+      })
+      .catch(() => {
+        // Fallback for if fetching fails (e.g., CORS issues in some environments)
+        // This will open the QR code in a new tab instead of downloading directly.
+        window.open(qrApiUrl, '_blank');
+      });
   };
 
 
@@ -194,7 +212,7 @@ export default function SetupQrMenuPage() {
                       <Download className="mr-2 h-4 w-4" />
                       Download QR
                     </Button>
-                    <Link href="/qrmenu/the-gourmet-place/1" target="_blank">
+                    <Link href={`/qrmenu/the-gourmet-place/${table.id}`} target="_blank">
                       <Button variant="outline" size="sm">
                         <ExternalLink className="mr-2 h-4 w-4" />
                         Visit
