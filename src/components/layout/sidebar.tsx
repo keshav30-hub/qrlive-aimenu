@@ -23,15 +23,10 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from '@/components/ui/sidebar';
-import { useState } from 'react';
+import { useTaskNotification } from '@/context/TaskNotificationContext';
 
 export function AppSidebar() {
-  const [isAudioOn, setIsAudioOn] = useState(true);
-
-  const toggleAudio = () => {
-    setIsAudioOn(!isAudioOn);
-    // Logic to play/mute notification sounds will go here
-  };
+  const { isMuted, toggleMute } = useTaskNotification();
 
   return (
     <Sidebar className="w-[10%]" collapsible="none">
@@ -109,9 +104,9 @@ export function AppSidebar() {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton onClick={toggleAudio}>
-              {isAudioOn ? <Volume2 /> : <VolumeX />}
-              <span>{isAudioOn ? 'Sound On' : 'Sound Off'}</span>
+            <SidebarMenuButton onClick={toggleMute}>
+              {isMuted ? <VolumeX /> : <Volume2 />}
+              <span>{isMuted ? 'Sound Off' : 'Sound On'}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>

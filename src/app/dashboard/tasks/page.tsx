@@ -18,6 +18,7 @@ import {
   TableCell,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { useTaskNotification } from '@/context/TaskNotificationContext';
 
 const unattendedTasks = [
   {
@@ -76,6 +77,7 @@ const ITEMS_PER_PAGE = 10;
 
 export default function TasksPage() {
   const [currentPage, setCurrentPage] = useState(1);
+  const { showNewTask } = useTaskNotification();
 
   const totalPages = Math.ceil(taskHistory.length / ITEMS_PER_PAGE);
 
@@ -92,10 +94,22 @@ export default function TasksPage() {
   const handleNextPage = () => {
     setCurrentPage((prev) => Math.min(prev + 1, totalPages));
   };
+  
+  const simulateTask = () => {
+    const sampleTask = {
+        tableName: 'Table 7',
+        requestType: 'Call Captain',
+        dateTime: new Date().toLocaleTimeString(),
+    };
+    showNewTask(sampleTask);
+  };
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Tasks</h1>
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold">Tasks</h1>
+        <Button onClick={simulateTask} variant="secondary">Simulate New Task</Button>
+      </div>
 
       <Card>
         <CardHeader>
