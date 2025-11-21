@@ -60,7 +60,7 @@ export default function OnboardingPage() {
         gst,
         latitude: selectedPlace?.geometry?.location?.lat() || null,
         longitude: selectedPlace?.geometry?.location?.lng() || null,
-        businessId: 'Menu-25-DFCV68', // Corrected Static Business ID
+        businessId: 'Menu-25-DFCV68',
         onboarding: true,
       }, { merge: true });
       
@@ -126,7 +126,11 @@ export default function OnboardingPage() {
             <Label htmlFor="full-address">Full Address</Label>
             <div className="relative">
               <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
-              <PlacesAutocomplete onPlaceSelect={handlePlaceSelect} onChange={handleAddressChange} />
+              <PlacesAutocomplete 
+                onPlaceSelect={handlePlaceSelect} 
+                onChange={handleAddressChange} 
+                defaultValue={address} 
+              />
             </div>
           </div>
           <div className="space-y-2">
