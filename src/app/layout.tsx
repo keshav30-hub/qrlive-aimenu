@@ -1,8 +1,6 @@
 import type {Metadata} from 'next';
 import {Inter} from 'next/font/google';
 import './globals.css';
-import {SidebarProvider} from '@/components/ui/sidebar';
-import {AppSidebar} from '@/components/layout/sidebar';
 import { Toaster } from '@/components/ui/toaster';
 
 const inter = Inter({subsets: ['latin'], variable: '--font-inter'});
@@ -19,15 +17,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} h-screen overflow-hidden`}>
-        <div className="flex h-full">
-          <SidebarProvider>
-            <AppSidebar />
-            <main className="flex-1 overflow-y-auto bg-gray-100 p-4">
-              {children}
-            </main>
-          </SidebarProvider>
-        </div>
+      <body className={`${inter.variable}`}>
+        {children}
         <Toaster />
       </body>
     </html>
