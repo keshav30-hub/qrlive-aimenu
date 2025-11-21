@@ -37,7 +37,7 @@ export default function PublicEventDetailsPage() {
     );
   }
 
-  const date = new Date(eventDetails.active ? '2023-11-15T19:00:00' : '2023-11-21T17:00:00');
+  const date = new Date(eventDetails.datetime);
 
   return (
     <div className="bg-gray-100 dark:bg-black min-h-screen py-8 px-4">
@@ -75,23 +75,23 @@ export default function PublicEventDetailsPage() {
                     <p>{eventDetails.description}</p>
                 </div>
 
-                {eventDetails.active && (
-                    <>
-                        <div className="flex items-start gap-4 text-foreground/80">
-                            <Users className="h-5 w-5 mt-1 shrink-0" />
+                {eventDetails.organizers && (
+                    <div className="flex items-start gap-4 text-foreground/80">
+                        <Users className="h-5 w-5 mt-1 shrink-0" />
+                        <div>
+                            <h3 className="font-semibold">Organized by:</h3>
+                            <p>{eventDetails.organizers}</p>
+                        </div>
+                    </div>
+                )}
+                {eventDetails.terms && (
+                    <div className="flex items-start gap-4 text-foreground/80">
+                        <Info className="h-5 w-5 mt-1 shrink-0" />
                             <div>
-                                <h3 className="font-semibold">Organized by:</h3>
-                                <p>The Velvet Note Club, City Jazz Association</p>
-                            </div>
+                            <h3 className="font-semibold">Terms & Conditions:</h3>
+                            <p>{eventDetails.terms}</p>
                         </div>
-                        <div className="flex items-start gap-4 text-foreground/80">
-                            <Info className="h-5 w-5 mt-1 shrink-0" />
-                             <div>
-                                <h3 className="font-semibold">Terms & Conditions:</h3>
-                                <p>No outside food or drinks allowed.</p>
-                            </div>
-                        </div>
-                    </>
+                    </div>
                 )}
 
             </div>
