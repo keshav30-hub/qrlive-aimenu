@@ -26,10 +26,9 @@ function AuthRedirect({ children }: { children: React.ReactNode }) {
     }, [user, firestore]);
     
     const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userDocRef);
+    const isDataLoading = isUserLoading || isProfileLoading;
 
     useEffect(() => {
-        const isDataLoading = isUserLoading || isProfileLoading;
-        
         if (!isDataLoading) {
             if (!user) {
                 router.replace('/login');
