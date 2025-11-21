@@ -413,11 +413,19 @@ export default function MenuPage() {
                     <div className="space-y-2">
                        <div className="flex justify-between items-center">
                          <Label htmlFor="description">Description</Label>
-                         <Button variant="outline" size="sm" onClick={handleGenerateDetails} disabled={isGenerating}>
+                         <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleGenerateDetails}
+                            disabled={isGenerating || !currentItem.name || !currentItem.ingredients || !currentItem.type}
+                          >
                            <Sparkles className="mr-2 h-4 w-4" />
                            {isGenerating ? 'Generating...' : 'Generate'}
                          </Button>
                        </div>
+                       <p className="text-xs text-muted-foreground">
+                          Fill in name, type, and ingredients to enable AI-powered generation for description and kcal.
+                       </p>
                       <Textarea id="description" name="description" value={currentItem.description} onChange={handleInputChange} placeholder="Describe the item..." />
                     </div>
                      <div className="grid grid-cols-2 gap-4">
@@ -892,6 +900,8 @@ export default function MenuPage() {
     </div>
   );
 }
+
+    
 
     
 
