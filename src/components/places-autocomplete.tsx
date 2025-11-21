@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from 'react';
+import { Input } from '@/components/ui/input';
 
 // Define the custom event type for gmp-placechange
 interface PlaceChangeEvent extends Event {
@@ -13,11 +14,10 @@ const MAP_ID = 'google-map-script-places';
 
 interface PlacesAutocompleteProps {
   onPlaceSelect: (place: google.maps.places.PlaceResult | null) => void;
-  onChange: (value: string) => void;
-  value?: string;
+  defaultValue?: string;
 }
 
-export function PlacesAutocomplete({ onPlaceSelect, onChange, value }: PlacesAutocompleteProps) {
+export function PlacesAutocomplete({ onPlaceSelect, defaultValue }: PlacesAutocompleteProps) {
   const [isApiLoaded, setIsApiLoaded] = useState(false);
   const autocompleteRef = useRef<HTMLElement | null>(null);
   const isInitialized = useRef(false);
@@ -65,9 +65,9 @@ export function PlacesAutocomplete({ onPlaceSelect, onChange, value }: PlacesAut
     const autocompleteElement = autocompleteRef.current;
     if (!isApiLoaded || !autocompleteElement || isInitialized.current) return;
     
-    const input = autocompleteElement.querySelector('input');
-    if(input && value) {
-      input.value = value;
+    // Set initial value if provided
+    if (defaultValue) {
+        (autocompleteElement as any).value = defaultValue;
     }
 
     const handlePlaceChange = (event: Event) => {
@@ -75,34 +75,22 @@ export function PlacesAutocomplete({ onPlaceSelect, onChange, value }: PlacesAut
         const place = placeChangeEvent.detail.place;
         onPlaceSelect(place);
     };
-
-    const handleInputChange = (event: Event) => {
-      const inputEvent = event as InputEvent;
-      const target = inputEvent.target as HTMLInputElement;
-      onChange(target.value);
-    };
     
     autocompleteElement.addEventListener('gmp-placechange', handlePlaceChange);
-    if (input) {
-      input.addEventListener('input', handleInputChange);
-    }
     isInitialized.current = true;
 
     return () => {
         autocompleteElement.removeEventListener('gmp-placechange', handlePlaceChange);
-         if (input) {
-          input.removeEventListener('input', handleInputChange);
-        }
     };
-  }, [isApiLoaded, onPlaceSelect, onChange, value]);
+  }, [isApiLoaded, onPlaceSelect, defaultValue]);
 
   if (!isApiLoaded) {
     return (
-      <div 
-          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pl-10 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
-      >
-        Loading address search...
-      </div>
+      <Input 
+        className="pl-10"
+        placeholder="Loading address search..."
+        disabled
+      />
     );
   }
 
@@ -119,12 +107,13 @@ export function PlacesAutocomplete({ onPlaceSelect, onChange, value }: PlacesAut
             border-radius: 0.375rem; /* rounded-md */
             border: 1px solid hsl(var(--input));
             padding: 0.5rem 0.75rem;
-            padding-left: 2.5rem; /* for the icon */
-            font-size: 1rem; /* text-base */
-            line-height: 1.5rem;
+            padding-left: 2.5rem; /* pl-10 for the icon */
+            font-size: 0.875rem; /* md:text-sm */
+            line-height: 1.25rem;
           }
           gmp-place-autocomplete::part(input):focus {
-            outline: none;
+            outline: 2px solid transparent;
+            outline-offset: 2px;
             border-color: hsl(var(--ring));
             box-shadow: 0 0 0 2px hsl(var(--ring));
           }
