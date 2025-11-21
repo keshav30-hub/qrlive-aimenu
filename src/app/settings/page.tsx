@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -28,10 +29,26 @@ const initialBusinessInfo = {
   googleReviewLink: 'https://g.page/r/your-review-link',
 };
 
+function generateBusinessId() {
+    const year = new Date().getFullYear().toString().slice(-2);
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let randomPart = '';
+    for (let i = 0; i < 6; i++) {
+        randomPart += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return `Menu-${year}-${randomPart}`;
+}
+
 export default function SettingsPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [businessInfo, setBusinessInfo] = useState(initialBusinessInfo);
   const [editedInfo, setEditedInfo] = useState(initialBusinessInfo);
+  const [businessId, setBusinessId] = useState('');
+
+  useEffect(() => {
+    setBusinessId(generateBusinessId());
+  }, []);
+
 
   const handleEdit = () => {
     setEditedInfo(businessInfo);
@@ -77,7 +94,7 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent>
                 <p className="text-2xl font-bold font-mono bg-gray-100 dark:bg-gray-800 p-3 rounded-md text-center">
-                    B-10X2001
+                    {businessId || 'Generating...'}
                 </p>
             </CardContent>
         </Card>
@@ -282,3 +299,5 @@ export default function SettingsPage() {
     </div>
   );
 }
+
+    
