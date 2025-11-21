@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -42,7 +41,7 @@ import {
   RadioGroupItem,
 } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
-import { PlusCircle, Trash2, MoreVertical, Save, Search } from 'lucide-react';
+import { PlusCircle, Trash2, MoreVertical, Save, Search, Sparkles } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useCurrency } from '@/hooks/use-currency';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -51,6 +50,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { generateMenuItemDetails } from '@/ai/flows/generate-menu-item-details';
 
 
 type Addon = { name: string; price: string };
@@ -63,6 +63,8 @@ const initialItemState = {
   ingredients: '',
   description: '',
   mrp: '',
+  kcal: '',
+  duration: '',
   type: 'veg',
   addons: [{ name: '', price: '' }],
   modifiers: [{ name: '', price: '' }],
@@ -79,6 +81,8 @@ const initialItems = [
       available: true,
       ingredients: 'Dough, Tomato Sauce, Mozzarella, Basil',
       description: 'A classic pizza with fresh ingredients.',
+      kcal: '750',
+      duration: '20',
       addons: [],
       modifiers: [],
     },
@@ -91,6 +95,8 @@ const initialItems = [
       available: true,
       ingredients: 'Bun, Chicken Patty, Lettuce, Tomato, Mayo',
       description: 'A juicy chicken burger.',
+      kcal: '550',
+      duration: '15',
       addons: [],
       modifiers: [],
     },
@@ -103,6 +109,8 @@ const initialItems = [
       available: false,
       ingredients: 'Lettuce, Croutons, Parmesan, Caesar Dressing',
       description: 'A refreshing Caesar salad.',
+      kcal: '350',
+      duration: '10',
       addons: [],
       modifiers: [],
     },
@@ -206,9 +214,31 @@ export default function MenuPage() {
   const [itemSearch, setItemSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterType, setFilterType] = useState('all');
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const { format } = useCurrency();
   
+  const handleGenerateDetails = async () => {
+    setIsGenerating(true);
+    try {
+      const result = await generateMenuItemDetails({
+        itemName: currentItem.name,
+        ingredients: currentItem.ingredients,
+        type: currentItem.type,
+      });
+      setCurrentItem(prev => ({
+        ...prev,
+        description: result.description,
+        kcal: result.kcal.toString(),
+      }));
+    } catch (error) {
+      console.error('Failed to generate menu item details:', error);
+      // Optionally, show a toast notification to the user
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const filteredComboItems = items.filter(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
   const handleItemCheckboxChange = (itemId: string, checked: boolean) => {
@@ -381,13 +411,29 @@ export default function MenuPage() {
                       <Textarea id="ingredients" name="ingredients" value={currentItem.ingredients} onChange={handleInputChange} placeholder="e.g. Patty, Lettuce, Tomato, Cheese" />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="description">Description</Label>
+                       <div className="flex justify-between items-center">
+                         <Label htmlFor="description">Description</Label>
+                         <Button variant="outline" size="sm" onClick={handleGenerateDetails} disabled={isGenerating}>
+                           <Sparkles className="mr-2 h-4 w-4" />
+                           {isGenerating ? 'Generating...' : 'Generate'}
+                         </Button>
+                       </div>
                       <Textarea id="description" name="description" value={currentItem.description} onChange={handleInputChange} placeholder="Describe the item..." />
                     </div>
+                     <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="mrp">MRP ({format(0).substring(0,1)})</Label>
+                            <Input id="mrp" name="mrp" type="number" value={currentItem.mrp} onChange={handleInputChange} placeholder="e.g. 150" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="kcal">Kcal</Label>
+                            <Input id="kcal" name="kcal" type="number" value={currentItem.kcal} onChange={handleInputChange} placeholder="e.g. 500" />
+                        </div>
+                     </div>
                      <div className="space-y-2">
-                        <Label htmlFor="mrp">MRP ({format(0).substring(0,1)})</Label>
-                        <Input id="mrp" name="mrp" type="number" value={currentItem.mrp} onChange={handleInputChange} placeholder="e.g. 150" />
-                    </div>
+                         <Label htmlFor="duration">Preparation Duration (in mins)</Label>
+                         <Input id="duration" name="duration" type="number" value={currentItem.duration} onChange={handleInputChange} placeholder="e.g. 15" />
+                     </div>
                     <Accordion type="multiple" className="w-full">
                       <AccordionItem value="add-ons">
                         <AccordionTrigger>Add-ons</AccordionTrigger>
@@ -846,6 +892,8 @@ export default function MenuPage() {
     </div>
   );
 }
+
+    
 
     
 
