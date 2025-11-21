@@ -120,14 +120,31 @@ export default function AIFAPage() {
     const activeEvents = useMemo(() => allEvents.filter(e => e.active), []);
 
     useEffect(() => {
-        setMessages([
-            {
-                id: 1,
-                sender: 'aifa',
-                content: `Hi! Welcome to ${businessNameParam}. I'm AIFA, your personal food assistant. How can I help you today?`
+        try {
+          const savedMessages = sessionStorage.getItem('aifa-chat-history');
+          if (savedMessages) {
+            const parsedMessages = JSON.parse(savedMessages);
+            // Simple check to ensure it's an array of messages
+            if (Array.isArray(parsedMessages) && parsedMessages.length > 0) {
+              setMessages(parsedMessages);
+              setShowInitialActions(false); // Don't show initial actions if history exists
+              return;
             }
-        ]);
+          }
+        } catch (error) {
+          console.error("Failed to load chat history from session storage:", error);
+        }
+    
+        // If no valid history, set initial message
+        const initialMessage = {
+          id: 1,
+          sender: 'aifa' as const,
+          content: `Hi! Welcome to ${businessNameParam}. I'm AIFA, your personal food assistant. How can I help you today?`
+        };
+        setMessages([initialMessage]);
+        sessionStorage.setItem('aifa-chat-history', JSON.stringify([initialMessage]));
     }, [businessNameParam]);
+
 
     useEffect(() => {
         if (scrollAreaRef.current) {
@@ -140,8 +157,21 @@ export default function AIFAPage() {
 
 
     const addMessage = (sender: 'user' | 'aifa', content: React.ReactNode) => {
-        setMessages(prev => [...prev, { id: Date.now(), sender, content }]);
-    }
+        setMessages(prev => {
+            const newMessages = [...prev, { id: Date.now(), sender, content }];
+            try {
+                // We can't store React components in JSON, so we convert them to a placeholder string.
+                const serializableMessages = newMessages.map(msg => ({
+                    ...msg,
+                    content: typeof msg.content === 'string' ? msg.content : '[Interactive Component]',
+                }));
+                sessionStorage.setItem('aifa-chat-history', JSON.stringify(serializableMessages));
+            } catch (error) {
+                console.error("Failed to save chat history to session storage:", error);
+            }
+            return newMessages;
+        });
+    };
     
     const handleFeedbackTarget = (target: string) => {
         addMessage('user', `Feedback for ${target}`);
