@@ -130,6 +130,7 @@ export default function AIFAPage() {
           if (savedMessagesJSON) {
             const savedMessages = JSON.parse(savedMessagesJSON);
             if (Array.isArray(savedMessages) && savedMessages.length > 0) {
+              // Ensure we only load string content, not components
               const textMessages = savedMessages.filter((msg: any) => typeof msg.content === 'string');
               if (textMessages.length > 0) {
                 setMessages(textMessages);
@@ -166,7 +167,7 @@ export default function AIFAPage() {
         setMessages(prev => {
             const newMessages = [...prev, { id: Date.now(), sender, content }];
             try {
-                // Save only serializable messages (strings)
+                // Save only serializable messages (strings) to prevent component storage
                 const serializableMessages = newMessages.filter(msg => typeof msg.content === 'string');
                 sessionStorage.setItem('aifa-chat-history', JSON.stringify(serializableMessages));
             } catch (error) {
@@ -190,19 +191,29 @@ export default function AIFAPage() {
         setShowInitialActions(false);
         await getAIResponse(action);
     };
+    
+    const processAIResponse = (response: string) => {
+        if (response.includes('[SUGGEST_FEEDBACK]')) {
+            const cleanResponse = response.replace('[SUGGEST_FEEDBACK]', '').trim();
+            addMessage('aifa', cleanResponse);
+            addMessage('aifa', <div><p>I can help with that. Who is this feedback for?</p><FeedbackTargetSelection onSelect={handleFeedbackTarget} /></div>);
+        } else {
+            addMessage('aifa', response);
+        }
+    };
+
 
     const getAIResponse = async (prompt: string) => {
         setIsThinking(true);
 
         const historyForAI = messages
-            .filter(msg => typeof msg.content === 'string')
+            .filter(msg => typeof msg.content === 'string') // Crucially, only send string content
             .map(msg => ({
                 role: msg.sender === 'user' ? 'user' : 'model' as 'user' | 'model',
                 content: msg.content as string
             }));
         
         try {
-            // A special check to see if the user's intent is to see events
             const isAskingForEvents = /event|happening|special/i.test(prompt);
 
             if ((prompt === "Events" || isAskingForEvents) && activeEvents.length > 0) {
@@ -223,7 +234,7 @@ export default function AIFAPage() {
                     prompt,
                 };
                 const response = await runAifaFlow(flowInput);
-                addMessage('aifa', response);
+                processAIResponse(response);
             }
         } catch(e) {
             console.error(e);
