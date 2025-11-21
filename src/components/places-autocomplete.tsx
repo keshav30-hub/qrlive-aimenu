@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -106,7 +105,8 @@ export function PlacesAutocomplete({ onPlaceSelect, value, onChange }: PlacesAut
     <>
       <style>{`
         gmp-place-autocomplete input {
-          color: hsl(var(--foreground));
+          color: hsl(var(--foreground)) !important;
+          background-color: hsl(var(--background)) !important;
         }
       `}</style>
       <gmp-place-autocomplete ref={autocompleteRef} country="in">
