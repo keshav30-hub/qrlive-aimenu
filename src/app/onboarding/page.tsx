@@ -34,10 +34,13 @@ export default function OnboardingPage() {
       // Display both name and formatted address
       const displayAddress = `${place.name ? place.name + ', ' : ''}${place.formatted_address || ''}`;
       setAddress(displayAddress);
-    } else {
-      // If place is null (e.g. input cleared), keep the typed value.
-      // The user might be typing a manual address.
     }
+  }
+
+  const handleAddressChange = (value: string) => {
+    // If the user is typing manually, update the address state
+    // but don't clear the selectedPlace, as they might just be editing.
+    setAddress(value);
   }
 
   return (
@@ -75,7 +78,7 @@ export default function OnboardingPage() {
             <Label htmlFor="full-address">Full Address</Label>
             <div className="relative">
               <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
-              <PlacesAutocomplete onPlaceSelect={handlePlaceSelect} value={address} onChange={setAddress} />
+              <PlacesAutocomplete onPlaceSelect={handlePlaceSelect} defaultValue={address} onChange={handleAddressChange} />
             </div>
           </div>
           <div className="space-y-2">

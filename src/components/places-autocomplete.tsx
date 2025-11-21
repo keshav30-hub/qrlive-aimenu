@@ -1,19 +1,18 @@
+"use client";
 
-'use client';
-
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 
 const MAP_ID = 'google-map-script-places';
 
 interface PlacesAutocompleteProps {
   onPlaceSelect: (place: google.maps.places.PlaceResult | null) => void;
-  value: string;
-  onChange: (value: string) => void;
+  defaultValue?: string;
+  onChange?: (value: string) => void;
 }
 
-export function PlacesAutocomplete({ onPlaceSelect, value, onChange }: PlacesAutocompleteProps) {
-  const [isApiLoaded, setIsApiLoaded] = useState(false);
+export function PlacesAutocomplete({ onPlaceSelect, defaultValue, onChange }: PlacesAutocompleteProps) {
+  const [isApiLoaded, setIsApiLoaded] = React.useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
 
@@ -25,6 +24,13 @@ export function PlacesAutocomplete({ onPlaceSelect, value, onChange }: PlacesAut
     }
 
     const loadScript = () => {
+      if (document.getElementById(MAP_ID)) {
+        if (window.google && window.google.maps && window.google.maps.places) {
+          setIsApiLoaded(true);
+        }
+        return;
+      }
+      
       const script = document.createElement('script');
       script.id = MAP_ID;
       script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&v=beta`;
@@ -44,7 +50,7 @@ export function PlacesAutocomplete({ onPlaceSelect, value, onChange }: PlacesAut
 
     if (window.google && window.google.maps && window.google.maps.places) {
       setIsApiLoaded(true);
-    } else if (!document.getElementById(MAP_ID)) {
+    } else {
       loadScript();
     }
   }, []);
@@ -64,6 +70,12 @@ export function PlacesAutocomplete({ onPlaceSelect, value, onChange }: PlacesAut
       });
     }
   }, [isApiLoaded, onPlaceSelect]);
+  
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (onChange) {
+      onChange(e.target.value);
+    }
+  };
 
   if (!isApiLoaded) {
     return (
@@ -82,8 +94,8 @@ export function PlacesAutocomplete({ onPlaceSelect, value, onChange }: PlacesAut
         id="full-address" 
         placeholder="Start typing your address..." 
         className="pl-10"
-        value={value || ''}
-        onChange={(e) => onChange(e.target.value)}
+        defaultValue={defaultValue || ''}
+        onChange={handleInputChange}
     />
   );
 }
