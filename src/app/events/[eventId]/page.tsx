@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import {
   Card,
   CardContent,
@@ -18,7 +19,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { placeHolderImages } from '@/lib/placeholder-images';
-import { User, Calendar, Clock, Info, Users, PlusCircle, FilePenLine, Trash2, Download } from 'lucide-react';
+import { User, Calendar, Clock, Info, Users, PlusCircle, FilePenLine, Trash2, Download, ChevronLeft } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -151,7 +152,15 @@ export default function EventDetailsPage({
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Event Details</h1>
+      <div className="flex items-center gap-4">
+        <Link href="/events">
+          <Button variant="outline" size="icon">
+            <ChevronLeft className="h-4 w-4" />
+            <span className="sr-only">Back to Events</span>
+          </Button>
+        </Link>
+        <h1 className="text-3xl font-bold">Event Details</h1>
+      </div>
       
       <Card className="overflow-hidden">
         <div className="relative w-full h-64 md:h-80">
