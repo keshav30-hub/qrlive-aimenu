@@ -69,6 +69,7 @@ service cloud.firestore {
     // It prevents them from modifying other parts of the document.
     match /users/{userId}/tasks/live {
       allow read: if isOwner(userId);
+      // Allow adding a new pending call, or allow owner to clear attended calls
       allow write: if isOwner(userId) || request.resource.data.pendingCalls.size() > resource.data.pendingCalls.size();
     }
     

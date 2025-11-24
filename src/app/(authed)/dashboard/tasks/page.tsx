@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -24,6 +23,8 @@ import { useTaskNotification } from '@/context/TaskNotificationContext';
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc, arrayRemove, arrayUnion } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Info } from 'lucide-react';
 
 type Task = {
   table: string;
@@ -133,7 +134,7 @@ export default function TasksPage() {
       return;
     }
 
-    const updatedTask = { ...originalTaskInDb, status: newStatus };
+    const updatedTask = { ...originalTaskInDb, status: newStatus, time: new Date().toISOString() };
 
     try {
       // Atomically remove from pending and add to attended
@@ -172,6 +173,14 @@ export default function TasksPage() {
         <h1 className="text-3xl font-bold">Tasks</h1>
         <Button onClick={simulateTask} variant="secondary">Simulate New Task</Button>
       </div>
+
+       <Alert>
+        <Info className="h-4 w-4" />
+        <AlertTitle>Data Retention Policy</AlertTitle>
+        <AlertDescription>
+          Attended and ignored tasks from the history log will be automatically deleted after 60 days.
+        </AlertDescription>
+      </Alert>
 
       <Card>
         <CardHeader>
