@@ -1,3 +1,4 @@
+
 import { z } from 'zod';
 
 export const MessageSchema = z.object({
@@ -31,6 +32,7 @@ export const EventSchema = z.object({
 export const AIFALowInputSchema = z.object({
   businessName: z.string(),
   priceSymbol: z.string().default('$'),
+  googleReviewLink: z.string().optional().nullable(),
   menuCategories: z.array(MenuCategorySchema),
   menuItems: z.array(MenuItemSchema),
   events: z.array(EventSchema),

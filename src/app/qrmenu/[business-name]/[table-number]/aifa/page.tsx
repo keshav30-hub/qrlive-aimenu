@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar } from "@/components/ui/avatar";
 import { useRouter, useParams } from "next/navigation";
-import { ChevronLeft, Send, Sparkles, ImagePlus, Loader2, Trash2 } from "lucide-react";
+import { ChevronLeft, Send, Sparkles, ImagePlus, Loader2, Trash2, ExternalLink } from "lucide-react";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import Image from "next/image";
@@ -88,9 +88,6 @@ const FeedbackForm = ({ target, onSubmit }: { target: string, onSubmit: (feedbac
     
     const handleSubmit = async () => {
         if (rating === 0 || (rating <= 2 && !comment.trim())) {
-             // For low ratings, description is mandatory. This is handled by the AI prompt, but good to have client side too.
-             // We will let the AI handle the mandatory description message for a better conversational flow.
-             // For now, we just disable the button.
              return;
         }
         setIsSubmitting(true);
@@ -142,6 +139,17 @@ const FeedbackForm = ({ target, onSubmit }: { target: string, onSubmit: (feedbac
         </div>
     );
 };
+
+const GoogleReviewButton = ({ href }: { href: string }) => (
+    <div className="py-2">
+        <Link href={href} target="_blank" rel="noopener noreferrer">
+            <Button variant="outline" className="w-full">
+                <ExternalLink className="mr-2 h-4 w-4" />
+                Leave a Google Review
+            </Button>
+        </Link>
+    </div>
+);
 
 
 export default function AIFAPage() {
@@ -212,9 +220,8 @@ export default function AIFAPage() {
           if (savedMessagesJSON) {
             const savedMessages = JSON.parse(savedMessagesJSON);
             if (Array.isArray(savedMessages) && savedMessages.length > 0) {
-              // Ensure we only load string content, not components
               const textMessages = savedMessages.filter((msg: any) => typeof msg.content === 'string');
-              if (textMessages.length > 1) { // More than just the initial message
+              if (textMessages.length > 1) { 
                 setMessages(textMessages);
                 setShowInitialActions(false);
                 return;
@@ -245,7 +252,6 @@ export default function AIFAPage() {
         setMessages(prev => {
             const newMessages = [...prev, { id: getUniqueMessageId(), sender, content }];
             try {
-                // Save only serializable messages (strings) to prevent component storage
                 const serializableMessages = newMessages.filter(msg => typeof msg.content === 'string');
                 sessionStorage.setItem('aifa-chat-history', JSON.stringify(serializableMessages));
             } catch (error) {
@@ -260,14 +266,16 @@ export default function AIFAPage() {
         try {
             await submitFeedback(businessData.id, feedback);
             
-            if (feedback.rating <= 2) {
-                const feedbackMessage = `submitted-${feedback.rating} star rating and ${feedback.comment || 'no description'}`;
+            const feedbackMessage = `submitted-${feedback.rating} star rating and ${feedback.comment || 'no description'}`;
+
+            if (feedback.rating <= 3) {
                 addMessage('user', feedbackMessage);
                 await getAIResponse(feedbackMessage);
             } else {
-                addMessage('aifa', 'Thank you for your feedback! It helps us improve.');
-                toast({ title: "Feedback submitted successfully!" });
+                 addMessage('aifa', "Thank you so much for your kind words! We're thrilled you had a great experience.");
+                 await getAIResponse(feedbackMessage);
             }
+            toast({ title: "Feedback submitted successfully!" });
 
         } catch (error) {
             console.error("Feedback submission error:", error);
@@ -296,7 +304,14 @@ export default function AIFAPage() {
             const cleanResponse = response.replace('[SUGGEST_FEEDBACK]', '').trim();
             addMessage('aifa', cleanResponse);
             addMessage('aifa', <div><p>I can help with that. Who is this feedback for?</p><FeedbackTargetSelection onSelect={handleFeedbackTarget} /></div>);
-        } else {
+        } else if (response.includes('[GOOGLE_REVIEW_LINK]')) {
+            const cleanResponse = response.replace('[GOOGLE_REVIEW_LINK]', '').trim();
+            addMessage('aifa', cleanResponse);
+            if (businessData?.googleReviewLink) {
+                 addMessage('aifa', <GoogleReviewButton href={businessData.googleReviewLink} />);
+            }
+        }
+        else {
             addMessage('aifa', response);
         }
     };
@@ -307,7 +322,7 @@ export default function AIFAPage() {
         setIsThinking(true);
 
         const historyForAI = messages
-            .filter(msg => typeof msg.content === 'string') // Crucially, only send string content
+            .filter(msg => typeof msg.content === 'string')
             .map(msg => ({
                 role: msg.sender === 'user' ? 'user' : 'model' as 'user' | 'model',
                 content: msg.content as string
@@ -328,6 +343,7 @@ export default function AIFAPage() {
                  const flowInput: AIFALowInput = {
                     businessName: businessData.name,
                     priceSymbol: format(0).replace(/[\d.,\s]/g, ''),
+                    googleReviewLink: businessData.googleReviewLink,
                     menuCategories: menuCategories.map(c => ({name: c.name, description: c.description})),
                     menuItems: menuItems.filter(i => i.price).map(i => ({...i, price: i.price.toString(), tags: i.tags || [] })),
                     events: events,
@@ -440,4 +456,3 @@ export default function AIFAPage() {
         </div>
     );
 }
-

@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -52,6 +53,7 @@ export type BusinessData = {
     id: string;
     name: string;
     logo: string;
+    googleReviewLink?: string;
 };
 
 async function getFirestoreInstance() {
@@ -80,6 +82,7 @@ export async function getBusinessDataBySlug(slug: string): Promise<{ businessDat
                     id: userDoc.id,
                     name: userData.businessName || 'Unnamed Business',
                     logo: userData.logo || 'https://picsum.photos/seed/logo/100/100',
+                    googleReviewLink: userData.googleReviewLink,
                 },
                 userId: userDoc.id,
             };
@@ -91,6 +94,7 @@ export async function getBusinessDataBySlug(slug: string): Promise<{ businessDat
                 id: userDoc.id,
                 name: userData.businessName || 'Unnamed Business',
                 logo: userData.logo || 'https://picsum.photos/seed/logo/100/100',
+                googleReviewLink: userData.googleReviewLink,
             },
             userId: userDoc.id,
         };
@@ -142,24 +146,21 @@ export async function submitFeedback(userId: string, feedback: { target: string;
         comment: feedback.comment,
         imageUrl: feedback.imageUrl || '',
         timestamp: serverTimestamp(),
-        restaurantId: userId, // associate feedback with the business user
+        restaurantId: userId, 
     };
 
     if (feedback.target === 'Business') {
         feedbackRef = collection(firestore, 'users', userId, 'feedback');
-        // Add restaurantId to user-specific feedback as well for consistency
         await addDoc(feedbackRef, feedbackData);
 
     } else { // AIFA Feedback
         feedbackRef = collection(firestore, 'aifa_feedback');
-        // For global feedback, we don't need the restaurantId inside the doc, but can be useful
         await addDoc(feedbackRef, { ...feedbackData });
     }
 }
 
 export async function submitServiceRequest(userId: string, table: string, requestType: string) {
   const firestore = await getFirestoreInstance();
-  // As per the rules, we update a single document 'live' in the 'tasks' collection.
   const tasksLiveRef = doc(firestore, 'users', userId, 'tasks', 'live');
   
   const newCall = {
@@ -169,7 +170,6 @@ export async function submitServiceRequest(userId: string, table: string, reques
     status: 'unattended'
   };
 
-  // Use setDoc with merge to create the doc if it doesn't exist, or update it if it does.
   await setDoc(tasksLiveRef, {
       pendingCalls: arrayUnion(newCall)
   }, { merge: true });
