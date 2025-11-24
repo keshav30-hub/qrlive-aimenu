@@ -109,19 +109,23 @@ type Category = {
     imageUrl: string;
     imageStoragePath?: string;
     imageHint: string;
-    active: boolean;
-    availableDays: string[];
-    fromTime: string;
-    toTime: string;
+    isAvailable: boolean;
+    availability: {
+      days: string[];
+      startTime: string;
+      endTime: string;
+    };
 };
 
 const defaultCategory: Omit<Category, 'id' | 'imageUrl' | 'imageHint'> = {
     name: '',
     description: '',
-    active: true,
-    availableDays: [],
-    fromTime: '',
-    toTime: '',
+    isAvailable: true,
+    availability: {
+        days: [],
+        startTime: '',
+        endTime: '',
+    },
 };
 
 type Combo = {
@@ -335,11 +339,11 @@ export default function MenuPage() {
     setIsCategorySheetOpen(true);
   };
 
-  const handleCategoryToggleSwitch = async (categoryId: string, active: boolean) => {
+  const handleCategoryToggleSwitch = async (categoryId: string, isAvailable: boolean) => {
     if (!categoriesRef) return;
     const catDoc = doc(categoriesRef, categoryId);
     try {
-        await updateDoc(catDoc, { active });
+        await updateDoc(catDoc, { isAvailable });
     } catch (e) {
         toast({ variant: "destructive", title: "Error", description: "Could not update category status." });
         console.error(e);
@@ -348,14 +352,24 @@ export default function MenuPage() {
   
   const handleCategoryInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { id, value } = e.target;
-    setCurrentCategory(prev => ({ ...prev, [id]: value }));
-  };
+    if (id === 'startTime' || id === 'endTime') {
+        setCurrentCategory(prev => ({ 
+            ...prev, 
+            availability: { ...prev.availability, [id]: value } 
+        }));
+    } else {
+        setCurrentCategory(prev => ({ ...prev, [id]: value }));
+    }
+};
 
-  const handleCategoryDayChange = (dayId: string, checked: boolean) => {
-    const currentDays = currentCategory.availableDays || [];
+const handleCategoryDayChange = (dayId: string, checked: boolean) => {
+    const currentDays = currentCategory.availability?.days || [];
     const newDays = checked ? [...currentDays, dayId] : currentDays.filter(d => d !== dayId);
-    setCurrentCategory(prev => ({ ...prev, availableDays: newDays }));
-  }
+    setCurrentCategory(prev => ({
+        ...prev,
+        availability: { ...prev.availability, days: newDays }
+    }));
+}
 
   const handleCategoryImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
      if (e.target.files && e.target.files[0] && user) {
@@ -371,6 +385,7 @@ export default function MenuPage() {
                 ...prev,
                 imageUrl: uploadResult.downloadURL,
                 imageStoragePath: uploadResult.storagePath,
+                imageHint: 'user uploaded',
             }));
             toast({ title: 'Image Uploaded' });
         } else {
@@ -781,7 +796,7 @@ export default function MenuPage() {
                                     <div key={day.id} className="flex items-center space-x-2">
                                         <Checkbox 
                                             id={`edit-${day.id}`}
-                                            checked={(currentCategory.availableDays || []).includes(day.id)}
+                                            checked={(currentCategory.availability?.days || []).includes(day.id)}
                                             onCheckedChange={(checked) => handleCategoryDayChange(day.id, !!checked)}
                                         />
                                         <Label htmlFor={`edit-${day.id}`} className="font-normal text-sm">{day.label}</Label>
@@ -793,12 +808,12 @@ export default function MenuPage() {
                             <Label>Available Duration</Label>
                             <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1">
-                                <Label htmlFor="from-time-edit" className="text-xs">From</Label>
-                                <Input id="fromTime" type="time" value={currentCategory.fromTime || ''} onChange={handleCategoryInputChange} />
+                                <Label htmlFor="startTime" className="text-xs">From</Label>
+                                <Input id="startTime" type="time" value={currentCategory.availability?.startTime || ''} onChange={handleCategoryInputChange} />
                             </div>
                             <div className="space-y-1">
-                                <Label htmlFor="to-time-edit" className="text-xs">To</Label>
-                                <Input id="toTime" type="time" value={currentCategory.toTime || ''} onChange={handleCategoryInputChange} />
+                                <Label htmlFor="endTime" className="text-xs">To</Label>
+                                <Input id="endTime" type="time" value={currentCategory.availability?.endTime || ''} onChange={handleCategoryInputChange} />
                             </div>
                             </div>
                         </div>
@@ -833,11 +848,11 @@ export default function MenuPage() {
                         <div className="flex items-center gap-2">
                             <Switch
                                 id={`category-toggle-${category.id}`}
-                                checked={category.active}
+                                checked={category.isAvailable}
                                 onCheckedChange={(checked) => handleCategoryToggleSwitch(category.id, checked)}
                             />
                             <label htmlFor={`category-toggle-${category.id}`} className="text-sm font-medium">
-                                {category.active ? 'Active' : 'Inactive'}
+                                {category.isAvailable ? 'Active' : 'Inactive'}
                             </label>
                         </div>
                         <DropdownMenu>
@@ -986,3 +1001,5 @@ export default function MenuPage() {
     </div>
   );
 }
+
+    
