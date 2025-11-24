@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar } from "@/components/ui/avatar";
 import { useRouter, useParams } from "next/navigation";
-import { ChevronLeft, Send, Sparkles, Ticket, Star, ImagePlus } from "lucide-react";
+import { ChevronLeft, Send, Sparkles, ImagePlus } from "lucide-react";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import Image from "next/image";
@@ -15,8 +15,9 @@ import { Label } from "@/components/ui/label";
 import Link from 'next/link';
 import { runAifaFlow } from "@/ai/flows/aifa-flow";
 import { type AIFALowInput } from "@/ai/flows/aifa-schema";
-import { menu as menuData, events as allEvents, businessData } from '@/lib/qrmenu-mock';
 import { useCurrency } from "@/hooks/use-currency";
+import { getBusinessDataBySlug, getEvents, getMenuData, type BusinessData, type Event, type Category as MenuCategory, type MenuItem } from '@/lib/qrmenu-mock';
+import { Star } from 'lucide-react';
 
 
 type Message = {
@@ -39,7 +40,7 @@ const InitialActions = ({ onSelect, showEventsButton }: { onSelect: (action: str
     </div>
 );
 
-const EventCard = ({ event }: { event: typeof allEvents[0] }) => (
+const EventCard = ({ event }: { event: Event }) => (
     <Card className="w-full overflow-hidden my-2">
         <div className="relative h-32 w-full">
             <Image src={event.imageUrl} alt={event.name} layout="fill" objectFit="cover" data-ai-hint={event.imageHint} />
@@ -121,7 +122,7 @@ const FeedbackForm = ({ target }: { target: string }) => {
 export default function AIFAPage() {
     const router = useRouter();
     const params = useParams();
-    const businessNameParam = params['business-name'] ? (params['business-name'] as string).replace(/-/g, ' ') : businessData.name;
+    const businessSlug = params['business-name'];
     const { format } = useCurrency();
     
     const [messages, setMessages] = useState<Message[]>([]);
@@ -130,9 +131,41 @@ export default function AIFAPage() {
     const [isThinking, setIsThinking] = useState(false);
     const scrollViewportRef = useRef<HTMLDivElement>(null);
 
-    const activeEvents = useMemo(() => allEvents.filter(e => e.active), []);
+    const [businessData, setBusinessData] = useState<BusinessData | null>(null);
+    const [events, setEvents] = useState<Event[]>([]);
+    const [menuCategories, setMenuCategories] = useState<MenuCategory[]>([]);
+    const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+
+    const activeEvents = useMemo(() => events.filter(e => e.active), [events]);
 
     useEffect(() => {
+      async function fetchData() {
+        if (typeof businessSlug !== 'string') return;
+        
+        setIsLoading(true);
+        const { businessData: bd, userId } = await getBusinessDataBySlug(businessSlug);
+        
+        if (bd && userId) {
+          setBusinessData(bd);
+          const [fetchedEvents, menuData] = await Promise.all([
+            getEvents(userId),
+            getMenuData(userId)
+          ]);
+          setEvents(fetchedEvents);
+          setMenuCategories(menuData.categories);
+          setMenuItems(menuData.items);
+        }
+        setIsLoading(false);
+      }
+  
+      fetchData();
+    }, [businessSlug]);
+
+    useEffect(() => {
+        if (isLoading) return;
+
         try {
           const savedMessagesJSON = sessionStorage.getItem('aifa-chat-history');
           if (savedMessagesJSON) {
@@ -154,11 +187,11 @@ export default function AIFAPage() {
         const initialMessage = {
           id: getUniqueMessageId(),
           sender: 'aifa' as const,
-          content: `Hi! Welcome to ${businessNameParam}. I'm AIFA, your personal food assistant. How can I help you today?`
+          content: `Hi! Welcome to ${businessData?.name || 'our restaurant'}. I'm AIFA, your personal food assistant. How can I help you today?`
         };
         setMessages([initialMessage]);
         sessionStorage.setItem('aifa-chat-history', JSON.stringify([initialMessage]));
-    }, [businessNameParam]);
+    }, [businessData, isLoading]);
 
 
     useEffect(() => {
@@ -212,6 +245,7 @@ export default function AIFAPage() {
 
 
     const getAIResponse = async (prompt: string) => {
+        if (!businessData) return;
         setIsThinking(true);
 
         const historyForAI = messages
@@ -234,11 +268,11 @@ export default function AIFAPage() {
             }
             else {
                  const flowInput: AIFALowInput = {
-                    businessName: businessNameParam,
+                    businessName: businessData.name,
                     priceSymbol: format(0).replace(/[\d.,\s]/g, ''),
-                    menuCategories: menuData.categories.map(c => ({name: c.name, description: c.description})),
-                    menuItems: menuData.items.map(i => ({...i, price: i.price.toString(), tags: i.tags || [] })),
-                    events: allEvents,
+                    menuCategories: menuCategories.map(c => ({name: c.name, description: c.description})),
+                    menuItems: menuItems.map(i => ({...i, price: i.price.toString(), tags: i.tags || [] })),
+                    events: events,
                     history: historyForAI,
                     prompt,
                 };
@@ -264,6 +298,15 @@ export default function AIFAPage() {
         }
     };
 
+    if (isLoading) {
+        return (
+            <div className="bg-gray-100 dark:bg-black min-h-screen">
+                <div className="max-w-[480px] mx-auto bg-white dark:bg-gray-950 shadow-lg relative flex flex-col h-screen items-center justify-center">
+                    <p>Loading AIFA...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="bg-gray-100 dark:bg-black min-h-screen">

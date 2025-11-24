@@ -5,7 +5,6 @@ import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
   Card,
-  CardContent,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -34,9 +33,9 @@ import {
   GlassWater,
   SprayCan,
 } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
-import { menu } from '@/lib/qrmenu-mock';
+import { getBusinessDataBySlug, getMenuData, type MenuItem } from '@/lib/qrmenu-mock';
 
 
 const getTagIcon = (tag: string) => {
@@ -61,8 +60,8 @@ const serviceRequests = [
 export default function CategoryMenuPage() {
   const router = useRouter();
   const params = useParams();
-  const { 'business-name': businessName, 'table-number': tableNumber } = params;
-  const categoryName = params.category ? (params.category as string).replace(/-/g, ' ') : '';
+  const { 'business-name': businessSlug, 'table-number': tableNumber, category: categorySlug } = params;
+  const categoryName = typeof categorySlug === 'string' ? categorySlug.replace(/-/g, ' ') : '';
   
   const { format } = useCurrency();
   const [searchTerm, setSearchTerm] = useState('');
@@ -70,22 +69,42 @@ export default function CategoryMenuPage() {
   // In a real app, you'd manage a global cart state (e.g., with Context or Zustand)
   const [cart, setCart] = useState<any[]>([]);
 
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchData() {
+      if (typeof businessSlug !== 'string') return;
+      const { userId } = await getBusinessDataBySlug(businessSlug as string);
+      if (userId) {
+        const { items } = await getMenuData(userId);
+        setMenuItems(items);
+      }
+      setIsLoading(false);
+    }
+    fetchData();
+  }, [businessSlug]);
+
   const filteredItems = useMemo(() => {
-    return menu.items.filter(item => {
-      const itemCategory = item.category.toLowerCase().replace(/ /g, '-');
-      const matchesCategory = itemCategory === params.category;
+    return menuItems.filter(item => {
+      const itemCategory = item.category.toLowerCase();
+      const matchesCategory = itemCategory === categoryName;
       const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesType = !showVegOnly || item.type === 'veg';
       return matchesCategory && matchesSearch && matchesType;
     });
-  }, [params.category, searchTerm, showVegOnly]);
+  }, [menuItems, categoryName, searchTerm, showVegOnly]);
 
   const addToCart = (item: any) => {
     // This is a placeholder. Cart logic would be centralized.
     console.log(`Added ${item.name} to cart.`);
   };
 
-  const aifaUrl = `/qrmenu/${businessName}/${tableNumber}/aifa`;
+  const aifaUrl = `/qrmenu/${businessSlug}/${tableNumber}/aifa`;
+
+  if (isLoading) {
+    return <div className="flex h-screen items-center justify-center">Loading dishes...</div>
+  }
 
   return (
     <div className="bg-gray-100 dark:bg-black min-h-screen">
@@ -172,9 +191,9 @@ export default function CategoryMenuPage() {
                   </p>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
                     {item.kcal} kcal
-                    {item.tags.length > 0 && <Separator orientation='vertical' className='h-3' />}
+                    {item.tags && item.tags.length > 0 && <Separator orientation='vertical' className='h-3' />}
                     <div className='flex gap-2'>
-                        {item.tags.map(tag => (
+                        {(item.tags || []).map(tag => (
                             <div key={tag} className="flex items-center gap-1 capitalize">
                                 {getTagIcon(tag)} {tag}
                             </div>
@@ -216,5 +235,3 @@ export default function CategoryMenuPage() {
     </div>
   );
 }
-
-    

@@ -1,15 +1,121 @@
 
+'use client';
 
-export const businessData = {
-  name: 'The Gourmet Place',
-  logo: 'https://picsum.photos/seed/logo/100/100',
+import {
+  collection,
+  getDocs,
+  query,
+  where,
+  limit,
+  getDoc,
+  doc,
+} from 'firebase/firestore';
+import { firestore } from '@/firebase/config';
+import { initializeFirebase } from '@/firebase';
+
+export type Category = {
+  id: string;
+  name: string;
+  description: string;
+  imageUrl: string;
+  imageHint: string;
+  active: boolean;
 };
 
-export const events: any[] = [];
-
-export const menu = {
-  categories: [],
-  items: [],
+export type MenuItem = {
+  id: string;
+  name: string;
+  category: string;
+  price: string;
+  type: 'veg' | 'non-veg';
+  description: string;
+  kcal: string;
+  tags: string[];
+  imageUrl: string;
+  imageHint: string;
+  available: boolean;
 };
 
-    
+export type Event = {
+  id: string;
+  name: string;
+  description: string;
+  datetime: string;
+  imageUrl: string;
+  imageHint: string;
+  active: boolean;
+};
+
+export type BusinessData = {
+    id: string;
+    name: string;
+    logo: string;
+};
+
+async function getFirestoreInstance() {
+    const { firestore } = initializeFirebase();
+    return firestore;
+}
+
+
+export async function getBusinessDataBySlug(slug: string): Promise<{ businessData: BusinessData | null, userId: string | null }> {
+    const firestore = await getFirestoreInstance();
+    const usersRef = collection(firestore, 'users');
+    // In a real-world scenario, you might have a dedicated field for the URL slug.
+    // For this app, we'll query by the businessName, assuming it's unique and used as the slug.
+    const q = query(usersRef, where('businessName', '==', slug), limit(1));
+
+    try {
+        const querySnapshot = await getDocs(q);
+        if (querySnapshot.empty) {
+            console.warn(`No business found for slug: ${slug}`);
+            return { businessData: null, userId: null };
+        }
+        const userDoc = querySnapshot.docs[0];
+        const userData = userDoc.data();
+        return {
+            businessData: {
+                id: userDoc.id,
+                name: userData.businessName || 'Unnamed Business',
+                logo: userData.logo || 'https://picsum.photos/seed/logo/100/100',
+            },
+            userId: userDoc.id,
+        };
+    } catch (error) {
+        console.error("Error fetching business data:", error);
+        return { businessData: null, userId: null };
+    }
+}
+
+export async function getMenuData(userId: string): Promise<{ categories: Category[], items: MenuItem[] }> {
+    const firestore = await getFirestoreInstance();
+    const categoriesRef = collection(firestore, 'users', userId, 'menuCategories');
+    const itemsRef = collection(firestore, 'users', userId, 'menuItems');
+
+    try {
+        const [categoriesSnapshot, itemsSnapshot] = await Promise.all([
+            getDocs(query(categoriesRef, where('active', '==', true))),
+            getDocs(query(itemsRef, where('available', '==', true))),
+        ]);
+
+        const categories = categoriesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
+        const items = itemsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MenuItem));
+        
+        return { categories, items };
+    } catch (error) {
+        console.error("Error fetching menu data:", error);
+        return { categories: [], items: [] };
+    }
+}
+
+export async function getEvents(userId: string): Promise<Event[]> {
+    const firestore = await getFirestoreInstance();
+    const eventsRef = collection(firestore, 'users', userId, 'events');
+    try {
+        const snapshot = await getDocs(query(eventsRef, where('active', '==', true)));
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Event));
+    } catch (error) {
+        console.error("Error fetching events:", error);
+        return [];
+    }
+}

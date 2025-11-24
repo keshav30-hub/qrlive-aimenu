@@ -6,12 +6,9 @@ import Image from 'next/image';
 import Link from 'next/link';
 import {
   Card,
-  CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Carousel,
@@ -23,7 +20,6 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
   SheetFooter,
   SheetDescription,
 } from '@/components/ui/sheet';
@@ -44,8 +40,6 @@ import {
   Minus,
   Trash2,
   Tag,
-  Star,
-  Flame,
   Bell,
   ConciergeBell,
   FileText,
@@ -53,20 +47,9 @@ import {
   GlassWater,
   SprayCan,
 } from 'lucide-react';
-import { useState } from 'react';
-import { businessData, events, menu } from '@/lib/qrmenu-mock';
+import { useState, useEffect } from 'react';
+import { getBusinessDataBySlug, getEvents, getMenuData, type BusinessData, type Event, type Category } from '@/lib/qrmenu-mock';
 
-
-const getTagIcon = (tag: string) => {
-  switch (tag) {
-    case 'bestseller':
-      return <Star className="h-3 w-3" />;
-    case 'healthy':
-      return <Flame className="h-3 w-3" />; // Using Flame for 'healthy'
-    default:
-      return null;
-  }
-};
 
 const serviceRequests = [
     { text: 'Get Bill', icon: <FileText /> },
@@ -78,9 +61,35 @@ const serviceRequests = [
 
 export default function QrMenuPage() {
   const params = useParams();
-  const { 'business-name': businessName, 'table-number': tableNumber } = params;
+  const { 'business-name': businessSlug, 'table-number': tableNumber } = params;
   const { format } = useCurrency();
   const [cart, setCart] = useState<any[]>([]);
+
+  const [businessData, setBusinessData] = useState<BusinessData | null>(null);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchData() {
+      if (typeof businessSlug !== 'string') return;
+      
+      const { businessData, userId } = await getBusinessDataBySlug(businessSlug as string);
+      
+      if (businessData && userId) {
+        setBusinessData(businessData);
+        const [fetchedEvents, menuData] = await Promise.all([
+          getEvents(userId),
+          getMenuData(userId)
+        ]);
+        setEvents(fetchedEvents);
+        setCategories(menuData.categories);
+      }
+      setIsLoading(false);
+    }
+
+    fetchData();
+  }, [businessSlug]);
 
   const addToCart = (item: any) => {
     setCart((prevCart) => {
@@ -114,7 +123,15 @@ export default function QrMenuPage() {
     0
   );
   
-  const aifaUrl = `/qrmenu/${businessName}/${tableNumber}/aifa`;
+  const aifaUrl = `/qrmenu/${businessSlug}/${tableNumber}/aifa`;
+
+  if (isLoading) {
+    return <div className="flex h-screen items-center justify-center">Loading Menu...</div>
+  }
+  
+  if (!businessData) {
+     return <div className="flex h-screen items-center justify-center">Business not found.</div>
+  }
 
   return (
     <div className="bg-gray-100 dark:bg-black min-h-screen">
@@ -161,7 +178,7 @@ export default function QrMenuPage() {
           </Dialog>
         </header>
 
-        <section className="px-4 pb-4">
+        {(events || []).length > 0 && <section className="px-4 pb-4">
           <Carousel
             opts={{
               align: 'start',
@@ -189,12 +206,12 @@ export default function QrMenuPage() {
               ))}
             </CarouselContent>
           </Carousel>
-        </section>
+        </section>}
 
         <main className="p-4">
            <div className="grid grid-cols-2 gap-4">
-            {menu.categories.map((category) => (
-                <Link key={category.name} href={`/qrmenu/${businessName}/${tableNumber}/${category.name.toLowerCase().replace(/ /g, '-')}`}>
+            {(categories || []).map((category) => (
+                <Link key={category.name} href={`/qrmenu/${businessSlug}/${tableNumber}/${category.name.toLowerCase().replace(/ /g, '-')}`}>
                     <Card className="overflow-hidden">
                         <div className="relative h-24 w-full">
                              <Image
@@ -317,5 +334,3 @@ export default function QrMenuPage() {
     </div>
   );
 }
-
-    
