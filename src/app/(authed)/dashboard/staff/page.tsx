@@ -159,7 +159,7 @@ export default function StaffPage() {
     setIsEditingReminder(false);
   };
 
-  const activeStaffList = staffList.filter(staff => staff.active);
+  const activeStaffList = (staffList || []).filter(staff => staff.active);
 
 
   return (
@@ -451,7 +451,7 @@ export default function StaffPage() {
                                     <SelectValue placeholder="Select a shift" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {shifts.map(shift => (
+                                    {(shifts || []).map(shift => (
                                       <SelectItem key={shift.id} value={shift.name.toLowerCase().replace(' ', '-')}>{shift.name}</SelectItem>
                                     ))}
                                 </SelectContent>
@@ -480,7 +480,7 @@ export default function StaffPage() {
               </Sheet>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {staffLoading ? <p>Loading...</p> : staffList.map((staff) => (
+                {staffLoading ? <p>Loading...</p> : (staffList || []).map((staff) => (
                     <Card key={staff.id} className="overflow-hidden">
                         <Link href={`/dashboard/staff/${staff.id}`} className="block hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                             <CardContent className="pt-6 flex flex-col items-center justify-center text-center gap-3">
@@ -511,7 +511,7 @@ export default function StaffPage() {
                         </CardFooter>
                     </Card>
                 ))}
-                {staffList.length === 0 && !staffLoading && (
+                {(staffList || []).length === 0 && !staffLoading && (
                   <div className="col-span-full text-center py-10 text-muted-foreground">
                     <p>No staff members have been added yet.</p>
                   </div>
