@@ -1,43 +1,38 @@
 
 'use client';
 
-import { useUser, useDoc, useMemoFirebase } from '@/firebase';
+import { useUser, useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { doc } from 'firebase/firestore';
+import { collection, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { AppSidebar } from '@/components/layout/sidebar';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { TaskNotificationProvider } from '@/context/TaskNotificationContext';
 import { useFirebase } from '@/firebase';
 import { Button } from '@/components/ui/button';
-import { Bell, User, Settings, CreditCard } from 'lucide-react';
+import { Bell, ExternalLink } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 type UserProfile = {
     onboarding: boolean;
 };
 
-const sampleNotifications = [
-    {
-      icon: <User className="h-5 w-5 text-blue-500" />,
-      title: 'New Staff Member Added',
-      description: 'John Doe has been added to your staff list.',
-      time: '15m ago',
-    },
-    {
-      icon: <Settings className="h-5 w-5 text-gray-500" />,
-      title: 'Settings Updated',
-      description: 'Your business information has been successfully updated.',
-      time: '1h ago',
-    },
-    {
-      icon: <CreditCard className="h-5 w-5 text-green-500" />,
-      title: 'Payment Received',
-      description: 'A payment of $250 was successfully processed.',
-      time: '3h ago',
-    },
-];
+type Notification = {
+    id: string;
+    message: string;
+    timestamp: any;
+    read: boolean;
+    link?: string;
+};
 
 function AuthRedirect({ children }: { children: React.ReactNode }) {
     const { user, isUserLoading } = useUser();
@@ -88,13 +83,114 @@ function AuthRedirect({ children }: { children: React.ReactNode }) {
     );
 }
 
+function NotificationPanel() {
+  const { firestore, user } = useFirebase();
+  const { toast } = useToast();
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
+
+  const notificationsRef = useMemoFirebase(
+    () => (user ? collection(firestore, 'users', user.uid, 'notifications') : null),
+    [firestore, user]
+  );
+
+  const { data: notifications, isLoading } = useCollection<Notification>(notificationsRef);
+
+  const sortedNotifications = (notifications || []).sort((a, b) => b.timestamp?.toMillis() - a.timestamp?.toMillis());
+  const unreadCount = (notifications || []).filter(n => !n.read).length;
+  
+  const handleNotificationClick = async (notification: Notification) => {
+    setSelectedNotification(notification);
+    if (!notification.read && notificationsRef) {
+      try {
+        const notifDoc = doc(notificationsRef, notification.id);
+        await updateDoc(notifDoc, { read: true });
+      } catch (error) {
+        console.error("Failed to mark notification as read:", error);
+        toast({ variant: "destructive", title: "Error", description: "Could not update notification status." });
+      }
+    }
+  };
+
+
+  return (
+    <>
+      <Sheet open={isPanelOpen} onOpenChange={setIsPanelOpen}>
+        <SheetTrigger asChild>
+          <Button variant="outline" size="icon" className="relative">
+            <Bell />
+            {unreadCount > 0 && (
+              <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-destructive" />
+            )}
+            <span className="sr-only">Toggle notifications</span>
+          </Button>
+        </SheetTrigger>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>Notifications</SheetTitle>
+          </SheetHeader>
+          <div className="mt-4 space-y-2">
+            {isLoading ? (
+              <p>Loading notifications...</p>
+            ) : sortedNotifications.length > 0 ? (
+              sortedNotifications.map((notification) => (
+                <div
+                  key={notification.id}
+                  onClick={() => handleNotificationClick(notification)}
+                  className={cn(
+                    "flex items-start gap-3 rounded-lg border p-3 cursor-pointer transition-colors hover:bg-accent",
+                    !notification.read && "bg-blue-50 dark:bg-blue-900/20"
+                  )}
+                >
+                  {!notification.read && (
+                    <span className="mt-1.5 h-2 w-2 rounded-full bg-blue-500 flex-shrink-0" />
+                  )}
+                  <div className="flex-1">
+                    <p className="text-sm font-medium line-clamp-2">{notification.message}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {notification.timestamp?.toDate().toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-10">No notifications yet.</p>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <Dialog open={!!selectedNotification} onOpenChange={(isOpen) => !isOpen && setSelectedNotification(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Notification Details</DialogTitle>
+             <DialogDescription>
+                {selectedNotification?.timestamp?.toDate().toLocaleString()}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+             <p className="text-sm">{selectedNotification?.message}</p>
+             {selectedNotification?.link && (
+                 <a href={selectedNotification.link} target="_blank" rel="noopener noreferrer">
+                    <Button variant="outline" className="mt-4 w-full">
+                        <ExternalLink className="mr-2 h-4 w-4"/>
+                        Visit Link
+                    </Button>
+                 </a>
+             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 
 export default function AuthedLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [open, setOpen] = useState(false);
   return (
     <AuthRedirect>
         <div className="h-screen overflow-hidden">
@@ -103,31 +199,7 @@ export default function AuthedLayout({
                 <AppSidebar />
                 <main className="flex-1 flex flex-col bg-gray-100 dark:bg-black">
                    <header className="flex h-16 items-center justify-end border-b bg-background px-4">
-                        <Sheet open={open} onOpenChange={setOpen}>
-                            <SheetTrigger asChild>
-                                <Button variant="outline" size="icon">
-                                    <Bell />
-                                    <span className="sr-only">Toggle notifications</span>
-                                </Button>
-                            </SheetTrigger>
-                            <SheetContent>
-                                <SheetHeader>
-                                <SheetTitle>Notifications</SheetTitle>
-                                </SheetHeader>
-                                <div className="mt-4 space-y-4">
-                                {sampleNotifications.map((notification, index) => (
-                                    <div key={index} className="flex items-start gap-4">
-                                        <div className="mt-1">{notification.icon}</div>
-                                        <div className="flex-1">
-                                            <p className="font-semibold">{notification.title}</p>
-                                            <p className="text-sm text-muted-foreground">{notification.description}</p>
-                                            <p className="text-xs text-muted-foreground mt-1">{notification.time}</p>
-                                        </div>
-                                    </div>
-                                ))}
-                                </div>
-                            </SheetContent>
-                        </Sheet>
+                        <NotificationPanel />
                     </header>
                     <div className="flex-1 overflow-y-auto p-4">
                       {children}
