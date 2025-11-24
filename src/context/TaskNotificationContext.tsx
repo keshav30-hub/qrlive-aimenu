@@ -1,6 +1,7 @@
+
 'use client';
 
-import React, { createContext, useContext, useState, useRef, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useRef, ReactNode, useEffect } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,6 +23,8 @@ type TaskNotificationContextType = {
   showNewTask: (task: Task) => void;
   isMuted: boolean;
   toggleMute: () => void;
+  unattendedTaskCount: number;
+  setUnattendedTaskCount: (count: number) => void;
 };
 
 const TaskNotificationContext = createContext<TaskNotificationContextType | undefined>(undefined);
@@ -35,40 +38,50 @@ export const useTaskNotification = () => {
 };
 
 export const TaskNotificationProvider = ({ children }: { children: ReactNode }) => {
-  const [task, setTask] = useState<Task | null>(null);
+  const [latestTask, setLatestTask] = useState<Task | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [unattendedTaskCount, setUnattendedTaskCount] = useState(0);
   const audioRef = useRef<HTMLAudioElement>(null);
 
-  const showNewTask = (newTask: Task) => {
-    setTask(newTask);
-    if (!isMuted && audioRef.current) {
-      audioRef.current.play().catch(error => console.error("Audio playback failed:", error));
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (unattendedTaskCount > 0 && !isMuted) {
+      audio.play().catch(error => console.error("Audio playback failed:", error));
+    } else {
+      audio.pause();
+      audio.currentTime = 0;
     }
+  }, [unattendedTaskCount, isMuted]);
+
+  const showNewTask = (newTask: Task) => {
+    setLatestTask(newTask);
+    setIsDialogOpen(true);
   };
 
   const toggleMute = () => {
-    setIsMuted(prev => {
-        if (!prev === true && audioRef.current) {
-            audioRef.current.pause();
-            audioRef.current.currentTime = 0;
-        }
-        return !prev;
-    });
+    setIsMuted(prev => !prev);
   };
 
   const closeDialog = () => {
-    setTask(null);
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-    }
+    setIsDialogOpen(false);
+  };
+
+  const value = { 
+    showNewTask, 
+    isMuted, 
+    toggleMute,
+    unattendedTaskCount,
+    setUnattendedTaskCount
   };
 
   return (
-    <TaskNotificationContext.Provider value={{ showNewTask, isMuted, toggleMute }}>
+    <TaskNotificationContext.Provider value={value}>
       {children}
       <audio ref={audioRef} src="/notificationalert.mp3" preload="auto" loop />
-      <AlertDialog open={!!task} onOpenChange={(open) => !open && closeDialog()}>
+      <AlertDialog open={isDialogOpen} onOpenChange={(open) => !open && closeDialog()}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>New Task Received!</AlertDialogTitle>
@@ -77,14 +90,14 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-2">
-            <p><strong>Table:</strong> {task?.tableName}</p>
-            <p><strong>Request:</strong> {task?.requestType}</p>
-            <p><strong>Time:</strong> {task?.dateTime}</p>
+            <p><strong>Table:</strong> {latestTask?.tableName}</p>
+            <p><strong>Request:</strong> {latestTask?.requestType}</p>
+            <p><strong>Time:</strong> {latestTask?.dateTime}</p>
           </div>
           <AlertDialogFooter>
-            <Button variant="outline" onClick={closeDialog}>Ignore</Button>
+            <Button variant="outline" onClick={closeDialog}>Acknowledge</Button>
             <AlertDialogAction asChild>
-                <Button onClick={closeDialog}>Attend</Button>
+                <Button onClick={closeDialog}>View Tasks</Button>
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
