@@ -59,7 +59,13 @@ function AuthRedirect({ children }: { children: React.ReactNode }) {
     const { data: staffList, isLoading: isStaffLoading } = useCollection<StaffMember>(staffRef);
 
     const isDataLoading = isUserLoading || isProfileLoading || isStaffLoading;
-    const [isUnlocked, setIsUnlocked] = useState(false);
+    
+    const [isUnlocked, setIsUnlocked] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return sessionStorage.getItem('dashboardUnlocked') === 'true';
+        }
+        return false;
+    });
     
     const anyAccessCodeExists = !!userProfile?.adminAccessCode || (staffList || []).some(s => s.accessCode);
 
@@ -74,6 +80,9 @@ function AuthRedirect({ children }: { children: React.ReactNode }) {
     }, [user, userProfile, isDataLoading, router]);
 
     const handleUnlock = (role: string, name: string) => {
+        if (typeof window !== 'undefined') {
+            sessionStorage.setItem('dashboardUnlocked', 'true');
+        }
         setIsUnlocked(true);
         toast({ title: 'Dashboard Unlocked', description: `Welcome, ${name}!`});
     };
@@ -238,5 +247,3 @@ export default function AuthedLayout({
     </AuthRedirect>
   );
 }
-
-    
