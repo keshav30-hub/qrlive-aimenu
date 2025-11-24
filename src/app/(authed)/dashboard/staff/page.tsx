@@ -35,6 +35,7 @@ import {
   SheetTitle,
   SheetDescription,
   SheetFooter,
+  SheetTrigger,
 } from '@/components/ui/sheet';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -115,8 +116,8 @@ export default function StaffPage() {
   const staffRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'staff') : null, [firestore, user]);
   const shiftsRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'shifts') : null, [firestore, user]);
 
-  const { data: staffList = [], isLoading: staffLoading } = useCollection<StaffMember>(staffRef);
-  const { data: shifts = [], isLoading: shiftsLoading } = useCollection<Shift>(shiftsRef);
+  const { data: staffList, isLoading: staffLoading } = useCollection<StaffMember>(staffRef);
+  const { data: shifts, isLoading: shiftsLoading } = useCollection<Shift>(shiftsRef);
   
   const [date, setDate] = useState<Date>(new Date());
   const [isSheetOpen, setIsSheetOpen] = useState(false);
