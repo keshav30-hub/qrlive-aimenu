@@ -6,7 +6,7 @@ import { MapPin } from 'lucide-react';
 
 interface PlacesAutocompleteProps {
   onPlaceSelect: (place: google.maps.places.PlaceResult | null) => void;
-  value?: string;
+  value: string;
   onValueChange: (value: string) => void;
 }
 
@@ -26,40 +26,39 @@ export function PlacesAutocomplete({
     }
 
     const scriptId = 'google-maps-script';
-    if (document.getElementById(scriptId)) {
-        if (window.google?.maps?.places) {
-            initializeAutocomplete();
+
+    const initializeAutocomplete = () => {
+      if (!inputRef.current || !window.google?.maps?.places) return;
+
+      autocompleteRef.current = new window.google.maps.places.Autocomplete(
+        inputRef.current,
+        {
+          componentRestrictions: { country: 'in' },
         }
-        return;
+      );
+
+      autocompleteRef.current.addListener('place_changed', () => {
+        const place = autocompleteRef.current?.getPlace();
+        onPlaceSelect(place || null);
+      });
+    };
+    
+    if (document.getElementById(scriptId) && window.google?.maps?.places) {
+      initializeAutocomplete();
+      return;
     }
 
     const script = document.createElement('script');
     script.id = scriptId;
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&v=beta&async=1&defer=1`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&async=1&defer=1`;
     script.onload = () => {
-        initializeAutocomplete();
+      initializeAutocomplete();
     };
     script.onerror = () => {
       console.error('Failed to load Google Maps script.');
     };
     document.head.appendChild(script);
 
-    function initializeAutocomplete() {
-        if (!inputRef.current || !window.google?.maps?.places) return;
-
-        autocompleteRef.current = new window.google.maps.places.Autocomplete(
-            inputRef.current,
-            {
-                types: ['address'],
-                componentRestrictions: { country: 'in' },
-            }
-        );
-
-        autocompleteRef.current.addListener('place_changed', () => {
-            const place = autocompleteRef.current?.getPlace();
-            onPlaceSelect(place || null);
-        });
-    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -71,7 +70,7 @@ export function PlacesAutocomplete({
         value={value}
         onChange={(e) => onValueChange(e.target.value)}
         placeholder="Start typing your address..."
-        className="pl-10 bg-gray-50 border-gray-300 text-gray-900"
+        className="pl-10 bg-white border-gray-300 text-gray-900"
       />
     </div>
   );
