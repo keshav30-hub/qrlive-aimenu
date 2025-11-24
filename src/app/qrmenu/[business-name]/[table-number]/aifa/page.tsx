@@ -16,7 +16,7 @@ import Link from 'next/link';
 import { runAifaFlow } from "@/ai/flows/aifa-flow";
 import { type AIFALowInput } from "@/ai/flows/aifa-schema";
 import { useCurrency } from "@/hooks/use-currency";
-import { getBusinessDataBySlug, getEvents, getMenuData, type BusinessData, type Event, type Category as MenuCategory, type MenuItem, submitFeedback } from '@/lib/qrmenu-mock';
+import { getBusinessDataBySlug, getEvents, getMenuData, type BusinessData, type Event, type Category as MenuCategory, type MenuItem, submitFeedback } from '@/lib/qrmenu';
 import { Star } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 
@@ -332,7 +332,7 @@ export default function AIFAPage() {
 
     if (isLoading) {
         return (
-            <div className="h-screen w-full bg-gray-100 dark:bg-black">
+             <div className="h-screen w-full bg-gray-100 dark:bg-black">
                 <div className="max-w-[480px] mx-auto h-full flex flex-col bg-white dark:bg-gray-950 shadow-lg items-center justify-center">
                     <p>Loading AIFA...</p>
                 </div>

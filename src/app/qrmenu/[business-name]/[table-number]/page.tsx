@@ -49,7 +49,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { getBusinessDataBySlug, getEvents, getMenuData, type BusinessData, type Event, type Category, submitServiceRequest } from '@/lib/qrmenu-mock';
+import { getBusinessDataBySlug, getEvents, getMenuData, type BusinessData, type Event, type Category, submitServiceRequest } from '@/lib/qrmenu';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -356,7 +356,7 @@ export default function QrMenuPage() {
           </Sheet>
         )}
         
-        <div className="fixed bottom-4 right-4 z-20" style={{ right: 'calc(50% - 224px + 1rem)'}}>
+        <div className="fixed bottom-4 right-1/2 translate-x-[calc(50vw-1rem)] max-w-[calc(480px-2rem)] w-full sm:translate-x-0 sm:right-4 sm:max-w-none sm:w-auto" style={{ right: 'calc(50% - 224px + 1rem)'}}>
              <Link href={aifaUrl}>
                 <Button size="icon" className="h-14 w-14 rounded-full shadow-lg bg-primary text-primary-foreground">
                     <Sparkles className="h-7 w-7" />

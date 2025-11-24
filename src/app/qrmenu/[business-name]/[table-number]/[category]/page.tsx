@@ -32,11 +32,13 @@ import {
   Sparkles,
   GlassWater,
   SprayCan,
+  Loader2,
 } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
-import { getBusinessDataBySlug, getMenuData, type MenuItem } from '@/lib/qrmenu-mock';
+import { getBusinessDataBySlug, getMenuData, type MenuItem, submitServiceRequest } from '@/lib/qrmenu';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useToast } from '@/hooks/use-toast';
 
 
 const getTagIcon = (tag: string) => {
@@ -61,30 +63,58 @@ const serviceRequests = [
 export default function CategoryMenuPage() {
   const router = useRouter();
   const params = useParams();
+  const { toast } = useToast();
   const { 'business-name': businessSlug, 'table-number': tableNumber, category: categorySlug } = params;
   const categoryName = typeof categorySlug === 'string' ? categorySlug.replace(/-/g, ' ') : '';
   
   const { format } = useCurrency();
   const [searchTerm, setSearchTerm] = useState('');
   const [showVegOnly, setShowVegOnly] = useState(false);
-  // In a real app, you'd manage a global cart state (e.g., with Context or Zustand)
   const [cart, setCart] = useState<any[]>([]);
 
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRequestingService, setIsRequestingService] = useState(false);
+  const [isServiceRequestDialogOpen, setIsServiceRequestDialogOpen] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchData() {
       if (typeof businessSlug !== 'string') return;
-      const { userId } = await getBusinessDataBySlug(businessSlug as string);
-      if (userId) {
-        const { items } = await getMenuData(userId);
+      const { userId: fetchedUserId } = await getBusinessDataBySlug(businessSlug as string);
+      if (fetchedUserId) {
+        setUserId(fetchedUserId);
+        const { items } = await getMenuData(fetchedUserId);
         setMenuItems(items);
       }
       setIsLoading(false);
     }
     fetchData();
   }, [businessSlug]);
+
+  const handleServiceRequest = async (requestType: string) => {
+    if (!userId || typeof tableNumber !== 'string') return;
+
+    setIsRequestingService(true);
+    try {
+        await submitServiceRequest(userId, tableNumber, requestType);
+        toast({
+            title: "Request Sent",
+            description: "A staff member will be with you shortly.",
+        });
+        setIsServiceRequestDialogOpen(false);
+    } catch(error) {
+        console.error("Service request failed:", error);
+        toast({
+            variant: "destructive",
+            title: "Request Failed",
+            description: "Could not send your request. Please try again.",
+        });
+    } finally {
+        setIsRequestingService(false);
+    }
+  };
+
 
   const filteredItems = useMemo(() => {
     return menuItems.filter(item => {
@@ -117,7 +147,7 @@ export default function CategoryMenuPage() {
             </Button>
             <h1 className="text-xl font-bold capitalize">{categoryName}</h1>
           </div>
-          <Dialog>
+          <Dialog open={isServiceRequestDialogOpen} onOpenChange={setIsServiceRequestDialogOpen}>
             <DialogTrigger asChild>
                 <Button size="icon" className="bg-primary text-primary-foreground">
                     <Bell className="h-6 w-6" />
@@ -133,8 +163,8 @@ export default function CategoryMenuPage() {
                  </DialogHeader>
                  <div className="flex flex-wrap gap-3 py-4">
                     {serviceRequests.map(req => (
-                        <Button key={req.text} variant="outline" className="flex-grow h-16 flex-col gap-1">
-                            {req.icon}
+                        <Button key={req.text} variant="outline" className="flex-grow h-16 flex-col gap-1" onClick={() => handleServiceRequest(req.text)} disabled={isRequestingService}>
+                            {isRequestingService ? <Loader2 className="h-5 w-5 animate-spin"/> : req.icon}
                             <span>{req.text}</span>
                         </Button>
                     ))}
@@ -226,7 +256,7 @@ export default function CategoryMenuPage() {
           </main>
         </ScrollArea>
         
-        <div className="fixed bottom-4 right-4 z-20" style={{ right: 'calc(50% - 224px + 1rem)'}}>
+        <div className="fixed bottom-4 right-1/2 translate-x-[calc(50vw-1rem)] max-w-[calc(480px-2rem)] w-full sm:translate-x-0 sm:right-4 sm:max-w-none sm:w-auto" style={{ right: 'calc(50% - 224px + 1rem)'}}>
              <Link href={aifaUrl}>
                 <Button size="icon" className="h-14 w-14 rounded-full shadow-lg bg-primary text-primary-foreground">
                     <Sparkles className="h-7 w-7" />
