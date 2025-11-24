@@ -303,7 +303,7 @@ export default function AIFAPage() {
                     businessName: businessData.name,
                     priceSymbol: format(0).replace(/[\d.,\s]/g, ''),
                     menuCategories: menuCategories.map(c => ({name: c.name, description: c.description})),
-                    menuItems: menuItems.map(i => ({...i, price: i.price.toString(), tags: i.tags || [] })),
+                    menuItems: menuItems.filter(i => i.price).map(i => ({...i, price: i.price.toString(), tags: i.tags || [] })),
                     events: events,
                     history: historyForAI,
                     prompt,
