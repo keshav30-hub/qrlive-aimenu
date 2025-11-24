@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams } from 'next/navigation';
@@ -50,6 +51,7 @@ import {
 import { useState, useEffect } from 'react';
 import { getBusinessDataBySlug, getEvents, getMenuData, type BusinessData, type Event, type Category, submitServiceRequest } from '@/lib/qrmenu-mock';
 import { useToast } from '@/hooks/use-toast';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 
 const serviceRequests = [
@@ -162,9 +164,9 @@ export default function QrMenuPage() {
   }
 
   return (
-    <div className="bg-gray-100 dark:bg-black min-h-screen">
-      <div className="max-w-[480px] mx-auto bg-white dark:bg-gray-950 shadow-lg relative pb-24">
-        <header className="p-4 flex justify-between items-center">
+    <div className="h-screen w-full bg-gray-100 dark:bg-black">
+      <div className="max-w-[480px] mx-auto h-full flex flex-col bg-white dark:bg-gray-950 shadow-lg">
+        <header className="p-4 flex justify-between items-center flex-shrink-0">
           <div className="flex items-center gap-4">
             <Image
               src={businessData.logo}
@@ -206,63 +208,65 @@ export default function QrMenuPage() {
           </Dialog>
         </header>
 
-        {(events || []).length > 0 && <section className="px-4 pb-4">
-          <Carousel
-            opts={{
-              align: 'start',
-              loop: true,
-            }}
-            className="w-full"
-          >
-            <CarouselContent>
-              {events.map((event) => (
-                <CarouselItem key={event.id}>
-                    <div className="relative h-40 w-full rounded-lg overflow-hidden">
-                      <Image
-                        src={event.imageUrl}
-                        alt={event.name}
-                        fill
-                        style={{ objectFit: 'cover' }}
-                        data-ai-hint={event.imageHint}
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                      <div className="absolute bottom-0 left-0 p-4">
-                        <h3 className="text-white font-bold text-lg">{event.name}</h3>
-                      </div>
-                    </div>
-                </CarouselItem>
-              ))}
-            </CarouselContent>
-          </Carousel>
-        </section>}
-
-        <main className="p-4">
-           <div className="grid grid-cols-2 gap-4">
-            {(categories || []).map((category) => (
-                <Link key={category.name} href={`/qrmenu/${businessSlug}/${tableNumber}/${category.name.toLowerCase().replace(/ /g, '-')}`}>
-                    <Card className="overflow-hidden">
-                        <div className="relative h-24 w-full">
-                             <Image
-                                src={category.imageUrl}
-                                alt={category.name}
-                                fill
-                                style={{ objectFit: 'cover' }}
-                                data-ai-hint={category.imageHint}
-                              />
+        <ScrollArea className="flex-1 min-h-0">
+          {(events || []).length > 0 && <section className="px-4 pb-4">
+            <Carousel
+              opts={{
+                align: 'start',
+                loop: true,
+              }}
+              className="w-full"
+            >
+              <CarouselContent>
+                {events.map((event) => (
+                  <CarouselItem key={event.id}>
+                      <div className="relative h-40 w-full rounded-lg overflow-hidden">
+                        <Image
+                          src={event.imageUrl}
+                          alt={event.name}
+                          fill
+                          style={{ objectFit: 'cover' }}
+                          data-ai-hint={event.imageHint}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                        <div className="absolute bottom-0 left-0 p-4">
+                          <h3 className="text-white font-bold text-lg">{event.name}</h3>
                         </div>
-                        <CardHeader className="p-3">
-                            <CardTitle className="text-base text-center">{category.name}</CardTitle>
-                        </CardHeader>
-                    </Card>
-                </Link>
-            ))}
-           </div>
-        </main>
+                      </div>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+            </Carousel>
+          </section>}
 
+          <main className="p-4">
+            <div className="grid grid-cols-2 gap-4">
+              {(categories || []).map((category) => (
+                  <Link key={category.name} href={`/qrmenu/${businessSlug}/${tableNumber}/${category.name.toLowerCase().replace(/ /g, '-')}`}>
+                      <Card className="overflow-hidden">
+                          <div className="relative h-24 w-full">
+                              <Image
+                                  src={category.imageUrl}
+                                  alt={category.name}
+                                  fill
+                                  style={{ objectFit: 'cover' }}
+                                  data-ai-hint={category.imageHint}
+                                />
+                          </div>
+                          <CardHeader className="p-3">
+                              <CardTitle className="text-base text-center">{category.name}</CardTitle>
+                          </CardHeader>
+                      </Card>
+                  </Link>
+              ))}
+            </div>
+          </main>
+        </ScrollArea>
+        
         {cart.length > 0 && (
           <Sheet>
             <SheetTrigger asChild>
-              <div className="sticky bottom-20 px-4 z-10">
+              <div className="px-4 py-2 z-10 border-t">
                 <Button className="w-full h-12 text-lg shadow-lg">
                   <ShoppingBag className="mr-2" />
                   View Cart ({cart.length})
@@ -350,8 +354,8 @@ export default function QrMenuPage() {
           </Sheet>
         )}
         
-        <div className="fixed bottom-4 right-4 z-20">
-            <Link href={aifaUrl}>
+        <div className="fixed bottom-4 right-4 z-20" style={{ right: 'calc(50% - 224px + 1rem)'}}>
+             <Link href={aifaUrl}>
                 <Button size="icon" className="h-14 w-14 rounded-full shadow-lg bg-primary text-primary-foreground">
                     <Sparkles className="h-7 w-7" />
                     <span className="sr-only">AI Food Assistant</span>
@@ -362,5 +366,3 @@ export default function QrMenuPage() {
     </div>
   );
 }
-
-    

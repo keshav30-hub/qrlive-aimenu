@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from "@/components/ui/button";
@@ -58,6 +59,15 @@ const EventCard = ({ event }: { event: Event }) => (
         </div>
     </Card>
 );
+
+const FeedbackTargetSelection = ({ onSelect }: { onSelect: (target: string) => void }) => {
+    return (
+        <div className="flex flex-wrap gap-2 justify-center py-2">
+            <Button variant="outline" onClick={() => onSelect('Business')}>Business</Button>
+            <Button variant="outline" onClick={() => onSelect('AIFA')}>AIFA</Button>
+        </div>
+    );
+};
 
 const FeedbackForm = ({ target, onSubmit }: { target: string, onSubmit: (feedback: any) => Promise<void> }) => {
     const [rating, setRating] = useState(0);
@@ -322,8 +332,8 @@ export default function AIFAPage() {
 
     if (isLoading) {
         return (
-            <div className="bg-gray-100 dark:bg-black min-h-screen">
-                <div className="max-w-[480px] mx-auto bg-white dark:bg-gray-950 shadow-lg relative flex flex-col h-screen items-center justify-center">
+            <div className="h-screen w-full bg-gray-100 dark:bg-black">
+                <div className="max-w-[480px] mx-auto h-full flex flex-col bg-white dark:bg-gray-950 shadow-lg items-center justify-center">
                     <p>Loading AIFA...</p>
                 </div>
             </div>
@@ -331,8 +341,8 @@ export default function AIFAPage() {
     }
 
     return (
-        <div className="bg-gray-100 dark:bg-black min-h-screen">
-            <div className="max-w-[480px] mx-auto bg-white dark:bg-gray-950 shadow-lg relative flex flex-col h-screen">
+        <div className="h-screen w-full bg-gray-100 dark:bg-black">
+            <div className="max-w-[480px] mx-auto h-full flex flex-col bg-white dark:bg-gray-950 shadow-lg">
                 <header className="p-4 flex items-center gap-2 sticky top-0 bg-white dark:bg-gray-950 z-10 border-b">
                     <Button variant="ghost" size="icon" onClick={() => router.back()}>
                         <ChevronLeft className="h-6 w-6" />
@@ -391,12 +401,10 @@ export default function AIFAPage() {
                     </div>
                 </div>
 
-                <footer className="text-center p-2 bg-gray-100 dark:bg-black">
+                <footer className="text-center p-2 bg-gray-100 dark:bg-black border-t">
                      <p className="text-xs text-muted-foreground">AIFA can make mistakes.</p>
                 </footer>
             </div>
         </div>
     );
 }
-
-    

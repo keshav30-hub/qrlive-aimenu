@@ -36,6 +36,7 @@ import {
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { getBusinessDataBySlug, getMenuData, type MenuItem } from '@/lib/qrmenu-mock';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 
 const getTagIcon = (tag: string) => {
@@ -107,8 +108,8 @@ export default function CategoryMenuPage() {
   }
 
   return (
-    <div className="bg-gray-100 dark:bg-black min-h-screen">
-      <div className="max-w-[480px] mx-auto bg-white dark:bg-gray-950 shadow-lg relative pb-24">
+    <div className="h-screen w-full bg-gray-100 dark:bg-black">
+      <div className="max-w-[480px] mx-auto h-full flex flex-col bg-white dark:bg-gray-950 shadow-lg">
         <header className="p-4 flex justify-between items-center sticky top-0 bg-white dark:bg-gray-950 z-10">
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" onClick={() => router.back()}>
@@ -142,7 +143,7 @@ export default function CategoryMenuPage() {
           </Dialog>
         </header>
 
-        <div className="p-4 flex items-center gap-4 sticky top-[72px] bg-white dark:bg-gray-950 z-10">
+        <div className="p-4 flex items-center gap-4 sticky top-[72px] bg-white dark:bg-gray-950 z-10 border-b">
           <div className="relative flex-grow">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input 
@@ -158,72 +159,74 @@ export default function CategoryMenuPage() {
           </div>
         </div>
 
-        <main className="p-4 pt-0">
-          <div className="space-y-4">
-            {filteredItems.map((item) => (
-              <Card
-                key={item.id}
-                className="flex gap-4 overflow-hidden"
-              >
-                <div className="relative w-24 h-24 flex-shrink-0">
-                  <Image
-                    src={item.imageUrl}
-                    alt={item.name}
-                    fill
-                    style={{ objectFit: 'cover' }}
-                    data-ai-hint={item.imageHint}
-                  />
-                </div>
-                <div className="flex-grow p-3 flex flex-col">
-                  <div className="flex justify-between items-start">
-                    <h3 className="font-semibold">{item.name}</h3>
-                    <Badge
-                      variant={
-                        item.type === 'veg' ? 'secondary' : 'destructive'
-                      }
-                      className="capitalize h-5"
-                    >
-                      {item.type}
-                    </Badge>
+        <ScrollArea className="flex-1 min-h-0">
+          <main className="p-4">
+            <div className="space-y-4">
+              {filteredItems.map((item) => (
+                <Card
+                  key={item.id}
+                  className="flex gap-4 overflow-hidden"
+                >
+                  <div className="relative w-24 h-24 flex-shrink-0">
+                    <Image
+                      src={item.imageUrl}
+                      alt={item.name}
+                      fill
+                      style={{ objectFit: 'cover' }}
+                      data-ai-hint={item.imageHint}
+                    />
                   </div>
-                  <p className="text-xs text-muted-foreground flex-grow line-clamp-2 mt-1">
-                    {item.description}
-                  </p>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                    {item.kcal} kcal
-                    {item.tags && item.tags.length > 0 && <Separator orientation='vertical' className='h-3' />}
-                    <div className='flex gap-2'>
-                        {(item.tags || []).map(tag => (
-                            <div key={tag} className="flex items-center gap-1 capitalize">
-                                {getTagIcon(tag)} {tag}
-                            </div>
-                        ))}
+                  <div className="flex-grow p-3 flex flex-col">
+                    <div className="flex justify-between items-start">
+                      <h3 className="font-semibold">{item.name}</h3>
+                      <Badge
+                        variant={
+                          item.type === 'veg' ? 'secondary' : 'destructive'
+                        }
+                        className="capitalize h-5"
+                      >
+                        {item.type}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground flex-grow line-clamp-2 mt-1">
+                      {item.description}
+                    </p>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                      {item.kcal} kcal
+                      {item.tags && item.tags.length > 0 && <Separator orientation='vertical' className='h-3' />}
+                      <div className='flex gap-2'>
+                          {(item.tags || []).map(tag => (
+                              <div key={tag} className="flex items-center gap-1 capitalize">
+                                  {getTagIcon(tag)} {tag}
+                              </div>
+                          ))}
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-end mt-2">
+                      <span className="font-bold text-lg">
+                        {format(Number(item.price))}
+                      </span>
+                      <Button
+                        size="sm"
+                        className="h-8"
+                        onClick={() => addToCart(item)}
+                      >
+                        Add
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex justify-between items-end mt-2">
-                    <span className="font-bold text-lg">
-                      {format(Number(item.price))}
-                    </span>
-                    <Button
-                      size="sm"
-                      className="h-8"
-                      onClick={() => addToCart(item)}
-                    >
-                      Add
-                    </Button>
+                </Card>
+              ))}
+              {filteredItems.length === 0 && (
+                  <div className="text-center py-10 text-muted-foreground">
+                      <p>No dishes found that match your search.</p>
                   </div>
-                </div>
-              </Card>
-            ))}
-             {filteredItems.length === 0 && (
-                <div className="text-center py-10 text-muted-foreground">
-                    <p>No dishes found that match your search.</p>
-                </div>
-            )}
-          </div>
-        </main>
+              )}
+            </div>
+          </main>
+        </ScrollArea>
         
-        <div className="fixed bottom-4 right-4 z-20">
+        <div className="fixed bottom-4 right-4 z-20" style={{ right: 'calc(50% - 224px + 1rem)'}}>
              <Link href={aifaUrl}>
                 <Button size="icon" className="h-14 w-14 rounded-full shadow-lg bg-primary text-primary-foreground">
                     <Sparkles className="h-7 w-7" />
