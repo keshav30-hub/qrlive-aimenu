@@ -17,7 +17,7 @@ import { Building, User, Phone, MapPin, FileText, Briefcase, LogOut } from 'luci
 import { useRouter } from 'next/navigation';
 import { PlacesAutocomplete } from '@/components/places-autocomplete';
 import { useFirebase } from '@/firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { signOut } from 'firebase/auth';
@@ -83,7 +83,9 @@ export default function OnboardingPage() {
       const userRef = doc(firestore, 'users', user.uid);
       const businessId = generateBusinessId();
 
-      await setDoc(userRef, {
+      // Use updateDoc instead of setDoc with merge, as the document already exists.
+      // This aligns with the 'update' permission in the security rules.
+      await updateDoc(userRef, {
         businessName,
         ownerName,
         contact,
@@ -94,7 +96,7 @@ export default function OnboardingPage() {
         longitude: selectedPlace?.geometry?.location?.lng() || null,
         businessId: businessId,
         onboarding: true,
-      }, { merge: true });
+      });
       
       toast({
         title: "Onboarding Complete!",
