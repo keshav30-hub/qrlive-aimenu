@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar } from "@/components/ui/avatar";
 import { useRouter, useParams } from "next/navigation";
-import { ChevronLeft, Send, Sparkles, ImagePlus, Loader2 } from "lucide-react";
+import { ChevronLeft, Send, Sparkles, ImagePlus, Loader2, Trash2 } from "lucide-react";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import Image from "next/image";
@@ -159,6 +159,21 @@ export default function AIFAPage() {
 
     const activeEvents = useMemo(() => events.filter(e => e.active), [events]);
 
+    const getInitialMessage = () => ({
+        id: getUniqueMessageId(),
+        sender: 'aifa' as const,
+        content: `Hi! Welcome to ${businessData?.name || 'our restaurant'}. I'm AIFA, your personal food assistant. How can I help you today?`
+    });
+
+    const resetChat = () => {
+        const initialMessage = getInitialMessage();
+        setMessages([initialMessage]);
+        sessionStorage.removeItem('aifa-chat-history');
+        sessionStorage.setItem('aifa-chat-history', JSON.stringify([initialMessage]));
+        setShowInitialActions(true);
+        toast({ title: 'Chat cleared', description: 'Your conversation has been restarted.' });
+    };
+
     useEffect(() => {
       async function fetchData() {
         if (typeof businessSlug !== 'string') return;
@@ -192,7 +207,7 @@ export default function AIFAPage() {
             if (Array.isArray(savedMessages) && savedMessages.length > 0) {
               // Ensure we only load string content, not components
               const textMessages = savedMessages.filter((msg: any) => typeof msg.content === 'string');
-              if (textMessages.length > 0) {
+              if (textMessages.length > 1) { // More than just the initial message
                 setMessages(textMessages);
                 setShowInitialActions(false);
                 return;
@@ -203,11 +218,7 @@ export default function AIFAPage() {
           console.error("Failed to load chat history from session storage:", error);
         }
     
-        const initialMessage = {
-          id: getUniqueMessageId(),
-          sender: 'aifa' as const,
-          content: `Hi! Welcome to ${businessData?.name || 'our restaurant'}. I'm AIFA, your personal food assistant. How can I help you today?`
-        };
+        const initialMessage = getInitialMessage();
         setMessages([initialMessage]);
         sessionStorage.setItem('aifa-chat-history', JSON.stringify([initialMessage]));
     }, [businessData, isLoading]);
@@ -343,14 +354,20 @@ export default function AIFAPage() {
     return (
         <div className="h-screen w-full bg-gray-100 dark:bg-black">
             <div className="max-w-[480px] mx-auto h-full flex flex-col bg-white dark:bg-gray-950 shadow-lg">
-                <header className="p-4 flex items-center gap-2 sticky top-0 bg-white dark:bg-gray-950 z-10 border-b">
-                    <Button variant="ghost" size="icon" onClick={() => router.back()}>
-                        <ChevronLeft className="h-6 w-6" />
-                    </Button>
-                    <div>
-                        <h1 className="text-xl font-bold">AIFA</h1>
-                        <p className="text-xs font-bold text-foreground/80">powered by QRLIVE</p>
+                <header className="p-4 flex justify-between items-center sticky top-0 bg-white dark:bg-gray-950 z-10 border-b">
+                    <div className="flex items-center gap-2">
+                        <Button variant="ghost" size="icon" onClick={() => router.back()}>
+                            <ChevronLeft className="h-6 w-6" />
+                        </Button>
+                        <div>
+                            <h1 className="text-xl font-bold">AIFA</h1>
+                            <p className="text-xs font-bold text-foreground/80">powered by QRLIVE</p>
+                        </div>
                     </div>
+                    <Button variant="ghost" size="icon" onClick={resetChat}>
+                        <Trash2 className="h-5 w-5 text-destructive" />
+                        <span className="sr-only">Delete Chat</span>
+                    </Button>
                 </header>
                 
                 <ScrollArea className="flex-1" viewportRef={scrollViewportRef}>
@@ -408,3 +425,5 @@ export default function AIFAPage() {
         </div>
     );
 }
+
+    
