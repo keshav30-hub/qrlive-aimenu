@@ -49,25 +49,25 @@ export default function LoginPage() {
   // Render loading state or nothing if user check is in progress
   if (isUserLoading || user) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
+      <div className="flex min-h-screen items-center justify-center bg-gray-100">
         <p>Loading...</p>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
+    <div className="flex min-h-screen items-center justify-center bg-gray-100 p-4">
+      <Card className="w-full max-w-md bg-white text-gray-800">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Welcome to QRLive Menu</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-2xl text-gray-900">Welcome to QRLive Menu</CardTitle>
+          <CardDescription className="text-gray-600">
             Sign in to manage your restaurant's digital presence.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Button
             variant="outline"
-            className="w-full h-12 text-lg"
+            className="w-full h-12 text-lg text-gray-700 bg-white border-gray-200 hover:bg-gray-50 shadow-md hover:shadow-lg transition-shadow"
             onClick={handleGoogleSignIn}
           >
             <FcGoogle className="mr-4 h-6 w-6" />
