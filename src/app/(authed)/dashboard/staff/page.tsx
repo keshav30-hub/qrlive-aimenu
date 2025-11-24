@@ -237,7 +237,7 @@ export default function StaffPage() {
                     <div className="space-y-2">
                         <Label className="text-sm font-medium text-muted-foreground">Existing Shifts</Label>
                         <div className="space-y-2">
-                            {shiftsLoading ? <p>Loading shifts...</p> : shifts.map(shift => (
+                            {shiftsLoading ? <p>Loading shifts...</p> : (shifts || []).map(shift => (
                                 <div key={shift.id} className="flex items-center justify-between rounded-md border p-3">
                                     <div>
                                         <p className="font-semibold">{shift.name}</p>
