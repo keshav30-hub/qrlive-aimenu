@@ -13,6 +13,7 @@ import {
   arrayUnion,
   serverTimestamp,
   getDoc,
+  collectionGroup,
 } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 
@@ -48,7 +49,17 @@ export type Event = {
   imageUrl: string;
   imageHint: string;
   active: boolean;
+  organizers?: string[];
+  terms?: string;
+  userId?: string; // Add userId to associate event with a user
 };
+
+export type RsvpData = {
+    name: string;
+    email: string;
+    mobile: string;
+    people: number;
+}
 
 export type BusinessData = {
     id: string;
@@ -155,6 +166,45 @@ export async function getEvents(userId: string): Promise<Event[]> {
         console.error("Error fetching events:", error);
         return [];
     }
+}
+
+export async function getEventById(eventId: string): Promise<Event | null> {
+    const firestore = await getFirestoreInstance();
+    // Use a collection group query to find the event across all users.
+    const eventsQuery = query(collectionGroup(firestore, 'events'), where('id', '==', eventId), limit(1));
+    try {
+        const snapshot = await getDocs(eventsQuery);
+        if (snapshot.empty) {
+            // As a fallback, check if the eventId might be the document ID itself
+            const docSnap = await getDoc(doc(firestore, 'events', eventId));
+             if (docSnap.exists()) {
+                 const data = docSnap.data();
+                 // We need the user ID which is part of the path
+                 const userId = docSnap.ref.parent.parent?.id;
+                 return { id: docSnap.id, userId, ...data } as Event;
+             }
+            return null;
+        }
+        const eventDoc = snapshot.docs[0];
+        const data = eventDoc.data();
+        // The parent of the event document is the 'events' collection, its parent is the user document.
+        const userId = eventDoc.ref.parent.parent?.id;
+        return { id: eventDoc.id, userId, ...data } as Event;
+    } catch (error) {
+        console.error("Error fetching event by ID:", error);
+        return null;
+    }
+}
+
+
+export async function submitRsvp(userId: string, eventId: string, rsvpData: RsvpData) {
+    const firestore = await getFirestoreInstance();
+    const rsvpsRef = collection(firestore, 'users', userId, 'events', eventId, 'rsvps');
+    await addDoc(rsvpsRef, {
+        ...rsvpData,
+        status: 'Interested',
+        createdAt: serverTimestamp(),
+    });
 }
 
 export async function submitFeedback(userId: string, feedback: { target: string; rating: number; comment: string; imageUrl?: string | null }, table: string) {
