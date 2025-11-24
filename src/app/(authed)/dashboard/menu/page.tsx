@@ -185,7 +185,7 @@ export default function MenuPage() {
     }
   };
 
-  const filteredComboItems = items.filter(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredComboItems = (items || []).filter(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
   const handleItemCheckboxChange = (itemName: string, checked: boolean) => {
     setSelectedItems(prev => 
@@ -387,7 +387,7 @@ export default function MenuPage() {
     }
   };
 
-  const filteredItems = items
+  const filteredItems = (items || [])
     .filter(item => item.name.toLowerCase().includes(itemSearch.toLowerCase()))
     .filter(item => filterCategory === 'all' || item.category === filterCategory)
     .filter(item => filterType === 'all' || item.type === filterType);
@@ -902,5 +902,3 @@ export default function MenuPage() {
     </div>
   );
 }
-
-    
