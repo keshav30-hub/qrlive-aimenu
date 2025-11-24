@@ -25,6 +25,7 @@ export type GenerateMenuItemDetailsOutput = z.infer<typeof GenerateMenuItemDetai
 
 const prompt = ai.definePrompt({
     name: 'generateMenuItemDetailsPrompt',
+    model: 'googleai/gemini-2.5-flash-lite',
     input: { schema: GenerateMenuItemDetailsInputSchema },
     output: { schema: GenerateMenuItemDetailsOutputSchema },
     prompt: `You are a creative chef and food writer for a restaurant menu. 
