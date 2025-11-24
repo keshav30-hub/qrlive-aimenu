@@ -13,8 +13,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
-import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, deleteDoc } from 'firebase/firestore';
+import { useFirebase, useCollection, useDoc, useMemoFirebase } from '@/firebase';
+import { collection, deleteDoc, doc } from 'firebase/firestore';
 
 
 type UrgentFeedback = {
@@ -24,6 +24,17 @@ type UrgentFeedback = {
     comment: string;
     time: string;
 };
+
+type Task = {
+  table: string;
+  request: string;
+  time: string;
+};
+
+type TaskDoc = {
+    pendingCalls?: Task[];
+};
+
 
 type TaskNotificationContextType = {
   isMuted: boolean;
@@ -48,12 +59,13 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
   const [notification, setNotification] = useState<{title: string, description: string, data: any, onAcknowledge: () => void} | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [acknowledgedTaskTimes, setAcknowledgedTaskTimes] = useState<Set<string>>(new Set());
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const tasksLiveRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'tasks', 'live') : null, [user, firestore]);
-  const { data: taskDocs } = useCollection(tasksLiveRef);
-  const unattendedTasks = taskDocs?.[0]?.pendingCalls || [];
+  const tasksLiveRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid, 'tasks', 'live') : null, [user, firestore]);
+  const { data: taskDoc } = useDoc<TaskDoc>(tasksLiveRef);
+  const unattendedTasks = taskDoc?.pendingCalls || [];
 
   const urgentFeedbackRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'urgent_feedback') : null, [user, firestore]);
   const { data: urgentFeedbacks } = useCollection<UrgentFeedback>(urgentFeedbackRef);
@@ -93,49 +105,55 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
   useEffect(() => {
     if (unattendedTasks && unattendedTasks.length > 0) {
       const latestTask = unattendedTasks[unattendedTasks.length - 1];
-      setNotification({
-        title: "New Task Received!",
-        description: "A new service request has been received.",
-        data: {
-          Table: latestTask.table,
-          Request: latestTask.request,
-          Time: new Date(latestTask.time).toLocaleTimeString(),
-        },
-        onAcknowledge: () => router.push('/dashboard/tasks'),
-      });
-      setIsDialogOpen(true);
+      if (!acknowledgedTaskTimes.has(latestTask.time)) {
+        setNotification({
+          title: "New Task Received!",
+          description: "A new service request has been received.",
+          data: {
+            Table: latestTask.table,
+            Request: latestTask.request,
+            Time: new Date(latestTask.time).toLocaleTimeString(),
+          },
+          onAcknowledge: () => router.push('/dashboard/tasks'),
+        });
+        setIsDialogOpen(true);
+      }
     }
-  }, [unattendedTasks, router]);
+  }, [unattendedTasks, router, acknowledgedTaskTimes]);
   
   // Effect to show notifications for new urgent feedback
   useEffect(() => {
     if (urgentFeedbacks && urgentFeedbacks.length > 0) {
         const latestFeedback = urgentFeedbacks[0];
-        setNotification({
-            title: "Urgent Feedback Received!",
-            description: `A ${latestFeedback.type} was submitted.`,
-            data: {
-                Table: latestFeedback.table,
-                Comment: latestFeedback.comment,
-                Time: new Date(latestFeedback.time).toLocaleTimeString(),
-            },
-            onAcknowledge: async () => {
-                // Acknowledge by deleting the feedback document
-                if (urgentFeedbackRef) {
-                    await deleteDoc(doc(urgentFeedbackRef, latestFeedback.id));
-                }
-                router.push('/dashboard/feedback');
-            },
-        });
-        setIsDialogOpen(true);
+        if (!acknowledgedTaskTimes.has(latestFeedback.time)) {
+            setNotification({
+                title: "Urgent Feedback Received!",
+                description: `A ${latestFeedback.type} was submitted.`,
+                data: {
+                    Table: latestFeedback.table,
+                    Comment: latestFeedback.comment,
+                    Time: new Date(latestFeedback.time).toLocaleTimeString(),
+                },
+                onAcknowledge: async () => {
+                    if (urgentFeedbackRef) {
+                        await deleteDoc(doc(urgentFeedbackRef, latestFeedback.id));
+                    }
+                    router.push('/dashboard/feedback');
+                },
+            });
+            setIsDialogOpen(true);
+        }
     }
-  }, [urgentFeedbacks, router, urgentFeedbackRef]);
+  }, [urgentFeedbacks, router, urgentFeedbackRef, acknowledgedTaskTimes]);
 
   const toggleMute = () => {
     setIsMuted(prev => !prev);
   };
 
   const closeDialog = () => {
+    if (notification?.data.Time) {
+      setAcknowledgedTaskTimes(prev => new Set(prev).add(notification.data.Time));
+    }
     setIsDialogOpen(false);
     setNotification(null);
   };
