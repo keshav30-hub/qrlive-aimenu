@@ -23,7 +23,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     // If user is already logged in, redirect to dashboard
-    if (!isUserLoading && user) {
+    if (!isUserloading && user) {
       router.push('/dashboard');
     }
   }, [user, isUserLoading, router]);
@@ -49,25 +49,25 @@ export default function LoginPage() {
   // Render loading state or nothing if user check is in progress
   if (isUserLoading || user) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-100 dark:bg-black">
-        <p>Loading...</p>
+      <div className="flex min-h-screen items-center justify-center bg-gray-100">
+        <p className="text-black">Loading...</p>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
-      <Card className="w-full max-w-md">
+    <div className="flex min-h-screen items-center justify-center bg-gray-100 p-4">
+      <Card className="w-full max-w-md bg-white text-black">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">Welcome to QRLive Menu</CardTitle>
-          <CardDescription>
+          <CardDescription className="text-gray-600">
             Sign in to manage your restaurant's digital presence.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Button
-            variant="secondary"
-            className="w-full h-12 text-lg"
+            variant="outline"
+            className="w-full h-12 text-lg border-gray-300 text-gray-700 hover:bg-gray-50"
             onClick={handleGoogleSignIn}
           >
             <FcGoogle className="mr-4 h-6 w-6" />
