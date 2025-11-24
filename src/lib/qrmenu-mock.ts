@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -8,7 +9,7 @@ import {
   limit,
   doc,
   addDoc,
-  updateDoc,
+  setDoc,
   arrayUnion,
   serverTimestamp,
 } from 'firebase/firestore';
@@ -155,8 +156,8 @@ export async function submitServiceRequest(userId: string, table: string, reques
     status: 'unattended'
   };
 
-  // The security rule allows this update because we are adding to the array.
-  await updateDoc(tasksLiveRef, {
+  // Use setDoc with merge to create the doc if it doesn't exist, or update it if it does.
+  await setDoc(tasksLiveRef, {
       pendingCalls: arrayUnion(newCall)
-  });
+  }, { merge: true });
 }

@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -68,8 +69,7 @@ service cloud.firestore {
     // It prevents them from modifying other parts of the document.
     match /users/{userId}/tasks/live {
       allow read: if isOwner(userId);
-      allow write: if isOwner(userId);
-      allow update: if request.resource.data.pendingCalls.size() > resource.data.pendingCalls.size();
+      allow write: if isOwner(userId) || request.resource.data.pendingCalls.size() > resource.data.pendingCalls.size();
     }
     
     match /users/{userId}/feedback/{feedbackId} {
