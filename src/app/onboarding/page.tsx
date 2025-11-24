@@ -117,7 +117,7 @@ export default function OnboardingPage() {
         });
     }
   };
-
+  
   const handlePlaceSelect = (place: google.maps.places.PlaceResult | null) => {
     if (place) {
       form.setValue('address', place.formatted_address || '', { shouldValidate: true });
@@ -128,17 +128,17 @@ export default function OnboardingPage() {
 
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-100 dark:bg-black p-4">
-      <Card className="w-full max-w-lg relative">
+    <div className="flex min-h-screen items-center justify-center bg-gray-100 p-4">
+      <Card className="w-full max-w-lg relative bg-white text-gray-800">
         <CardHeader>
            <div className="flex justify-between items-start">
              <div>
-                <CardTitle className="text-2xl">Welcome to QRLive Menu</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-2xl text-gray-900">Welcome to QRLive Menu</CardTitle>
+                <CardDescription className="text-gray-600">
                     Let's get your business set up. Please fill in the details below.
                 </CardDescription>
              </div>
-              <Button variant="ghost" size="icon" onClick={handleLogout} className="absolute top-4 right-4">
+              <Button variant="ghost" size="icon" onClick={handleLogout} className="absolute top-4 right-4 text-gray-500 hover:bg-gray-200">
                 <LogOut className="h-5 w-5" />
                 <span className="sr-only">Logout</span>
               </Button>
@@ -152,11 +152,11 @@ export default function OnboardingPage() {
                 name="businessName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Business Name</FormLabel>
+                    <FormLabel className="text-gray-700">Business Name</FormLabel>
                     <div className="relative">
-                        <Building className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Building className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                         <FormControl>
-                          <Input placeholder="e.g., The Gourmet Place" className="pl-10" {...field} />
+                          <Input placeholder="e.g., The Gourmet Place" className="pl-10 bg-gray-50 border-gray-300 text-gray-900" {...field} />
                         </FormControl>
                     </div>
                     <FormMessage />
@@ -168,11 +168,11 @@ export default function OnboardingPage() {
                 name="ownerName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Owner Name</FormLabel>
+                    <FormLabel className="text-gray-700">Owner Name</FormLabel>
                     <div className="relative">
-                        <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                         <FormControl>
-                          <Input placeholder="e.g., John Doe" className="pl-10" {...field} />
+                          <Input placeholder="e.g., John Doe" className="pl-10 bg-gray-50 border-gray-300 text-gray-900" {...field} />
                         </FormControl>
                     </div>
                     <FormMessage />
@@ -184,14 +184,14 @@ export default function OnboardingPage() {
                 name="contact"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Mobile Number</FormLabel>
+                    <FormLabel className="text-gray-700">Mobile Number</FormLabel>
                     <div className="relative">
-                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                         <FormControl>
                           <Input 
                             type="tel" 
                             placeholder="e.g., 9876543210" 
-                            className="pl-10"
+                            className="pl-10 bg-gray-50 border-gray-300 text-gray-900"
                             maxLength={10}
                             {...field}
                             onChange={(e) => {
@@ -212,12 +212,12 @@ export default function OnboardingPage() {
                 name="businessType"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Business Type</FormLabel>
+                    <FormLabel className="text-gray-700">Business Type</FormLabel>
                      <div className="relative">
-                        <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
+                        <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 z-10" />
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl>
-                                <SelectTrigger className="pl-10">
+                                <SelectTrigger className="pl-10 bg-gray-50 border-gray-300 text-gray-900">
                                     <SelectValue placeholder="Select a business type" />
                                 </SelectTrigger>
                             </FormControl>
@@ -238,13 +238,13 @@ export default function OnboardingPage() {
                 name="address"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Full Address</FormLabel>
+                    <FormLabel className="text-gray-700">Full Address</FormLabel>
                     <FormControl>
-                      <PlacesAutocomplete
-                        onPlaceSelect={handlePlaceSelect}
-                        value={field.value}
-                        onChange={field.onChange}
-                      />
+                        <PlacesAutocomplete
+                          onPlaceSelect={handlePlaceSelect}
+                          value={field.value}
+                          onValueChange={(value) => form.setValue('address', value, { shouldValidate: true })}
+                        />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -255,13 +255,13 @@ export default function OnboardingPage() {
                 name="gst"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>GST Detail</FormLabel>
+                    <FormLabel className="text-gray-700">GST Detail</FormLabel>
                     <div className="relative">
-                        <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                         <FormControl>
                           <Input 
                             placeholder="Enter your 15-digit GST number" 
-                            className="pl-10"
+                            className="pl-10 bg-gray-50 border-gray-300 text-gray-900"
                             maxLength={15} 
                             {...field}
                              onChange={(e) => field.onChange(e.target.value.toUpperCase())}
@@ -274,7 +274,7 @@ export default function OnboardingPage() {
               />
             </CardContent>
             <CardFooter>
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
+              <Button type="submit" className="w-full bg-gray-800 text-white hover:bg-gray-700" disabled={isSubmitting}>
                 {isSubmitting ? 'Completing...' : 'Complete Onboarding'}
               </Button>
             </CardFooter>
