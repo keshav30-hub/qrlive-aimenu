@@ -35,9 +35,9 @@ import { collection } from 'firebase/firestore';
 
 type Feedback = {
   id: string;
-  datetime: string;
-  tableName: string;
-  description: string;
+  timestamp: string;
+  tableName: string; // This field does not exist in the schema, will show as undefined
+  comment: string;
   imageUrl?: string;
   rating: number;
 };
@@ -148,13 +148,11 @@ export default function FeedbackPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Time</TableHead>
-                  <TableHead>Table Name</TableHead>
-                  <TableHead>Feedback</TableHead>
+                  <TableHead>Feedback ID</TableHead>
+                  <TableHead>Date & Time</TableHead>
+                  <TableHead>Comment</TableHead>
                   <TableHead>Image</TableHead>
-                  <TableHead className="text-center">Mood</TableHead>
+                  <TableHead className="text-center">Rating</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -163,10 +161,8 @@ export default function FeedbackPage() {
                     <DialogTrigger asChild>
                       <TableRow className="cursor-pointer">
                         <TableCell className="font-medium">{feedback.id.substring(0, 5)}...</TableCell>
-                        <TableCell>{new Date(feedback.datetime).toLocaleDateString('en-GB')}</TableCell>
-                        <TableCell>{new Date(feedback.datetime).toLocaleTimeString()}</TableCell>
-                        <TableCell>{feedback.tableName}</TableCell>
-                        <TableCell className="max-w-xs truncate">{feedback.description}</TableCell>
+                        <TableCell>{new Date(feedback.timestamp).toLocaleString('en-GB')}</TableCell>
+                        <TableCell className="max-w-xs truncate">{feedback.comment}</TableCell>
                         <TableCell>
                           {feedback.imageUrl ? (
                              <ImageIcon className="h-5 w-5" />
@@ -181,9 +177,9 @@ export default function FeedbackPage() {
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-md">
                       <DialogHeader>
-                        <DialogTitle>Feedback from {feedback.tableName}</DialogTitle>
+                        <DialogTitle>Feedback Details</DialogTitle>
                         <DialogDescription>
-                          {new Date(feedback.datetime).toLocaleDateString('en-GB')} at {new Date(feedback.datetime).toLocaleTimeString()}
+                          {new Date(feedback.timestamp).toLocaleDateString('en-GB')} at {new Date(feedback.timestamp).toLocaleTimeString()}
                         </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-4 py-4">
@@ -195,10 +191,10 @@ export default function FeedbackPage() {
                             />
                           ))}
                         </div>
-                        <p className="text-sm">{feedback.description}</p>
+                        <p className="text-sm">{feedback.comment}</p>
                         {feedback.imageUrl && (
                           <div className="relative mt-4 h-64 w-full">
-                            <Image src={feedback.imageUrl} alt={`Feedback from ${feedback.tableName}`} layout="fill" objectFit="contain" />
+                            <Image src={feedback.imageUrl} alt={`Feedback Image`} layout="fill" objectFit="contain" />
                           </div>
                         )}
                       </div>
