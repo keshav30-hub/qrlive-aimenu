@@ -8,6 +8,8 @@ import {
   limit,
   doc,
   addDoc,
+  updateDoc,
+  arrayUnion,
   serverTimestamp,
 } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
@@ -18,7 +20,7 @@ export type Category = {
   description: string;
   imageUrl: string;
   imageHint: string;
-  active: boolean;
+  isAvailable: boolean;
 };
 
 export type MenuItem = {
@@ -60,8 +62,6 @@ async function getFirestoreInstance() {
 export async function getBusinessDataBySlug(slug: string): Promise<{ businessData: BusinessData | null, userId: string | null }> {
     const firestore = await getFirestoreInstance();
     const usersRef = collection(firestore, 'users');
-    // In a real-world scenario, you might have a dedicated field for the URL slug.
-    // For this app, we'll query by the businessName, assuming it's unique and used as the slug.
     const q = query(usersRef, where('businessName', '==', slug.replace(/-/g, ' ')), limit(1));
 
     try {
@@ -93,7 +93,7 @@ export async function getMenuData(userId: string): Promise<{ categories: Categor
 
     try {
         const [categoriesSnapshot, itemsSnapshot] = await Promise.all([
-            getDocs(query(categoriesRef, where('active', '==', true))),
+            getDocs(query(categoriesRef, where('isAvailable', '==', true))),
             getDocs(query(itemsRef, where('available', '==', true))),
         ]);
 
@@ -128,31 +128,35 @@ export async function submitFeedback(userId: string, feedback: { target: string;
         comment: feedback.comment,
         imageUrl: feedback.imageUrl || '',
         timestamp: serverTimestamp(),
-        userId: userId, // associate feedback with the business user
+        restaurantId: userId, // associate feedback with the business user
     };
 
     if (feedback.target === 'Business') {
         feedbackRef = collection(firestore, 'users', userId, 'feedback');
-    } else { // AIFA Feedback
-        feedbackRef = collection(firestore, 'qrlive-feedback');
-    }
+        // Add restaurantId to user-specific feedback as well for consistency
+        await addDoc(feedbackRef, feedbackData);
 
-    await addDoc(feedbackRef, feedbackData);
+    } else { // AIFA Feedback
+        feedbackRef = collection(firestore, 'aifa_feedback');
+        // For global feedback, we don't need the restaurantId inside the doc, but can be useful
+        await addDoc(feedbackRef, { ...feedbackData });
+    }
 }
 
 export async function submitServiceRequest(userId: string, table: string, requestType: string) {
   const firestore = await getFirestoreInstance();
-  const tasksRef = collection(firestore, 'users', userId, 'tasks');
+  // As per the rules, we update a single document 'live' in the 'tasks' collection.
+  const tasksLiveRef = doc(firestore, 'users', userId, 'tasks', 'live');
   
-  const newTask = {
-    tableName: table,
-    requestType: requestType,
-    dateTime: new Date().toISOString(),
-    status: 'unattended',
-    staff: '',
+  const newCall = {
+    table: table,
+    request: requestType,
+    time: new Date().toISOString(),
+    status: 'unattended'
   };
-  
-  await addDoc(tasksRef, newTask);
-}
 
-    
+  // The security rule allows this update because we are adding to the array.
+  await updateDoc(tasksLiveRef, {
+      pendingCalls: arrayUnion(newCall)
+  });
+}

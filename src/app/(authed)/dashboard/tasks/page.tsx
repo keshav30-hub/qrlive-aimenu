@@ -7,6 +7,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  CardDescription,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
@@ -20,18 +21,21 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useTaskNotification } from '@/context/TaskNotificationContext';
-import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc, updateDoc } from 'firebase/firestore';
+import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
+import { doc, updateDoc, arrayRemove, arrayUnion } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 
 type Task = {
-  id: string;
-  tableName: string;
-  requestType: string;
-  dateTime: string;
+  table: string;
+  request: string;
+  time: string;
   status: 'attended' | 'ignored' | 'unattended';
-  staff?: string;
 };
+
+type TaskDoc = {
+    pendingCalls: Task[];
+    attendedCalls: Task[];
+}
 
 const statusVariant = (status: string) => {
   switch (status) {
@@ -51,14 +55,15 @@ const ITEMS_PER_PAGE = 10;
 export default function TasksPage() {
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
-  const tasksRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'tasks') : null, [firestore, user]);
-  const { data: tasks, isLoading: tasksLoading } = useCollection<Task>(tasksRef);
+  
+  const tasksLiveRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid, 'tasks', 'live') : null, [firestore, user]);
+  const { data: tasksDoc, isLoading: tasksLoading } = useDoc<TaskDoc>(tasksLiveRef);
 
   const [currentPage, setCurrentPage] = useState(1);
   const { showNewTask } = useTaskNotification();
 
-  const unattendedTasks = useMemo(() => (tasks || []).filter(t => t.status === 'unattended'), [tasks]);
-  const taskHistory = useMemo(() => (tasks || []).filter(t => t.status !== 'unattended'), [tasks]);
+  const unattendedTasks = useMemo(() => tasksDoc?.pendingCalls || [], [tasksDoc]);
+  const taskHistory = useMemo(() => (tasksDoc?.attendedCalls || []).sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()), [tasksDoc]);
 
   const totalPages = Math.ceil(taskHistory.length / ITEMS_PER_PAGE);
 
@@ -76,12 +81,18 @@ export default function TasksPage() {
     setCurrentPage((prev) => Math.min(prev + 1, totalPages));
   };
 
-  const handleUpdateTask = async (taskId: string, status: 'attended' | 'ignored') => {
-    if (!tasksRef) return;
-    const taskDoc = doc(tasksRef, taskId);
+  const handleUpdateTask = async (taskToUpdate: Task, newStatus: 'attended' | 'ignored') => {
+    if (!tasksLiveRef) return;
+    
+    const updatedTask = { ...taskToUpdate, status: newStatus };
+
     try {
-      await updateDoc(taskDoc, { status, staff: status === 'attended' ? user?.displayName || 'Admin' : '-' });
-      toast({ title: "Success", description: `Task marked as ${status}.` });
+      // Atomically remove from pending and add to attended
+      await updateDoc(tasksLiveRef, { 
+        pendingCalls: arrayRemove(taskToUpdate),
+        attendedCalls: arrayUnion(updatedTask)
+      });
+      toast({ title: "Success", description: `Task marked as ${newStatus}.` });
     } catch(e) {
       toast({ variant: "destructive", title: "Error", description: "Could not update task." });
       console.error(e);
@@ -90,12 +101,12 @@ export default function TasksPage() {
   
   const simulateTask = () => {
     const sampleTask = {
-        tableName: 'Table 7',
-        requestType: 'Call Captain',
-        dateTime: new Date().toLocaleTimeString(),
+        table: 'Table 7',
+        request: 'Call Captain',
+        time: new Date().toISOString(),
+        status: 'unattended' as const
     };
     showNewTask(sampleTask);
-    // In a real app, you'd also add this to firestore
   };
 
   return (
@@ -108,23 +119,24 @@ export default function TasksPage() {
       <Card>
         <CardHeader>
           <CardTitle>Unattended Tasks</CardTitle>
+           <CardDescription>Live requests from your customers.</CardDescription>
         </CardHeader>
         <CardContent>
           <ScrollArea className="w-full whitespace-nowrap">
             <div className="flex w-max space-x-4 pb-4">
-              {tasksLoading ? <p>Loading tasks...</p> : unattendedTasks.map((task) => (
-                <Card key={task.id} className="w-[280px]">
+              {tasksLoading ? <p>Loading tasks...</p> : unattendedTasks.map((task, index) => (
+                <Card key={index} className="w-[280px]">
                   <CardHeader>
-                    <CardTitle className="text-lg">{task.tableName}</CardTitle>
+                    <CardTitle className="text-lg">{task.table}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <p className="font-semibold">{task.requestType}</p>
+                    <p className="font-semibold">{task.request}</p>
                     <p className="text-sm text-muted-foreground">
-                      {task.dateTime}
+                      {new Date(task.time).toLocaleTimeString()}
                     </p>
                     <div className="flex justify-between pt-2">
-                      <Button variant="outline" onClick={() => handleUpdateTask(task.id, 'ignored')}>Ignore</Button>
-                      <Button onClick={() => handleUpdateTask(task.id, 'attended')}>Attend</Button>
+                      <Button variant="outline" onClick={() => handleUpdateTask(task, 'ignored')}>Ignore</Button>
+                      <Button onClick={() => handleUpdateTask(task, 'attended')}>Attend</Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -143,6 +155,7 @@ export default function TasksPage() {
       <Card>
         <CardHeader>
           <CardTitle>Tasks History</CardTitle>
+           <CardDescription>Record of all attended and ignored tasks.</CardDescription>
         </CardHeader>
         <CardContent>
           {tasksLoading ? <p>Loading history...</p> : (
@@ -150,21 +163,18 @@ export default function TasksPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Task ID</TableHead>
-                  <TableHead>Date & Time</TableHead>
-                  <TableHead>Table Number</TableHead>
-                  <TableHead>Request Type</TableHead>
+                  <TableHead>Time</TableHead>
+                  <TableHead>Table</TableHead>
+                  <TableHead>Request</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Staff</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paginatedTasks.map((task) => (
-                  <TableRow key={task.id}>
-                    <TableCell>{task.id.substring(0, 5)}...</TableCell>
-                    <TableCell>{task.dateTime}</TableCell>
-                    <TableCell>{task.tableName}</TableCell>
-                    <TableCell>{task.requestType}</TableCell>
+                {paginatedTasks.map((task, index) => (
+                  <TableRow key={index}>
+                    <TableCell>{new Date(task.time).toLocaleString()}</TableCell>
+                    <TableCell>{task.table}</TableCell>
+                    <TableCell>{task.request}</TableCell>
                     <TableCell>
                       <Badge
                         variant={statusVariant(task.status)}
@@ -173,7 +183,6 @@ export default function TasksPage() {
                         {task.status}
                       </Badge>
                     </TableCell>
-                    <TableCell>{task.staff}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

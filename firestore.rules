@@ -3,29 +3,22 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper function to check if the user is the designated admin.
     function isAdmin() {
       return request.auth.uid == 'wxavChRTGxRzNafZILMHCZDnDu52';
     }
     
-    // Helper function to check if the user is signed in.
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // Helper function to check if the user owns the document.
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // Default-deny all reads and writes.
     match /{document=**} {
       allow read, write: if false;
     }
     
-    // Users can read/write their own user document.
-    // Public read access is allowed so the QR menu can find the restaurant by restaurantId.
-    // Admin has full read access to the entire collection.
     match /users/{userId} {
       allow get, list: if isAdmin();
       allow read: if true;
@@ -33,7 +26,23 @@ service cloud.firestore {
       allow create: if isSignedIn();
     }
     
-    // Allow public read access to menu items, categories, and events for the QR menu.
+    match /plans/{planId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /coupons/{couponId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /notifications/{notificationId} {
+      allow get: if isSignedIn();
+      allow write: if isAdmin();
+    }
+    
+    match /notifications {
+        allow list: if isSignedIn();
+    }
+
     match /users/{userId}/menuItems/{itemId} {
       allow read: if true;
       allow write: if isOwner(userId);
@@ -49,76 +58,61 @@ service cloud.firestore {
       allow write: if isOwner(userId);
     }
 
-    // Allow anyone to create an RSVP for a public event.
     match /users/{userId}/events/{eventId}/rsvps/{rsvpId} {
-      allow read: if isOwner(userId); // Only owner can see the full list
-      allow create: if true; // Anyone can create an RSVP
-      allow write: if isOwner(userId); // Only owner can update/delete
-    }
-    
-    // Allow owner to read/write their tasks, and allow anyone to create a new task.
-    match /users/{userId}/tasks/{taskId} {
-      allow read, write: if isOwner(userId);
+      allow read: if isOwner(userId);
       allow create: if true;
+      allow write: if isOwner(userId);
     }
     
-    // Allow anyone to submit feedback for a restaurant.
+    // This rule allows anyone to add a task to the pendingCalls array.
+    // It prevents them from modifying other parts of the document.
+    match /users/{userId}/tasks/live {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId);
+      allow update: if request.resource.data.pendingCalls.size() > resource.data.pendingCalls.size();
+    }
+    
     match /users/{userId}/feedback/{feedbackId} {
       allow create: if true;
       allow read, write, delete: if isOwner(userId);
     }
     
-    // Allow anyone to submit feedback for the QRLive app. Admin can read/write.
-    match /qrlive-feedback/{feedbackId} {
-      allow create: if true;
-      allow read, write, delete: if isAdmin();
+    match /aifa_feedback/{feedbackId} {
+        allow create: if true;
+        allow read, write, delete: if isAdmin();
     }
 
-    // Secure all other user subcollections to be owner-only.
-    match /users/{userId}/{collection}/{docId=**} {
-      // This rule will not match the more specific rules above.
-      allow read, write: if isOwner(userId);
-    }
-
-    // This collection is used for public OTP verification and should be writeable by anyone.
-    // Documents have an expiry and are cleaned up after verification.
-    match /mobileVerifications/{verificationId} {
-      allow create: if true;
-      allow read, delete: if request.auth != null; // Allow read/delete for signed-in sessions (incl. anonymous)
+    match /supportTickets/{ticketId} {
+      allow create: if isSignedIn() && request.auth.uid == request.resource.data.submittedBy;
+      allow get: if isOwner(request.resource.data.submittedBy) || isAdmin();
+      allow list: if (isSignedIn() && request.query.where.submittedBy == request.auth.uid) || isAdmin();
+      allow update: if isAdmin() && request.resource.data.keys().hasOnly(['status']);
+      allow delete: if isAdmin();
     }
     
-    // Auto-delete activity logs after 60 days
-    match /users/{userId}/activity/{activityId} {
-       allow read, write: if isOwner(userId);
-       allow delete: if request.time > resource.data.timestamp + duration.value(60, 'd');
-    }
-
-    // --- New Rules for Admin-managed Collections ---
-
-    // Subscription plans are readable by any signed-in user, but only writable by the admin.
-    match /plans/{planId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
-    }
-
-    // Notifications are readable by any signed-in user, but only writable by the admin.
-    match /notifications/{notificationId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
-    }
-
-    // Feedback requests are created by the admin and read by users/public.
     match /feedback_requests/{requestId} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
     }
 
-    // Feedback responses can be created by any user, but only read by the admin.
     match /feedback_responses/{responseId} {
-      allow create: if isSignedIn();
-      allow read, write, delete: if isAdmin();
+      allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
+      allow read: if isOwner(request.resource.data.userId) || isAdmin();
+      allow update, delete: if false;
+    }
+    
+    match /users/{userId}/{collection}/{docId=**} {
+      allow read, write: if isOwner(userId);
+    }
+
+    match /mobileVerifications/{verificationId} {
+      allow create: if true;
+      allow read, delete: if request.auth != null;
+    }
+    
+    match /users/{userId}/activity/{activityId} {
+       allow read, write: if isOwner(userId);
+       allow delete: if request.time > resource.data.timestamp + duration.value(60, 'd');
     }
   }
 }
-
-    
