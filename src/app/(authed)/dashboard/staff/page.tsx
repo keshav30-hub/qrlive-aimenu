@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -23,7 +22,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { CalendarIcon, ChevronLeft, ChevronRight, PlusCircle, Clock, FilePenLine, Trash2, MoreVertical, AlarmClock } from 'lucide-react';
+import { CalendarIcon, ChevronLeft, ChevronRight, PlusCircle, Clock, FilePenLine, Trash2, MoreVertical, AlarmClock, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -128,6 +127,11 @@ export default function StaffPage() {
   const [reminderTime, setReminderTime] = useState<string | null>('10:00');
   const [newReminderTime, setNewReminderTime] = useState<string>('10:00');
   const [isEditingReminder, setIsEditingReminder] = useState(false);
+  const [isShiftDialogOpen, setIsShiftDialogOpen] = useState(false);
+  const [newShiftName, setNewShiftName] = useState('');
+  const [newShiftFrom, setNewShiftFrom] = useState('');
+  const [newShiftTo, setNewShiftTo] = useState('');
+  const [isSavingShift, setIsSavingShift] = useState(false);
 
   const handleStatusChange = async (staffId: string, newStatus: AttendanceStatus) => {
     if (!staffRef) return;
@@ -164,6 +168,28 @@ export default function StaffPage() {
   };
 
   const activeStaffList = staffList.filter(staff => staff.active);
+
+  const handleSaveShift = async () => {
+    if (!newShiftName || !newShiftFrom || !newShiftTo || !shiftsRef) return;
+    setIsSavingShift(true);
+    try {
+        await addDoc(shiftsRef, {
+            name: newShiftName,
+            from: newShiftFrom,
+            to: newShiftTo,
+        });
+        toast({ title: 'Success', description: 'New shift has been added.' });
+        setNewShiftName('');
+        setNewShiftFrom('');
+        setNewShiftTo('');
+        setIsShiftDialogOpen(false);
+    } catch (e) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not save shift.' });
+        console.error(e);
+    } finally {
+        setIsSavingShift(false);
+    }
+  };
 
 
   return (
@@ -223,7 +249,7 @@ export default function StaffPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-            <Dialog>
+            <Dialog open={isShiftDialogOpen} onOpenChange={setIsShiftDialogOpen}>
             <DialogTrigger asChild>
                 <Button variant="outline">
                 <Clock className="mr-2 h-4 w-4" />
@@ -268,22 +294,25 @@ export default function StaffPage() {
                     </div>
                         <div className="space-y-2">
                             <Label htmlFor="shift-name">Shift Name</Label>
-                            <Input id="shift-name" placeholder="e.g. Lunch Shift" />
+                            <Input id="shift-name" placeholder="e.g. Lunch Shift" value={newShiftName} onChange={(e) => setNewShiftName(e.target.value)} />
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="from-time">From</Label>
-                                <Input id="from-time" type="time" />
+                                <Input id="from-time" type="time" value={newShiftFrom} onChange={(e) => setNewShiftFrom(e.target.value)} />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="to-time">To</Label>
-                                <Input id="to-time" type="time" />
+                                <Input id="to-time" type="time" value={newShiftTo} onChange={(e) => setNewShiftTo(e.target.value)} />
                             </div>
                         </div>
                     </div>
                 </div>
                 <DialogFooter>
-                <Button type="submit">Save Shift</Button>
+                    <Button onClick={handleSaveShift} disabled={isSavingShift || !newShiftName || !newShiftFrom || !newShiftTo}>
+                        {isSavingShift ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        Save Shift
+                    </Button>
                 </DialogFooter>
             </DialogContent>
             </Dialog>

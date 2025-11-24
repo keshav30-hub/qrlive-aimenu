@@ -21,9 +21,11 @@ import {
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { LockScreen } from '@/components/layout/lock-screen';
 
 type UserProfile = {
     onboarding: boolean;
+    adminAccessCode?: string;
 };
 
 type Notification = {
@@ -46,6 +48,8 @@ function AuthRedirect({ children }: { children: React.ReactNode }) {
     
     const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userDocRef);
     const isDataLoading = isUserLoading || isProfileLoading;
+    const [isUnlocked, setIsUnlocked] = useState(false);
+
 
     useEffect(() => {
         if (!isDataLoading) {
@@ -68,6 +72,9 @@ function AuthRedirect({ children }: { children: React.ReactNode }) {
     }
     
     if (user && userProfile?.onboarding) {
+        if (userProfile.adminAccessCode && !isUnlocked) {
+            return <LockScreen code={userProfile.adminAccessCode} onUnlock={() => setIsUnlocked(true)} />;
+        }
         return (
             <TaskNotificationProvider>
                 {children}
