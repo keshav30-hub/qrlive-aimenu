@@ -12,6 +12,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { useRouter } from 'next/navigation';
 
 type Task = {
   tableName: string;
@@ -42,8 +43,20 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [unattendedTaskCount, setUnattendedTaskCount] = useState(0);
-  const audioRef = useRef<HTMLAudioElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const router = useRouter();
+  
+  // Effect to manage the audio element
+  useEffect(() => {
+    // We create the audio element only on the client-side
+    if (typeof window !== 'undefined') {
+      audioRef.current = new Audio('/notificationalert.mp3');
+      audioRef.current.loop = true;
+      audioRef.current.preload = 'auto';
+    }
+  }, []);
 
+  // Effect to control audio playback based on task count and mute state
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -53,6 +66,14 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
     } else {
       audio.pause();
       audio.currentTime = 0;
+    }
+    
+    // Cleanup function to pause audio when the component unmounts
+    return () => {
+        if(audio) {
+            audio.pause();
+            audio.currentTime = 0;
+        }
     }
   }, [unattendedTaskCount, isMuted]);
 
@@ -69,6 +90,11 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
     setIsDialogOpen(false);
   };
 
+  const goToTasks = () => {
+    closeDialog();
+    router.push('/dashboard/tasks');
+  }
+
   const value = { 
     showNewTask, 
     isMuted, 
@@ -80,7 +106,6 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
   return (
     <TaskNotificationContext.Provider value={value}>
       {children}
-      <audio ref={audioRef} src="/notificationalert.mp3" preload="auto" loop />
       <AlertDialog open={isDialogOpen} onOpenChange={(open) => !open && closeDialog()}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -97,7 +122,7 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
           <AlertDialogFooter>
             <Button variant="outline" onClick={closeDialog}>Acknowledge</Button>
             <AlertDialogAction asChild>
-                <Button onClick={closeDialog}>View Tasks</Button>
+                <Button onClick={goToTasks}>View Tasks</Button>
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

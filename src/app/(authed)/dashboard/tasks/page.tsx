@@ -60,7 +60,7 @@ export default function TasksPage() {
   const { data: tasksDoc, isLoading: tasksLoading } = useDoc<TaskDoc>(tasksLiveRef);
 
   const [currentPage, setCurrentPage] = useState(1);
-  const { showNewTask } = useTaskNotification();
+  const { showNewTask, setUnattendedTaskCount } = useTaskNotification();
 
   const unattendedTasks = useMemo(() => (tasksDoc?.pendingCalls || []).sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime()), [tasksDoc]);
   const taskHistory = useMemo(() => (tasksDoc?.attendedCalls || []).sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()), [tasksDoc]);
@@ -68,17 +68,16 @@ export default function TasksPage() {
   const prevPendingCallsRef = useRef<Task[]>([]);
 
   useEffect(() => {
-    // When the component first loads and we have data, initialize the ref.
+    // This effect now does two things:
+    // 1. Keeps the global context updated with the number of unattended tasks.
+    // 2. Shows a pop-up notification only when a *new* task is detected.
+
+    setUnattendedTaskCount(unattendedTasks.length);
+
     if (tasksLoading) return;
 
-    if (unattendedTasks.length > 0 && prevPendingCallsRef.current.length === 0) {
-      prevPendingCallsRef.current = unattendedTasks;
-      return;
-    }
-    
-    // If the new list is longer than the old one, a task was added.
+    // Check if a new task has been added since the last render.
     if (unattendedTasks.length > prevPendingCallsRef.current.length) {
-      // Find the new task(s). This handles multiple additions between renders if needed.
       const newTasks = unattendedTasks.filter(
         task => !prevPendingCallsRef.current.some(
           prevTask => prevTask.time === task.time && prevTask.table === task.table && prevTask.request === task.request
@@ -86,8 +85,9 @@ export default function TasksPage() {
       );
       
       if (newTasks.length > 0) {
-        // Show notification for the newest task.
+        // Find the absolute latest task among the new ones
         const latestTask = newTasks.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())[0];
+        // Trigger the pop-up notification
         showNewTask({
           tableName: latestTask.table,
           requestType: latestTask.request,
@@ -96,10 +96,10 @@ export default function TasksPage() {
       }
     }
 
-    // Update the ref to the current state for the next render.
+    // After processing, update the ref to the current state for the next render.
     prevPendingCallsRef.current = unattendedTasks;
 
-  }, [unattendedTasks, showNewTask, tasksLoading]);
+  }, [unattendedTasks, showNewTask, tasksLoading, setUnattendedTaskCount]);
 
 
   const totalPages = Math.ceil(taskHistory.length / ITEMS_PER_PAGE);
@@ -121,12 +121,24 @@ export default function TasksPage() {
   const handleUpdateTask = async (taskToUpdate: Task, newStatus: 'attended' | 'ignored') => {
     if (!tasksLiveRef) return;
     
-    const updatedTask = { ...taskToUpdate, status: newStatus };
+    // The task object in pendingCalls doesn't have the status field, which is critical.
+    // The security rule is likely failing because the object being removed is not identical
+    // to the one in the database. Let's send the exact object from the database.
+    const originalTaskInDb = (tasksDoc?.pendingCalls || []).find(
+      t => t.time === taskToUpdate.time && t.table === taskToUpdate.table && t.request === taskToUpdate.request
+    );
+
+    if (!originalTaskInDb) {
+      toast({ variant: "destructive", title: "Error", description: "Task not found to update. It might have been attended already." });
+      return;
+    }
+
+    const updatedTask = { ...originalTaskInDb, status: newStatus };
 
     try {
       // Atomically remove from pending and add to attended
       await updateDoc(tasksLiveRef, { 
-        pendingCalls: arrayRemove(taskToUpdate),
+        pendingCalls: arrayRemove(originalTaskInDb),
         attendedCalls: arrayUnion(updatedTask)
       });
       toast({ title: "Success", description: `Task marked as ${newStatus}.` });
@@ -139,7 +151,7 @@ export default function TasksPage() {
   const simulateTask = async () => {
     if (!tasksLiveRef) return;
     const sampleTask = {
-        table: 'Table 7 (Simulated)',
+        table: `Table ${(Math.floor(Math.random() * 10) + 1)} (Sim)`,
         request: 'Call Captain',
         time: new Date().toISOString(),
         status: 'unattended' as const
@@ -150,7 +162,7 @@ export default function TasksPage() {
       });
     } catch(e) {
       console.error(e);
-      toast({ variant: "destructive", title: "Error", description: "Could not simulate task." });
+      toast({ variant: "destructive", title: "Error", description: "Could not simulate task. Make sure tasks document exists." });
     }
   };
 
