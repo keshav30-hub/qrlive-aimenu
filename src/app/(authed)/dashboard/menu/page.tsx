@@ -42,7 +42,7 @@ import {
   RadioGroupItem,
 } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
-import { PlusCircle, Trash2, MoreVertical, Save, Search, Sparkles } from 'lucide-react';
+import { PlusCircle, Trash2, MoreVertical, Save, Search, Sparkles, Loader2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useCurrency } from '@/hooks/use-currency';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -55,7 +55,7 @@ import { generateMenuItemDetails } from '@/ai/flows/generate-menu-item-details';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, doc, addDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-
+import { useFirebaseStorage } from '@/firebase/storage/use-firebase-storage';
 
 type Addon = { name: string; price: string };
 type Modifier = { name: string; price: string };
@@ -73,6 +73,8 @@ type MenuItem = {
   addons: Addon[];
   modifiers: Modifier[];
   available: boolean;
+  imageUrl?: string;
+  imageStoragePath?: string;
 };
 
 const initialItemState: Omit<MenuItem, 'id'> = {
@@ -105,6 +107,7 @@ type Category = {
     name: string;
     description: string;
     imageUrl: string;
+    imageStoragePath?: string;
     imageHint: string;
     active: boolean;
     availableDays: string[];
@@ -134,8 +137,8 @@ const ITEMS_PER_PAGE = 15;
 export default function MenuPage() {
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
+  const { uploadFile, deleteFile, isLoading: isUploading } = useFirebaseStorage();
 
-  // Firestore hooks
   const categoriesRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'menuCategories') : null, [firestore, user]);
   const menuItemsRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'menuItems') : null, [firestore, user]);
   const combosRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'combos') : null, [firestore, user]);
@@ -152,6 +155,9 @@ export default function MenuPage() {
   
   const [currentItem, setCurrentItem] = useState<Partial<MenuItem>>(initialItemState);
   const [currentCategory, setCurrentCategory] = useState<Partial<Category>>(defaultCategory);
+
+  const [isSavingItem, setIsSavingItem] = useState(false);
+  const [isSavingCategory, setIsSavingCategory] = useState(false);
   
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
@@ -237,29 +243,60 @@ export default function MenuPage() {
     setCurrentItem(prev => ({ ...prev, modifiers }));
   };
 
+  const handleItemImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0] && user) {
+        const file = e.target.files[0];
+        const newPath = `users/${user.uid}/images/menu-items/${Date.now()}_${file.name}`;
+        const uploadResult = await uploadFile(newPath, file);
+        if (uploadResult) {
+            if (isEditingItem && currentItem.imageStoragePath) {
+                await deleteFile(currentItem.imageStoragePath);
+            }
+            setCurrentItem(prev => ({
+                ...prev,
+                imageUrl: uploadResult.downloadURL,
+                imageStoragePath: uploadResult.storagePath,
+            }));
+            toast({ title: 'Image Uploaded' });
+        } else {
+            toast({ variant: 'destructive', title: 'Upload Failed' });
+        }
+    }
+  };
+
   const handleSaveItem = async () => {
     if (!menuItemsRef) return;
+    setIsSavingItem(true);
     try {
+        const itemData = {
+          ...currentItem,
+          imageUrl: currentItem.imageUrl || `https://picsum.photos/seed/item${Date.now()}/400/300`,
+        };
+
         if (isEditingItem && currentItem.id) {
             const itemDoc = doc(menuItemsRef, currentItem.id);
-            await updateDoc(itemDoc, { ...currentItem, updatedAt: serverTimestamp() });
+            await updateDoc(itemDoc, { ...itemData, updatedAt: serverTimestamp() });
             toast({ title: "Success", description: "Menu item updated." });
         } else {
-            await addDoc(menuItemsRef, { ...currentItem, createdAt: serverTimestamp() });
+            await addDoc(menuItemsRef, { ...itemData, createdAt: serverTimestamp() });
             toast({ title: "Success", description: "Menu item added." });
         }
         setIsSheetOpen(false);
     } catch(e) {
         toast({ variant: "destructive", title: "Error", description: "Could not save menu item." });
         console.error(e);
+    } finally {
+      setIsSavingItem(false);
     }
   };
 
-  const handleDeleteItem = async (itemId: string) => {
+  const handleDeleteItem = async (item: MenuItem) => {
     if (!menuItemsRef) return;
     try {
-        const itemDoc = doc(menuItemsRef, itemId);
-        await deleteDoc(itemDoc);
+        if(item.imageStoragePath) {
+            await deleteFile(item.imageStoragePath);
+        }
+        await deleteDoc(doc(menuItemsRef, item.id));
         toast({ title: "Success", description: "Menu item deleted." });
     } catch(e) {
         toast({ variant: "destructive", title: "Error", description: "Could not delete menu item." });
@@ -320,18 +357,45 @@ export default function MenuPage() {
     setCurrentCategory(prev => ({ ...prev, availableDays: newDays }));
   }
 
+  const handleCategoryImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+     if (e.target.files && e.target.files[0] && user) {
+        const file = e.target.files[0];
+        const newPath = `users/${user.uid}/images/categories/${Date.now()}_${file.name}`;
+        const uploadResult = await uploadFile(newPath, file);
+
+        if (uploadResult) {
+            if (isEditingCategory && currentCategory.imageStoragePath) {
+                await deleteFile(currentCategory.imageStoragePath);
+            }
+            setCurrentCategory(prev => ({
+                ...prev,
+                imageUrl: uploadResult.downloadURL,
+                imageStoragePath: uploadResult.storagePath,
+            }));
+            toast({ title: 'Image Uploaded' });
+        } else {
+            toast({ variant: 'destructive', title: 'Upload Failed' });
+        }
+    }
+  };
+
   const handleSaveCategory = async () => {
     if (!categoriesRef) return;
+    setIsSavingCategory(true);
     try {
+        const categoryData = {
+          ...currentCategory,
+          imageUrl: currentCategory.imageUrl || `https://picsum.photos/seed/cat${Date.now()}/600/400`,
+          imageHint: currentCategory.imageHint || 'new category',
+        };
+
         if (isEditingCategory && currentCategory.id) {
             const catDoc = doc(categoriesRef, currentCategory.id);
-            await updateDoc(catDoc, { ...currentCategory, updatedAt: serverTimestamp() });
+            await updateDoc(catDoc, { ...categoryData, updatedAt: serverTimestamp() });
             toast({ title: "Success", description: "Category updated." });
         } else {
              await addDoc(categoriesRef, { 
-                ...currentCategory,
-                imageUrl: `https://picsum.photos/seed/cat${(categories || []).length + 1}/600/400`,
-                imageHint: 'new category',
+                ...categoryData,
                 createdAt: serverTimestamp() 
             });
             toast({ title: "Success", description: "Category added." });
@@ -341,13 +405,18 @@ export default function MenuPage() {
     } catch(e) {
         toast({ variant: "destructive", title: "Error", description: "Could not save category." });
         console.error(e);
+    } finally {
+      setIsSavingCategory(false);
     }
   };
 
-  const handleDeleteCategory = async (categoryId: string) => {
+  const handleDeleteCategory = async (category: Category) => {
     if (!categoriesRef) return;
     try {
-        await deleteDoc(doc(categoriesRef, categoryId));
+        if(category.imageStoragePath) {
+            await deleteFile(category.imageStoragePath);
+        }
+        await deleteDoc(doc(categoriesRef, category.id));
         toast({ title: "Success", description: "Category deleted." });
     } catch (e) {
         toast({ variant: "destructive", title: "Error", description: "Could not delete category." });
@@ -432,10 +501,13 @@ export default function MenuPage() {
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
                       <Label htmlFor="item-image">Item Image</Label>
-                      <Input id="item-image" type="file" />
-                      <p className="text-xs text-muted-foreground">
-                        Recommended size: 400x300 pixels for best fit on mobile.
-                      </p>
+                      {currentItem.imageUrl && (
+                          <div className="relative w-full h-40 rounded-md overflow-hidden">
+                              <Image src={currentItem.imageUrl} alt={currentItem.name || "Item Image"} fill style={{objectFit: 'cover'}} />
+                          </div>
+                      )}
+                      <Input id="item-image" type="file" onChange={handleItemImageChange} disabled={isUploading}/>
+                      {isUploading && <p className="text-sm text-muted-foreground">Uploading image...</p>}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="name">Item Name</Label>
@@ -546,8 +618,11 @@ export default function MenuPage() {
                   </div>
                 </ScrollArea>
                 <SheetFooter>
-                  <Button variant="outline" onClick={() => setIsSheetOpen(false)}>Cancel</Button>
-                  <Button onClick={handleSaveItem}>{isEditingItem ? 'Save Changes' : 'Save Item'}</Button>
+                  <Button variant="outline" onClick={() => setIsSheetOpen(false)} disabled={isSavingItem || isUploading}>Cancel</Button>
+                  <Button onClick={handleSaveItem} disabled={isSavingItem || isUploading}>
+                    {isSavingItem ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
+                    {isSavingItem ? 'Saving...' : isEditingItem ? 'Save Changes' : 'Save Item'}
+                  </Button>
                 </SheetFooter>
               </SheetContent>
             </Sheet>
@@ -626,7 +701,7 @@ export default function MenuPage() {
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuItem onClick={() => handleEditItemClick(item)}>Edit</DropdownMenuItem>
-                                                <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteItem(item.id)}>Delete</DropdownMenuItem>
+                                                <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteItem(item)}>Delete</DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     </TableCell>
@@ -683,15 +758,21 @@ export default function MenuPage() {
                         <div className="space-y-4 py-4">
                         <div className="space-y-2">
                             <Label htmlFor="category-image-edit">Category Image</Label>
-                            <Input id="category-image-edit" type="file" />
+                            {currentCategory.imageUrl && (
+                                <div className="relative w-full h-40 rounded-md overflow-hidden">
+                                    <Image src={currentCategory.imageUrl} alt={currentCategory.name || "Category Image"} fill style={{objectFit: 'cover'}} />
+                                </div>
+                            )}
+                            <Input id="category-image-edit" type="file" onChange={handleCategoryImageChange} disabled={isUploading} />
+                            {isUploading && <p className="text-sm text-muted-foreground">Uploading image...</p>}
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="name">Category Name</Label>
-                            <Input id="name" value={currentCategory.name} onChange={handleCategoryInputChange} />
+                            <Input id="name" value={currentCategory.name || ''} onChange={handleCategoryInputChange} />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="description">Description (Optional)</Label>
-                            <Textarea id="description" value={currentCategory.description} onChange={handleCategoryInputChange} />
+                            <Textarea id="description" value={currentCategory.description || ''} onChange={handleCategoryInputChange} />
                         </div>
                         <div className="space-y-3">
                             <Label>Available Days of Week</Label>
@@ -713,19 +794,22 @@ export default function MenuPage() {
                             <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1">
                                 <Label htmlFor="from-time-edit" className="text-xs">From</Label>
-                                <Input id="fromTime" type="time" value={currentCategory.fromTime} onChange={handleCategoryInputChange} />
+                                <Input id="fromTime" type="time" value={currentCategory.fromTime || ''} onChange={handleCategoryInputChange} />
                             </div>
                             <div className="space-y-1">
                                 <Label htmlFor="to-time-edit" className="text-xs">To</Label>
-                                <Input id="toTime" type="time" value={currentCategory.toTime} onChange={handleCategoryInputChange} />
+                                <Input id="toTime" type="time" value={currentCategory.toTime || ''} onChange={handleCategoryInputChange} />
                             </div>
                             </div>
                         </div>
                         </div>
                     </ScrollArea>
                     <SheetFooter>
-                    <Button variant="outline" onClick={() => setIsCategorySheetOpen(false)}>Cancel</Button>
-                    <Button onClick={handleSaveCategory}><Save className="mr-2" />{isEditingCategory ? 'Save Changes' : 'Save Category'}</Button>
+                    <Button variant="outline" onClick={() => setIsCategorySheetOpen(false)} disabled={isSavingCategory || isUploading}>Cancel</Button>
+                    <Button onClick={handleSaveCategory} disabled={isSavingCategory || isUploading}>
+                        {isSavingCategory ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4" />}
+                        {isSavingCategory ? 'Saving...' : isEditingCategory ? 'Save Changes' : 'Save Category'}
+                    </Button>
                     </SheetFooter>
                 </SheetContent>
             </Sheet>
@@ -765,7 +849,7 @@ export default function MenuPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => handleEditCategoryClick(category)}>Edit</DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteCategory(category.id)}>Delete</DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteCategory(category)}>Delete</DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </CardFooter>

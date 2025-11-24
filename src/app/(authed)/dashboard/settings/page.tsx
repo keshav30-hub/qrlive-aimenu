@@ -19,6 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { useFirebaseStorage } from '@/firebase/storage/use-firebase-storage';
 
 type BusinessInfo = {
   name: string;
@@ -28,6 +29,7 @@ type BusinessInfo = {
   address: string;
   phone?: string;
   logo: string;
+  logoStoragePath?: string;
   googleReviewLink?: string;
   adminAccessCode?: string;
   businessId?: string;
@@ -36,6 +38,7 @@ type BusinessInfo = {
 export default function SettingsPage() {
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
+  const { uploadFile, deleteFile, isLoading: isUploading } = useFirebaseStorage();
   
   const userRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: businessInfo, isLoading: isInfoLoading } = useDoc<BusinessInfo>(userRef);
@@ -83,14 +86,27 @@ export default function SettingsPage() {
     setEditedInfo(prev => prev ? ({ ...prev, [name]: value }) : null);
   };
   
-  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
+  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0] && user && editedInfo) {
       const file = e.target.files[0];
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setEditedInfo(prev => prev ? ({ ...prev, logo: reader.result as string }) : null);
-      };
-      reader.readAsDataURL(file);
+      const newLogoPath = `users/${user.uid}/images/logo/${file.name}`;
+      
+      const uploadResult = await uploadFile(newLogoPath, file);
+      
+      if (uploadResult) {
+        // If there was an old logo, delete it
+        if (editedInfo.logoStoragePath) {
+          await deleteFile(editedInfo.logoStoragePath);
+        }
+        
+        setEditedInfo(prev => prev ? ({ 
+          ...prev, 
+          logo: uploadResult.downloadURL,
+          logoStoragePath: uploadResult.storagePath
+        }) : null);
+      } else {
+        toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload new logo.' });
+      }
     }
   };
 
@@ -161,11 +177,11 @@ export default function SettingsPage() {
           </div>
           {isEditing ? (
             <div className="flex gap-2">
-              <Button variant="outline" onClick={handleCancel} disabled={isSaving}>
+              <Button variant="outline" onClick={handleCancel} disabled={isSaving || isUploading}>
                 <X className="mr-2 h-4 w-4" />
                 Cancel
               </Button>
-              <Button onClick={handleSave} disabled={isSaving}>
+              <Button onClick={handleSave} disabled={isSaving || isUploading}>
                 {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                 {isSaving ? 'Saving...' : 'Save Changes'}
               </Button>
@@ -181,7 +197,7 @@ export default function SettingsPage() {
           <div className="flex items-center gap-6">
             <div className="relative">
               <Avatar className="h-24 w-24">
-                <AvatarImage src={isEditing ? editedInfo.logo : businessInfo.logo} alt="Business Logo" />
+                <AvatarImage src={editedInfo.logo || 'https://picsum.photos/seed/logo/100/100'} alt="Business Logo" />
                 <AvatarFallback>
                   {businessInfo.name ? businessInfo.name.charAt(0) : 'B'}
                 </AvatarFallback>
@@ -190,9 +206,9 @@ export default function SettingsPage() {
                 <div className="absolute bottom-0 right-0">
                   <Label htmlFor="logo-upload" className="cursor-pointer">
                     <div className="p-2 bg-primary text-primary-foreground rounded-full hover:bg-primary/90">
-                      <Upload className="h-4 w-4" />
+                     {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
                     </div>
-                    <Input id="logo-upload" type="file" className="sr-only" accept="image/*" onChange={handleLogoChange} />
+                    <Input id="logo-upload" type="file" className="sr-only" accept="image/*" onChange={handleLogoChange} disabled={isUploading} />
                   </Label>
                 </div>
               )}
@@ -334,5 +350,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-
-    
