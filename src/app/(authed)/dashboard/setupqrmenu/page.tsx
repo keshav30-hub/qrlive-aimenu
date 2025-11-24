@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState } from 'react';
@@ -40,14 +39,14 @@ import {
   Trash2,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, addDoc, deleteDoc, doc } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
 
-const initialTables = [
-  { id: 1, name: 'Table 1' },
-  { id: 2, name: 'Table 2' },
-  { id: 3, name: 'Table 3' },
-  { id: 4, name: 'Table 4' },
-  { id: 5, name: 'Table 5' },
-];
+type TableData = {
+  id: string;
+  name: string;
+}
 
 const topPages = [
   { name: '/menu/starters', visits: 1024 },
@@ -57,24 +56,38 @@ const topPages = [
 ];
 
 export default function SetupQrMenuPage() {
-  const [tables, setTables] = useState(initialTables);
+  const { firestore, user } = useFirebase();
+  const { toast } = useToast();
+  
+  const tablesRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'tables') : null, [firestore, user]);
+  const { data: tables = [], isLoading: tablesLoading } = useCollection<TableData>(tablesRef);
+
   const [newTableName, setNewTableName] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const handleAddTable = () => {
-    if (newTableName.trim()) {
-      const newTable = {
-        id: tables.length > 0 ? Math.max(...tables.map(t => t.id)) + 1 : 1,
-        name: newTableName,
-      };
-      setTables([...tables, newTable]);
-      setNewTableName('');
-      setIsDialogOpen(false);
+  const handleAddTable = async () => {
+    if (newTableName.trim() && tablesRef) {
+      try {
+        await addDoc(tablesRef, { name: newTableName });
+        toast({ title: "Success", description: "Table added." });
+        setNewTableName('');
+        setIsDialogOpen(false);
+      } catch (e) {
+        toast({ variant: "destructive", title: "Error", description: "Could not add table." });
+        console.error(e);
+      }
     }
   };
 
-  const handleDeleteTable = (id: number) => {
-    setTables(tables.filter(table => table.id !== id));
+  const handleDeleteTable = async (id: string) => {
+    if (!tablesRef) return;
+    try {
+      await deleteDoc(doc(tablesRef, id));
+      toast({ title: "Success", description: "Table deleted." });
+    } catch(e) {
+      toast({ variant: "destructive", title: "Error", description: "Could not delete table." });
+      console.error(e);
+    }
   };
   
   const handleDownloadQr = (tableName: string) => {
@@ -196,43 +209,47 @@ export default function SetupQrMenuPage() {
           </Dialog>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>#</TableHead>
-                <TableHead>Table Name</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {tables.map((table, index) => (
-                <TableRow key={table.id}>
-                  <TableCell>{index + 1}</TableCell>
-                  <TableCell className="font-medium">{table.name}</TableCell>
-                  <TableCell className="text-right space-x-2">
-                    <Button variant="outline" size="sm" onClick={() => handleDownloadQr(table.name)}>
-                      <Download className="mr-2 h-4 w-4" />
-                      Download QR
-                    </Button>
-                    <Link href={`/qrmenu/the-gourmet-place/${table.id}`} target="_blank">
-                      <Button variant="outline" size="sm">
-                        <ExternalLink className="mr-2 h-4 w-4" />
-                        Visit
-                      </Button>
-                    </Link>
-                    <Button variant="destructive" size="icon" onClick={() => handleDeleteTable(table.id)}>
-                        <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
+          {tablesLoading ? <p>Loading tables...</p> : (
+          <>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>#</TableHead>
+                  <TableHead>Table Name</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-            {tables.length === 0 && (
-                <div className="text-center py-10 text-muted-foreground">
-                    <p>No tables added yet. Click &quot;Add Table&quot; to get started.</p>
-                </div>
-            )}
+              </TableHeader>
+              <TableBody>
+                {tables.map((table, index) => (
+                  <TableRow key={table.id}>
+                    <TableCell>{index + 1}</TableCell>
+                    <TableCell className="font-medium">{table.name}</TableCell>
+                    <TableCell className="text-right space-x-2">
+                      <Button variant="outline" size="sm" onClick={() => handleDownloadQr(table.name)}>
+                        <Download className="mr-2 h-4 w-4" />
+                        Download QR
+                      </Button>
+                      <Link href={`/qrmenu/the-gourmet-place/${table.id}`} target="_blank">
+                        <Button variant="outline" size="sm">
+                          <ExternalLink className="mr-2 h-4 w-4" />
+                          Visit
+                        </Button>
+                      </Link>
+                      <Button variant="destructive" size="icon" onClick={() => handleDeleteTable(table.id)}>
+                          <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+              {tables.length === 0 && !tablesLoading && (
+                  <div className="text-center py-10 text-muted-foreground">
+                      <p>No tables added yet. Click &quot;Add Table&quot; to get started.</p>
+                  </div>
+              )}
+          </>
+          )}
         </CardContent>
       </Card>
     </div>

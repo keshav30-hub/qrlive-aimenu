@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -18,58 +17,67 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import Link from 'next/link';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
 
-const initialBusinessInfo = {
-  name: 'The Gourmet Place',
-  owner: 'John Doe',
-  contact: '+91 98765 43210',
-  email: 'contact@thegourmetplace.com',
-  address: '123, Gourmet Lane, Foodie City, 400001',
-  phone: '+022 1234 5678',
-  logo: 'https://picsum.photos/seed/logo/100/100',
-  googleReviewLink: 'https://g.page/r/your-review-link',
-  adminAccessCode: '123456',
+type BusinessInfo = {
+  name: string;
+  owner: string;
+  contact: string;
+  email: string;
+  address: string;
+  phone?: string;
+  logo: string;
+  googleReviewLink?: string;
+  adminAccessCode?: string;
+  businessId?: string;
 };
 
-function generateBusinessId() {
-    const year = new Date().getFullYear().toString().slice(-2);
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let randomPart = '';
-    for (let i = 0; i < 6; i++) {
-        randomPart += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return `Menu-${year}-${randomPart}`;
-}
-
 export default function SettingsPage() {
-  const [isEditing, setIsEditing] = useState(false);
-  const [businessInfo, setBusinessInfo] = useState(initialBusinessInfo);
-  const [editedInfo, setEditedInfo] = useState(initialBusinessInfo);
-  const [businessId, setBusinessId] = useState('');
-  const [showAccessCode, setShowAccessCode] = useState(false);
+  const { firestore, user } = useFirebase();
+  const { toast } = useToast();
+  
+  const userRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+  const { data: businessInfo, isLoading: isInfoLoading } = useDoc<BusinessInfo>(userRef);
 
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedInfo, setEditedInfo] = useState<BusinessInfo | null>(null);
+  const [showAccessCode, setShowAccessCode] = useState(false);
+  
   useEffect(() => {
-    setBusinessId(generateBusinessId());
-  }, []);
+    if (businessInfo) {
+      setEditedInfo(businessInfo);
+    }
+  }, [businessInfo]);
 
 
   const handleEdit = () => {
-    setEditedInfo(businessInfo);
-    setIsEditing(true);
+    if (businessInfo) {
+      setEditedInfo(businessInfo);
+      setIsEditing(true);
+    }
   };
 
   const handleCancel = () => {
     setIsEditing(false);
   };
 
-  const handleSave = () => {
-    setBusinessInfo(editedInfo);
-    setIsEditing(false);
+  const handleSave = async () => {
+    if (!userRef || !editedInfo) return;
+    try {
+      await updateDoc(userRef, { ...editedInfo });
+      toast({ title: 'Success', description: 'Business info updated.'});
+      setIsEditing(false);
+    } catch(e) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not save changes.' });
+      console.error(e);
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setEditedInfo(prev => ({ ...prev, [name]: value }));
+    setEditedInfo(prev => prev ? ({ ...prev, [name]: value }) : null);
   };
   
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -77,11 +85,19 @@ export default function SettingsPage() {
       const file = e.target.files[0];
       const reader = new FileReader();
       reader.onloadend = () => {
-        setEditedInfo(prev => ({ ...prev, logo: reader.result as string }));
+        setEditedInfo(prev => prev ? ({ ...prev, logo: reader.result as string }) : null);
       };
       reader.readAsDataURL(file);
     }
   };
+
+  if (isInfoLoading) {
+    return <div className="flex h-screen items-center justify-center">Loading settings...</div>;
+  }
+
+  if (!businessInfo || !editedInfo) {
+    return <div className="flex h-screen items-center justify-center">Could not load business information.</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -97,7 +113,7 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent>
                 <p className="text-2xl font-bold font-mono bg-gray-100 dark:bg-gray-800 p-3 rounded-md text-center">
-                    {businessId || 'Generating...'}
+                    {businessInfo.businessId || 'N/A'}
                 </p>
             </CardContent>
         </Card>
@@ -164,7 +180,7 @@ export default function SettingsPage() {
               <Avatar className="h-24 w-24">
                 <AvatarImage src={isEditing ? editedInfo.logo : businessInfo.logo} alt="Business Logo" />
                 <AvatarFallback>
-                  {businessInfo.name.charAt(0)}
+                  {businessInfo.name ? businessInfo.name.charAt(0) : 'B'}
                 </AvatarFallback>
               </Avatar>
               {isEditing && (

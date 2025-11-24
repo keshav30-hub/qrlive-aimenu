@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import {
@@ -17,13 +16,13 @@ import {
 } from '@/components/ui/accordion';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Edit, Eye, EyeOff, X, Check, ChevronDown } from 'lucide-react';
+import { ChevronLeft, Edit, X, Check, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,65 +33,21 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
 
-
-const staffData: { [key: string]: any } = {
-    'john-doe': {
-      id: '1',
-      name: 'John Doe',
-      avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026704d',
-      dob: '1990-05-15',
-      address: '123 Main St, Anytown, USA',
-      pageAccess: ['dashboard', 'menu', 'tasks', 'feedback', 'qr-menu', 'events', 'staff', 'settings'],
-      salary: 50000,
-      shift: 'Morning Shift',
-      active: true,
-    },
-    'jane-smith': {
-      id: '2',
-      name: 'Jane Smith',
-      avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026705d',
-      dob: '1992-08-22',
-      address: '456 Oak Ave, Anytown, USA',
-      pageAccess: ['dashboard', 'menu', 'tasks'],
-      salary: 35000,
-      shift: 'Evening Shift',
-      active: true,
-    },
-    'alex-johnson': {
-      id: '3',
-      name: 'Alex Johnson',
-      avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026706d',
-      dob: '1995-01-30',
-      address: '789 Pine Ln, Anytown, USA',
-      pageAccess: ['tasks', 'feedback'],
-      salary: 32000,
-      shift: 'Morning Shift',
-      active: false,
-    },
-    'emily-white': {
-      id: '4',
-      name: 'Emily White',
-      avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026707d',
-      dob: '1998-11-10',
-      address: '101 Maple Dr, Anytown, USA',
-      pageAccess: ['qr-menu', 'events'],
-      salary: 33000,
-      shift: 'Evening Shift',
-      active: true,
-    },
-    'michael-brown': {
-      id: '5',
-      name: 'Michael Brown',
-      avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026708d',
-      dob: '1988-03-25',
-      address: '212 Birch Rd, Anytown, USA',
-      pageAccess: ['dashboard', 'staff', 'settings'],
-      salary: 52000,
-      shift: 'Morning Shift',
-      active: true,
-    },
-  };
+type StaffMember = {
+    id: string;
+    name: string;
+    avatar: string;
+    dob: string;
+    address: string;
+    pageAccess: string[];
+    salary: number;
+    shift: string;
+    active: boolean;
+};
   
 const pageAccessOptions = [
     { id: 'dashboard', label: 'Dashboard' },
@@ -127,33 +82,57 @@ const generateAttendanceData = (year: number) => {
   
 export default function StaffDetailsPage() {
   const params = useParams();
-  const staffName = params.staffName as string;
-  const staffMember = staffData[staffName];
+  const staffId = params.staffName as string; // Assuming the slug is the staff ID
+  const { firestore, user } = useFirebase();
+  const router = useRouter();
+  const { toast } = useToast();
 
-  const [staffDetails, setStaffDetails] = useState(staffMember);
+  const staffRef = useMemoFirebase(() => {
+    if (!user || !staffId) return null;
+    return doc(firestore, 'users', user.uid, 'staff', staffId);
+  }, [firestore, user, staffId]);
+
+  const { data: staffDetails, isLoading, error } = useDoc<StaffMember>(staffRef);
+
   const [isEditing, setIsEditing] = useState(false);
-  const [editedDetails, setEditedDetails] = useState(staffMember);
+  const [editedDetails, setEditedDetails] = useState<StaffMember | null>(null);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [attendanceData, setAttendanceData] = useState(() => generateAttendanceData(selectedYear));
+  
+  useEffect(() => {
+    if (staffDetails) {
+      setEditedDetails(staffDetails);
+    }
+  }, [staffDetails]);
 
 
   const handleEditClick = () => {
-    setEditedDetails(staffDetails);
-    setIsEditing(true);
+    if (staffDetails) {
+      setEditedDetails(staffDetails);
+      setIsEditing(true);
+    }
   };
   
   const handleCancelClick = () => {
     setIsEditing(false);
+    if(staffDetails) setEditedDetails(staffDetails);
   };
 
-  const handleSaveClick = () => {
-    setStaffDetails(editedDetails);
-    setIsEditing(false);
+  const handleSaveClick = async () => {
+    if (!staffRef || !editedDetails) return;
+    try {
+        await updateDoc(staffRef, { ...editedDetails });
+        toast({ title: 'Success', description: 'Staff details updated.' });
+        setIsEditing(false);
+    } catch(e) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not update staff details.' });
+        console.error(e);
+    }
   };
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setEditedDetails((prev: any) => ({ ...prev, [name]: value }));
+    setEditedDetails((prev) => prev ? ({ ...prev, [name]: value }) : null);
   };
 
   const handleYearChange = (year: number) => {
@@ -162,7 +141,8 @@ export default function StaffDetailsPage() {
   };
   
   const handlePageAccessChange = (pageId: string, checked: boolean) => {
-    setEditedDetails((prev: any) => {
+    setEditedDetails((prev) => {
+      if (!prev) return null;
       const newPageAccess = checked
         ? [...prev.pageAccess, pageId]
         : prev.pageAccess.filter((id: string) => id !== pageId);
@@ -195,7 +175,11 @@ export default function StaffDetailsPage() {
     return summary;
   }, [attendanceData, selectedYear]);
 
-  if (!staffDetails) {
+  if (isLoading) {
+    return <div className="flex h-screen items-center justify-center">Loading staff member...</div>;
+  }
+
+  if (error || !staffDetails) {
     return (
       <div className="flex flex-col items-center justify-center h-full">
         <p className="text-2xl font-semibold">Staff member not found.</p>
@@ -232,7 +216,7 @@ export default function StaffDetailsPage() {
                     <AvatarFallback>{staffDetails.name.split(' ').map((n: string) => n[0]).join('')}</AvatarFallback>
                 </Avatar>
                 <div className="grid gap-1">
-                    {isEditing ? (
+                    {isEditing && editedDetails ? (
                       <Input name="name" value={editedDetails.name} onChange={handleInputChange} className="text-3xl font-bold p-0 border-0 shadow-none focus-visible:ring-0" />
                     ) : (
                       <CardTitle className="text-3xl">{staffDetails.name}</CardTitle>
@@ -262,82 +246,86 @@ export default function StaffDetailsPage() {
             </div>
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-4 pt-6">
-          <div>
-            <h4 className="font-semibold text-muted-foreground">Date of Birth</h4>
-            {isEditing ? (
-              <Input type="date" name="dob" value={new Date(editedDetails.dob).toISOString().split('T')[0]} onChange={handleInputChange} />
-            ) : (
-              <p>{new Date(staffDetails.dob).toLocaleDateString()}</p>
-            )}
-          </div>
-          <div>
-            <h4 className="font-semibold text-muted-foreground">Salary</h4>
-            {isEditing ? (
-                <Input type="number" name="salary" value={editedDetails.salary} onChange={handleInputChange} />
-            ) : (
-                <p>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(staffDetails.salary)}</p>
-            )}
-          </div>
-          <div>
-            <h4 className="font-semibold text-muted-foreground">Shift</h4>
-             {isEditing ? (
-                <Select value={editedDetails.shift} onValueChange={(value) => setEditedDetails((prev: any) => ({ ...prev, shift: value }))}>
-                    <SelectTrigger>
-                        <SelectValue placeholder="Select a shift" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {shiftOptions.map(shift => (
-                            <SelectItem key={shift} value={shift}>{shift}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            ) : (
-                <p>{staffDetails.shift}</p>
-            )}
-          </div>
-          <div className="col-span-1 md:col-span-3">
-            <h4 className="font-semibold text-muted-foreground">Address</h4>
-            {isEditing ? (
-                <Textarea name="address" value={editedDetails.address} onChange={handleInputChange} />
-            ) : (
-                <p>{staffDetails.address}</p>
-            )}
-          </div>
-           {isEditing && (
-            <div className="flex items-center space-x-2 self-end">
-                <Switch 
-                    id="active-status-edit" 
-                    checked={editedDetails.active} 
-                    onCheckedChange={(checked) => setEditedDetails((prev: any) => ({...prev, active: checked}))}
-                />
-                <Label htmlFor="active-status-edit">{editedDetails.active ? 'Active' : 'Inactive'}</Label>
+          {editedDetails && (
+          <>
+            <div>
+              <h4 className="font-semibold text-muted-foreground">Date of Birth</h4>
+              {isEditing ? (
+                <Input type="date" name="dob" value={new Date(editedDetails.dob).toISOString().split('T')[0]} onChange={handleInputChange} />
+              ) : (
+                <p>{new Date(staffDetails.dob).toLocaleDateString()}</p>
+              )}
             </div>
-           )}
-          <div className="col-span-1 md:col-span-3">
-            <h4 className="font-semibold text-muted-foreground">Page Access</h4>
-             {isEditing ? (
-                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 rounded-md border p-4 mt-2">
-                    {pageAccessOptions.map((item) => (
-                        <div key={item.id} className="flex flex-row items-center space-x-3">
-                            <Checkbox 
-                                id={`access-${item.id}`} 
-                                checked={editedDetails.pageAccess.includes(item.id)}
-                                onCheckedChange={(checked) => handlePageAccessChange(item.id, !!checked)}
-                            />
-                            <Label htmlFor={`access-${item.id}`} className="font-normal">
-                                {item.label}
-                            </Label>
-                        </div>
-                    ))}
-                </div>
-             ) : (
-                <div className="flex flex-wrap gap-2 mt-2">
-                {staffDetails.pageAccess.map((pageId: string) => (
-                    <Badge key={pageId} variant="secondary">{pageAccessOptions.find(p => p.id === pageId)?.label || pageId}</Badge>
-                ))}
-                </div>
+            <div>
+              <h4 className="font-semibold text-muted-foreground">Salary</h4>
+              {isEditing ? (
+                  <Input type="number" name="salary" value={editedDetails.salary} onChange={handleInputChange} />
+              ) : (
+                  <p>{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(staffDetails.salary)}</p>
+              )}
+            </div>
+            <div>
+              <h4 className="font-semibold text-muted-foreground">Shift</h4>
+               {isEditing ? (
+                  <Select value={editedDetails.shift} onValueChange={(value) => setEditedDetails((prev) => prev ? ({ ...prev, shift: value }) : null)}>
+                      <SelectTrigger>
+                          <SelectValue placeholder="Select a shift" />
+                      </SelectTrigger>
+                      <SelectContent>
+                          {shiftOptions.map(shift => (
+                              <SelectItem key={shift} value={shift}>{shift}</SelectItem>
+                          ))}
+                      </SelectContent>
+                  </Select>
+              ) : (
+                  <p>{staffDetails.shift}</p>
+              )}
+            </div>
+            <div className="col-span-1 md:col-span-3">
+              <h4 className="font-semibold text-muted-foreground">Address</h4>
+              {isEditing ? (
+                  <Textarea name="address" value={editedDetails.address} onChange={handleInputChange} />
+              ) : (
+                  <p>{staffDetails.address}</p>
+              )}
+            </div>
+             {isEditing && (
+              <div className="flex items-center space-x-2 self-end">
+                  <Switch 
+                      id="active-status-edit" 
+                      checked={editedDetails.active} 
+                      onCheckedChange={(checked) => setEditedDetails((prev) => prev ? ({...prev, active: checked}) : null)}
+                  />
+                  <Label htmlFor="active-status-edit">{editedDetails.active ? 'Active' : 'Inactive'}</Label>
+              </div>
              )}
-          </div>
+            <div className="col-span-1 md:col-span-3">
+              <h4 className="font-semibold text-muted-foreground">Page Access</h4>
+               {isEditing ? (
+                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 rounded-md border p-4 mt-2">
+                      {pageAccessOptions.map((item) => (
+                          <div key={item.id} className="flex flex-row items-center space-x-3">
+                              <Checkbox 
+                                  id={`access-${item.id}`} 
+                                  checked={editedDetails.pageAccess.includes(item.id)}
+                                  onCheckedChange={(checked) => handlePageAccessChange(item.id, !!checked)}
+                              />
+                              <Label htmlFor={`access-${item.id}`} className="font-normal">
+                                  {item.label}
+                              </Label>
+                          </div>
+                      ))}
+                  </div>
+               ) : (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                  {staffDetails.pageAccess.map((pageId: string) => (
+                      <Badge key={pageId} variant="secondary">{pageAccessOptions.find(p => p.id === pageId)?.label || pageId}</Badge>
+                  ))}
+                  </div>
+               )}
+            </div>
+          </>
+          )}
         </CardContent>
       </Card>
       

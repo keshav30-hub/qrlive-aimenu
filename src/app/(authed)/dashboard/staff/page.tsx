@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState } from 'react';
@@ -36,7 +35,6 @@ import {
   SheetTitle,
   SheetDescription,
   SheetFooter,
-  SheetTrigger,
 } from '@/components/ui/sheet';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -61,52 +59,26 @@ import {
 } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-
+import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
 
 type AttendanceStatus = 'Present' | 'Absent' | 'Paid Leave' | 'Half Day';
 
-const initialStaffList = [
-  {
-    id: '1',
-    name: 'John Doe',
-    avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026704d',
-    status: 'Present' as AttendanceStatus,
-    active: true,
-  },
-  {
-    id: '2',
-    name: 'Jane Smith',
-    avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026705d',
-    status: 'Absent' as AttendanceStatus,
-    active: true,
-  },
-  {
-    id: '3',
-    name: 'Alex Johnson',
-    avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026706d',
-    status: 'Paid Leave' as AttendanceStatus,
-    active: false,
-  },
-  {
-    id: '4',
-    name: 'Emily White',
-    avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026707d',
-    status: 'Half Day' as AttendanceStatus,
-    active: true,
-  },
-  {
-    id: '5',
-    name: 'Michael Brown',
-    avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026708d',
-    status: 'Present' as AttendanceStatus,
-    active: true,
-  },
-];
+type StaffMember = {
+  id: string;
+  name: string;
+  avatar: string;
+  status: AttendanceStatus;
+  active: boolean;
+};
 
-const initialShifts = [
-    { id: 1, name: 'Morning Shift', from: '09:00', to: '17:00' },
-    { id: 2, name: 'Evening Shift', from: '17:00', to: '01:00' },
-];
+type Shift = {
+    id: string;
+    name: string;
+    from: string;
+    to: string;
+};
 
 const pageAccessOptions = [
     { id: 'dashboard', label: 'Dashboard' },
@@ -137,21 +109,32 @@ const getStatusVariant = (status: AttendanceStatus) => {
 };
 
 export default function StaffPage() {
-  const [staffList, setStaffList] = useState(initialStaffList);
+  const { firestore, user } = useFirebase();
+  const { toast } = useToast();
+  
+  const staffRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'staff') : null, [firestore, user]);
+  const shiftsRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'shifts') : null, [firestore, user]);
+
+  const { data: staffList = [], isLoading: staffLoading } = useCollection<StaffMember>(staffRef);
+  const { data: shifts = [], isLoading: shiftsLoading } = useCollection<Shift>(shiftsRef);
+  
   const [date, setDate] = useState<Date>(new Date());
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [dob, setDob] = useState<Date>();
-  const [shifts, setShifts] = useState(initialShifts);
   const [reminderTime, setReminderTime] = useState<string | null>('10:00');
   const [newReminderTime, setNewReminderTime] = useState<string>('10:00');
   const [isEditingReminder, setIsEditingReminder] = useState(false);
 
-  const handleStatusChange = (staffId: string, newStatus: AttendanceStatus) => {
-    setStaffList(
-      staffList.map((staff) =>
-        staff.id === staffId ? { ...staff, status: newStatus } : staff
-      )
-    );
+  const handleStatusChange = async (staffId: string, newStatus: AttendanceStatus) => {
+    if (!staffRef) return;
+    try {
+      const staffDoc = doc(staffRef, staffId);
+      // This is a simplified attendance update. A real app would use a subcollection for attendance records.
+      await updateDoc(staffDoc, { status: newStatus });
+    } catch(e) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not update status.' });
+      console.error(e);
+    }
   };
   
   const handlePrevDay = () => {
@@ -205,7 +188,7 @@ export default function StaffPage() {
                             <div className="flex items-center justify-between rounded-md border p-3">
                                 <p className="text-lg font-semibold">{format(new Date(`1970-01-01T${reminderTime}`), 'hh:mm a')}</p>
                                 <div className="flex gap-2">
-                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setNewReminderTime(reminderTime); setIsEditingReminder(true); }}>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { if(reminderTime) setNewReminderTime(reminderTime); setIsEditingReminder(true); }}>
                                         <FilePenLine className="h-4 w-4" />
                                     </Button>
                                     <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={handleDeleteReminder}>
@@ -254,7 +237,7 @@ export default function StaffPage() {
                     <div className="space-y-2">
                         <Label className="text-sm font-medium text-muted-foreground">Existing Shifts</Label>
                         <div className="space-y-2">
-                            {shifts.map(shift => (
+                            {shiftsLoading ? <p>Loading shifts...</p> : shifts.map(shift => (
                                 <div key={shift.id} className="flex items-center justify-between rounded-md border p-3">
                                     <div>
                                         <p className="font-semibold">{shift.name}</p>
@@ -343,6 +326,7 @@ export default function StaffPage() {
               </div>
             </CardHeader>
             <CardContent>
+              {staffLoading ? <p>Loading staff...</p> : (
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -389,6 +373,7 @@ export default function StaffPage() {
                   ))}
                 </TableBody>
               </Table>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -495,9 +480,9 @@ export default function StaffPage() {
               </Sheet>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {staffList.map((staff) => (
+                {staffLoading ? <p>Loading...</p> : staffList.map((staff) => (
                     <Card key={staff.id} className="overflow-hidden">
-                        <Link href={`/dashboard/staff/${staff.name.toLowerCase().replace(/ /g, '-')}`} className="block hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                        <Link href={`/dashboard/staff/${staff.id}`} className="block hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                             <CardContent className="pt-6 flex flex-col items-center justify-center text-center gap-3">
                                 <Avatar className="h-24 w-24">
                                     <AvatarImage src={staff.avatar} alt={staff.name} />
@@ -526,6 +511,11 @@ export default function StaffPage() {
                         </CardFooter>
                     </Card>
                 ))}
+                {staffList.length === 0 && !staffLoading && (
+                  <div className="col-span-full text-center py-10 text-muted-foreground">
+                    <p>No staff members have been added yet.</p>
+                  </div>
+                )}
             </CardContent>
            </Card>
         </TabsContent>

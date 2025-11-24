@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import Image from 'next/image';
@@ -21,7 +20,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Switch } from '@/components/ui/switch';
 import { Calendar as CalendarIcon, MoreVertical, PlusCircle, Save } from 'lucide-react';
-import { placeHolderImages } from '@/lib/placeholder-images';
 import {
   Sheet,
   SheetContent,
@@ -29,7 +27,6 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
 } from '@/components/ui/sheet';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -41,55 +38,22 @@ import { Calendar } from '@/components/ui/calendar';
 import React, { useState } from 'react';
 import { format } from 'date-fns';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, addDoc, updateDoc, deleteDoc, serverTimestamp, doc } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
 
-const initialEvents = [
-  {
-    id: '1',
-    name: 'Jazz Night',
-    description: 'Enjoy a relaxing evening with live jazz music.',
-    datetime: '2023-11-15T19:00:00',
-    imageUrl: placeHolderImages.find(p => p.id === 'event1')?.imageUrl || '',
-    imageHint: placeHolderImages.find(p => p.id === 'event1')?.imageHint || '',
-    active: true,
-    organizers: 'The Velvet Note Club, City Jazz Association',
-    terms: 'No outside food or drinks allowed.',
-  },
-  {
-    id: '2',
-    name: 'Taco Tuesday',
-    description: 'Special discounts on all tacos and margaritas.',
-    datetime: '2023-11-21T17:00:00',
-    imageUrl: placeHolderImages.find(p => p.id === 'event2')?.imageUrl || '',
-    imageHint: placeHolderImages.find(p => p.id === 'event2')?.imageHint || '',
-    active: false,
-    organizers: '',
-    terms: '',
-  },
-  {
-    id: '3',
-    name: 'Wine Tasting',
-    description: 'Explore a selection of fine wines from around the world.',
-    datetime: '2023-12-01T18:30:00',
-    imageUrl: placeHolderImages.find(p => p.id === 'event3')?.imageUrl || '',
-    imageHint: placeHolderImages.find(p => p.id === 'event3')?.imageHint || '',
-    active: true,
-    organizers: 'Global Vintners',
-    terms: 'Must be 21 or older to participate.',
-  },
-  {
-    id: '4',
-    name: 'Oktoberfest',
-    description: 'Celebrate with traditional German beer and food.',
-    datetime: '2023-10-05T12:00:00',
-    imageUrl: placeHolderImages.find(p => p.id === 'event4')?.imageUrl || '',
-    imageHint: placeHolderImages.find(p => p.id === 'event4')?.imageHint || '',
-    active: true,
-    organizers: '',
-    terms: '',
-  },
-];
+type Event = {
+  id: string;
+  name: string;
+  description: string;
+  datetime: string;
+  imageUrl: string;
+  imageHint: string;
+  active: boolean;
+  organizers: string;
+  terms: string;
+};
 
-type Event = typeof initialEvents[0];
 const defaultEvent: Omit<Event, 'id' | 'imageUrl' | 'imageHint' > = {
     name: '',
     description: '',
@@ -99,12 +63,16 @@ const defaultEvent: Omit<Event, 'id' | 'imageUrl' | 'imageHint' > = {
     terms: '',
 };
 
-
 export default function EventsPage() {
-  const [events, setEvents] = useState(initialEvents);
+  const { firestore, user } = useFirebase();
+  const { toast } = useToast();
+  
+  const eventsRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'events') : null, [firestore, user]);
+  const { data: events = [], isLoading: eventsLoading } = useCollection<Event>(eventsRef);
+
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [currentEvent, setCurrentEvent] = useState<Omit<Event, 'id' | 'imageUrl' | 'imageHint'> & { id?: string }>(defaultEvent);
+  const [currentEvent, setCurrentEvent] = useState<Partial<Event>>(defaultEvent);
   
   const handleAddClick = () => {
     setIsEditing(false);
@@ -121,25 +89,50 @@ export default function EventsPage() {
     setIsSheetOpen(true);
   };
   
-  const handleSave = () => {
-    if (isEditing && currentEvent.id) {
-        // Update existing event
-        setEvents(events.map(event => event.id === currentEvent.id ? { ...event, ...currentEvent, id: event.id } : event));
-    } else {
-        // Add new event
-        const newEvent = {
-            ...currentEvent,
-            id: (events.length + 1).toString(),
-            imageUrl: `https://picsum.photos/seed/${events.length + 1}/600/400`,
-            imageHint: 'new event',
-        };
-        setEvents([...events, newEvent]);
+  const handleSave = async () => {
+    if (!eventsRef) return;
+    try {
+      if (isEditing && currentEvent.id) {
+          const eventDoc = doc(eventsRef, currentEvent.id);
+          await updateDoc(eventDoc, { ...currentEvent, updatedAt: serverTimestamp() });
+          toast({ title: "Success", description: "Event updated." });
+      } else {
+          await addDoc(eventsRef, { 
+              ...currentEvent,
+              imageUrl: `https://picsum.photos/seed/event${events.length + 1}/600/400`,
+              imageHint: 'new event',
+              createdAt: serverTimestamp() 
+          });
+          toast({ title: "Success", description: "Event added." });
+      }
+      setIsSheetOpen(false);
+      setCurrentEvent(defaultEvent);
+    } catch(e) {
+      toast({ variant: "destructive", title: "Error", description: "Could not save event." });
+      console.error(e);
     }
-    setIsSheetOpen(false);
   };
+  
+  const handleDelete = async (eventId: string) => {
+    if (!eventsRef) return;
+    try {
+      await deleteDoc(doc(eventsRef, eventId));
+      toast({ title: "Success", description: "Event deleted." });
+    } catch(e) {
+      toast({ variant: "destructive", title: "Error", description: "Could not delete event." });
+      console.error(e);
+    }
+  }
 
-  const handleToggleSwitch = (eventId: string, active: boolean) => {
-    setEvents(events.map(event => event.id === eventId ? { ...event, active } : event));
+  const handleToggleSwitch = async (eventId: string, active: boolean) => {
+    if (!eventsRef) return;
+    try {
+      const eventDoc = doc(eventsRef, eventId);
+      await updateDoc(eventDoc, { active });
+    } catch (e) {
+      toast({ variant: "destructive", title: "Error", description: "Could not update event status." });
+      console.error(e);
+    }
   };
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -148,13 +141,14 @@ export default function EventsPage() {
   };
 
   const handleDateChange = (date: Date | undefined) => {
-      if (!date) return;
+      if (!date || !currentEvent.datetime) return;
       const current = new Date(currentEvent.datetime);
       date.setHours(current.getHours(), current.getMinutes());
       setCurrentEvent(prev => ({ ...prev, datetime: date.toISOString() }));
   };
 
   const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (!currentEvent.datetime) return;
       const [hours, minutes] = e.target.value.split(':').map(Number);
       const newDate = new Date(currentEvent.datetime);
       newDate.setHours(hours, minutes);
@@ -250,54 +244,63 @@ export default function EventsPage() {
           </SheetContent>
         </Sheet>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {events.map((event) => (
-          <Card key={event.id} className="overflow-hidden flex flex-col">
-            <Link href={`/dashboard/events/${event.id}`} className="block hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors flex-grow">
-              <div className="relative w-full h-48">
-                <Image
-                  src={event.imageUrl}
-                  alt={event.name}
-                  fill
-                  style={{objectFit: 'cover'}}
-                  data-ai-hint={event.imageHint}
-                />
-              </div>
-              <CardHeader>
-                <CardTitle>{event.name}</CardTitle>
-                <CardDescription className="line-clamp-2">{event.description}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">{new Date(event.datetime).toLocaleString()}</p>
-              </CardContent>
-            </Link>
-            <CardFooter className="flex items-center justify-between bg-gray-50 dark:bg-gray-800/50 p-4 mt-auto">
-              <div className="flex items-center gap-2">
-                <Switch 
-                  id={`event-toggle-${event.id}`} 
-                  checked={event.active} 
-                  onCheckedChange={(checked) => handleToggleSwitch(event.id, checked)}
-                />
-                <label htmlFor={`event-toggle-${event.id}`} className="text-sm font-medium">
-                  {event.active ? 'Active' : 'Inactive'}
-                </label>
-              </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    <MoreVertical className="h-5 w-5" />
-                    <span className="sr-only">More options</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => handleEditClick(event)}>Edit</DropdownMenuItem>
-                  <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </CardFooter>
-          </Card>
-        ))}
-      </div>
+      {eventsLoading ? (
+        <p>Loading events...</p>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {events.map((event) => (
+            <Card key={event.id} className="overflow-hidden flex flex-col">
+              <Link href={`/dashboard/events/${event.id}`} className="block hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors flex-grow">
+                <div className="relative w-full h-48">
+                  <Image
+                    src={event.imageUrl}
+                    alt={event.name}
+                    fill
+                    style={{objectFit: 'cover'}}
+                    data-ai-hint={event.imageHint}
+                  />
+                </div>
+                <CardHeader>
+                  <CardTitle>{event.name}</CardTitle>
+                  <CardDescription className="line-clamp-2">{event.description}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">{new Date(event.datetime).toLocaleString()}</p>
+                </CardContent>
+              </Link>
+              <CardFooter className="flex items-center justify-between bg-gray-50 dark:bg-gray-800/50 p-4 mt-auto">
+                <div className="flex items-center gap-2">
+                  <Switch 
+                    id={`event-toggle-${event.id}`} 
+                    checked={event.active} 
+                    onCheckedChange={(checked) => handleToggleSwitch(event.id, checked)}
+                  />
+                  <label htmlFor={`event-toggle-${event.id}`} className="text-sm font-medium">
+                    {event.active ? 'Active' : 'Inactive'}
+                  </label>
+                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <MoreVertical className="h-5 w-5" />
+                      <span className="sr-only">More options</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => handleEditClick(event)}>Edit</DropdownMenuItem>
+                    <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(event.id)}>Delete</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
+      )}
+       {events.length === 0 && !eventsLoading && (
+          <div className="text-center py-10 text-muted-foreground">
+            <p>No events created yet. Click "Add Event" to get started.</p>
+          </div>
+        )}
     </div>
   );
 }

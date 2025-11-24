@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -21,46 +20,18 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useTaskNotification } from '@/context/TaskNotificationContext';
+import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, doc, updateDoc } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
 
-const unattendedTasks = [
-  {
-    tableName: 'Table 5',
-    requestType: 'Refill Water',
-    dateTime: '2023-10-27 10:30 AM',
-  },
-  {
-    tableName: 'Table 2',
-    requestType: 'Bill Please',
-    dateTime: '2023-10-27 10:28 AM',
-  },
-  {
-    tableName: 'Table 8',
-    requestType: 'Clean Table',
-    dateTime: '2023-10-27 10:25 AM',
-  },
-  {
-    tableName: 'Table 3',
-    requestType: 'Extra Napkins',
-    dateTime: '2023-10-27 10:22 AM',
-  },
-];
-
-// Expanded task history data for pagination
-const taskHistory = Array.from({ length: 55 }, (_, i) => {
-    const statusTypes = ['attended', 'ignored', 'unattended'] as const;
-    const requestTypes = ['Refill Water', 'Bill Please', 'Clean Table', 'Extra Napkins'];
-    const staffNames = ['John Doe', 'Jane Smith', 'Alex Johnson', 'Emily White'];
-    const status = statusTypes[i % statusTypes.length];
-    return {
-        taskCount: 101 + i,
-        dateTime: `2023-10-27 ${10 - Math.floor(i/60)}:${(59 - (i % 60)).toString().padStart(2, '0')} AM`,
-        tableNumber: `Table ${ (i % 12) + 1 }`,
-        requestType: requestTypes[i % requestTypes.length],
-        status: status,
-        staff: status === 'attended' ? staffNames[i % staffNames.length] : '-',
-    };
-});
-
+type Task = {
+  id: string;
+  tableName: string;
+  requestType: string;
+  dateTime: string;
+  status: 'attended' | 'ignored' | 'unattended';
+  staff?: string;
+};
 
 const statusVariant = (status: string) => {
   switch (status) {
@@ -78,8 +49,16 @@ const statusVariant = (status: string) => {
 const ITEMS_PER_PAGE = 10;
 
 export default function TasksPage() {
+  const { firestore, user } = useFirebase();
+  const { toast } = useToast();
+  const tasksRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'tasks') : null, [firestore, user]);
+  const { data: tasks = [], isLoading: tasksLoading } = useCollection<Task>(tasksRef);
+
   const [currentPage, setCurrentPage] = useState(1);
   const { showNewTask } = useTaskNotification();
+
+  const unattendedTasks = useMemo(() => tasks.filter(t => t.status === 'unattended'), [tasks]);
+  const taskHistory = useMemo(() => tasks.filter(t => t.status !== 'unattended'), [tasks]);
 
   const totalPages = Math.ceil(taskHistory.length / ITEMS_PER_PAGE);
 
@@ -87,7 +66,7 @@ export default function TasksPage() {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     const endIndex = startIndex + ITEMS_PER_PAGE;
     return taskHistory.slice(startIndex, endIndex);
-  }, [currentPage]);
+  }, [currentPage, taskHistory]);
 
   const handlePreviousPage = () => {
     setCurrentPage((prev) => Math.max(prev - 1, 1));
@@ -95,6 +74,18 @@ export default function TasksPage() {
 
   const handleNextPage = () => {
     setCurrentPage((prev) => Math.min(prev + 1, totalPages));
+  };
+
+  const handleUpdateTask = async (taskId: string, status: 'attended' | 'ignored') => {
+    if (!tasksRef) return;
+    const taskDoc = doc(tasksRef, taskId);
+    try {
+      await updateDoc(taskDoc, { status, staff: status === 'attended' ? user?.displayName || 'Admin' : '-' });
+      toast({ title: "Success", description: `Task marked as ${status}.` });
+    } catch(e) {
+      toast({ variant: "destructive", title: "Error", description: "Could not update task." });
+      console.error(e);
+    }
   };
   
   const simulateTask = () => {
@@ -104,6 +95,7 @@ export default function TasksPage() {
         dateTime: new Date().toLocaleTimeString(),
     };
     showNewTask(sampleTask);
+    // In a real app, you'd also add this to firestore
   };
 
   return (
@@ -120,8 +112,8 @@ export default function TasksPage() {
         <CardContent>
           <ScrollArea className="w-full whitespace-nowrap">
             <div className="flex w-max space-x-4 pb-4">
-              {unattendedTasks.map((task, index) => (
-                <Card key={index} className="w-[280px]">
+              {tasksLoading ? <p>Loading tasks...</p> : unattendedTasks.map((task) => (
+                <Card key={task.id} className="w-[280px]">
                   <CardHeader>
                     <CardTitle className="text-lg">{task.tableName}</CardTitle>
                   </CardHeader>
@@ -131,12 +123,17 @@ export default function TasksPage() {
                       {task.dateTime}
                     </p>
                     <div className="flex justify-between pt-2">
-                      <Button variant="outline">Ignore</Button>
-                      <Button>Attend</Button>
+                      <Button variant="outline" onClick={() => handleUpdateTask(task.id, 'ignored')}>Ignore</Button>
+                      <Button onClick={() => handleUpdateTask(task.id, 'attended')}>Attend</Button>
                     </div>
                   </CardContent>
                 </Card>
               ))}
+               {unattendedTasks.length === 0 && !tasksLoading && (
+                  <div className="text-center w-full py-10 text-muted-foreground">
+                      <p>No unattended tasks right now.</p>
+                  </div>
+              )}
             </div>
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
@@ -148,58 +145,67 @@ export default function TasksPage() {
           <CardTitle>Tasks History</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Task #</TableHead>
-                <TableHead>Date & Time</TableHead>
-                <TableHead>Table Number</TableHead>
-                <TableHead>Request Type</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Staff</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {paginatedTasks.map((task) => (
-                <TableRow key={task.taskCount}>
-                  <TableCell>{task.taskCount}</TableCell>
-                  <TableCell>{task.dateTime}</TableCell>
-                  <TableCell>{task.tableNumber}</TableCell>
-                  <TableCell>{task.requestType}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={statusVariant(task.status)}
-                      className="capitalize"
-                    >
-                      {task.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{task.staff}</TableCell>
+          {tasksLoading ? <p>Loading history...</p> : (
+          <>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Task ID</TableHead>
+                  <TableHead>Date & Time</TableHead>
+                  <TableHead>Table Number</TableHead>
+                  <TableHead>Request Type</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Staff</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          <div className="flex items-center justify-end space-x-2 pt-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handlePreviousPage}
-              disabled={currentPage === 1}
-            >
-              Previous
-            </Button>
-            <span className="text-sm text-muted-foreground">
-              Page {currentPage} of {totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleNextPage}
-              disabled={currentPage === totalPages}
-            >
-              Next
-            </Button>
-          </div>
+              </TableHeader>
+              <TableBody>
+                {paginatedTasks.map((task) => (
+                  <TableRow key={task.id}>
+                    <TableCell>{task.id.substring(0, 5)}...</TableCell>
+                    <TableCell>{task.dateTime}</TableCell>
+                    <TableCell>{task.tableName}</TableCell>
+                    <TableCell>{task.requestType}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={statusVariant(task.status)}
+                        className="capitalize"
+                      >
+                        {task.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{task.staff}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            <div className="flex items-center justify-end space-x-2 pt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePreviousPage}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                Page {currentPage} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleNextPage}
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </Button>
+            </div>
+            {taskHistory.length === 0 && !tasksLoading && (
+              <div className="text-center py-10 text-muted-foreground">
+                  <p>No tasks in your history yet.</p>
+              </div>
+            )}
+          </>
+          )}
         </CardContent>
       </Card>
     </div>

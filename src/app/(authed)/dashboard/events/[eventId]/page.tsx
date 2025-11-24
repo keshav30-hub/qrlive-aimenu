@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import Image from 'next/image';
@@ -20,7 +19,6 @@ import {
   TableCell,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { placeHolderImages } from '@/lib/placeholder-images';
 import { User, Calendar, Clock, Info, Users, PlusCircle, FilePenLine, Trash2, Download, ChevronLeft, Check, X } from 'lucide-react';
 import {
   Dialog,
@@ -51,33 +49,30 @@ import { useState, useMemo } from 'react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { Textarea } from '@/components/ui/textarea';
+import { useFirebase, useDoc, useCollection, useMemoFirebase } from '@/firebase';
+import { doc, collection, updateDoc, deleteDoc } from 'firebase/firestore';
+import { useRouter } from 'next/navigation';
+import { useToast } from '@/hooks/use-toast';
 
-
-const eventDetailsData = {
-  id: '1',
-  name: 'Jazz Night',
-  description: 'Enjoy a relaxing evening with live jazz music featuring some of the best local artists. The night will be filled with smooth melodies and a great atmosphere. Perfect for a date night or a night out with friends. Full bar and a special cocktail menu will be available.',
-  datetime: '2023-11-15T19:00',
-  imageUrl: placeHolderImages.find((p) => p.id === 'event1')?.imageUrl || '',
-  imageHint: placeHolderImages.find((p) => p.id === 'event1')?.imageHint || '',
-  organizers: ['The Velvet Note Club', 'City Jazz Association'],
+type Rsvp = {
+  id: string;
+  name: string;
+  mobile: string;
+  email: string;
+  people: number;
+  status: 'Attended' | 'Interested' | 'No Show';
 };
 
-const initialRsvpList = Array.from({ length: 25 }, (_, i) => {
-  const statusTypes = ['Attended', 'Interested', 'No Show'] as const;
-  const firstNames = ['Alice', 'Bob', 'Charlie', 'Diana', 'Ethan', 'Fiona', 'George', 'Hannah', 'Ian', 'Julia'];
-  const lastNames = ['Johnson', 'Williams', 'Brown', 'Prince', 'Hunt', 'Glenanne', 'Costanza', 'Benes', 'Malcolm', 'Roberts'];
-  const status = statusTypes[i % statusTypes.length];
-  return {
-    seq: i + 1,
-    name: `${firstNames[i % firstNames.length]} ${lastNames[i % lastNames.length]}`,
-    mobile: `555-01${(i + 1).toString().padStart(2, '0')}`,
-    email: `${firstNames[i % firstNames.length].toLowerCase()}@example.com`,
-    people: (i % 4) + 1,
-    status: status,
-  }
-});
-
+type EventDetails = {
+  id: string;
+  name: string;
+  description: string;
+  datetime: string;
+  imageUrl: string;
+  imageHint: string;
+  organizers: string[];
+  terms?: string;
+};
 
 const statusOptions = ['Attended', 'Interested', 'No Show'];
 
@@ -96,17 +91,31 @@ const statusVariant = (status: string) => {
 
 const ITEMS_PER_PAGE = 15;
 
-
 export default function EventDetailsPage({
   params,
 }: {
   params: { eventId: string };
 }) {
-  const [eventDetails, setEventDetails] = useState(eventDetailsData);
+  const { firestore, user } = useFirebase();
+  const router = useRouter();
+  const { toast } = useToast();
+
+  const eventRef = useMemoFirebase(() => {
+    if (!user || !params.eventId) return null;
+    return doc(firestore, 'users', user.uid, 'events', params.eventId);
+  }, [firestore, user, params.eventId]);
+
+  const rsvpsRef = useMemoFirebase(() => {
+    if (!eventRef) return null;
+    return collection(eventRef, 'rsvps');
+  }, [eventRef]);
+
+  const { data: eventDetails, isLoading: eventLoading, error: eventError } = useDoc<EventDetails>(eventRef);
+  const { data: rsvpList = [], isLoading: rsvpsLoading } = useCollection<Rsvp>(rsvpsRef);
+
   const [isEditing, setIsEditing] = useState(false);
-  const [editedDetails, setEditedDetails] = useState(eventDetailsData);
+  const [editedDetails, setEditedDetails] = useState<EventDetails | null>(null);
   
-  const [rsvpList, setRsvpList] = useState(initialRsvpList);
   const [currentPage, setCurrentPage] = useState(1);
 
   const totalPages = Math.ceil(rsvpList.length / ITEMS_PER_PAGE);
@@ -126,8 +135,15 @@ export default function EventDetailsPage({
   };
 
 
-  const handleStatusChange = (seq: number, newStatus: string) => {
-    setRsvpList(rsvpList.map(rsvp => rsvp.seq === seq ? { ...rsvp, status: newStatus } : rsvp));
+  const handleStatusChange = async (rsvpId: string, newStatus: string) => {
+    if (!rsvpsRef) return;
+    const rsvpDoc = doc(rsvpsRef, rsvpId);
+    try {
+      await updateDoc(rsvpDoc, { status: newStatus });
+    } catch(e) {
+      toast({ variant: "destructive", title: "Error", description: "Could not update RSVP status."});
+      console.error(e);
+    }
   };
 
   const handleDownloadPdf = () => {
@@ -136,31 +152,54 @@ export default function EventDetailsPage({
     (doc as any).autoTable({
       startY: 20,
       head: [['#', 'Name', 'Mobile Number', 'No. of People']],
-      body: rsvpList.map(rsvp => [rsvp.seq, rsvp.name, rsvp.mobile, rsvp.people]),
+      body: rsvpList.map((rsvp, i) => [i + 1, rsvp.name, rsvp.mobile, rsvp.people]),
     });
     doc.save('rsvp-details.pdf');
   };
 
   const handleEditClick = () => {
-    setEditedDetails(eventDetails);
-    setIsEditing(true);
+    if (eventDetails) {
+      setEditedDetails(eventDetails);
+      setIsEditing(true);
+    }
   };
   
   const handleCancelClick = () => {
     setIsEditing(false);
   };
 
-  const handleSaveClick = () => {
-    setEventDetails(editedDetails);
-    setIsEditing(false);
+  const handleSaveClick = async () => {
+    if (!eventRef || !editedDetails) return;
+    try {
+      await updateDoc(eventRef, { ...editedDetails });
+      setIsEditing(false);
+      toast({ title: "Success", description: "Event details updated." });
+    } catch (e) {
+      toast({ variant: "destructive", title: "Error", description: "Could not save event details." });
+      console.error(e);
+    }
   };
+
+  const handleDeleteClick = async () => {
+    if (!eventRef) return;
+    try {
+      await deleteDoc(eventRef);
+      toast({ title: "Success", description: "Event deleted." });
+      router.push('/dashboard/events');
+    } catch (e) {
+      toast({ variant: "destructive", title: "Error", description: "Could not delete event." });
+      console.error(e);
+    }
+  }
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    if (!editedDetails) return;
     const { name, value } = e.target;
-    setEditedDetails(prev => ({ ...prev, [name]: value }));
+    setEditedDetails(prev => prev ? ({ ...prev, [name]: value }) : null);
   };
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!editedDetails) return;
     const { name, value } = e.target;
     const currentDateTime = new Date(editedDetails.datetime);
     
@@ -172,12 +211,18 @@ export default function EventDetailsPage({
       currentDateTime.setHours(hours, minutes);
     }
 
-    setEditedDetails(prev => ({ ...prev, datetime: currentDateTime.toISOString() }));
+    setEditedDetails(prev => prev ? ({ ...prev, datetime: currentDateTime.toISOString() }) : null);
   };
-  
+
+  if (eventLoading) {
+    return <div className="flex h-screen items-center justify-center">Loading...</div>;
+  }
+  if (eventError || !eventDetails) {
+    return <div className="flex h-screen items-center justify-center">Error loading event details. It might have been deleted.</div>;
+  }
 
   const date = new Date(eventDetails.datetime);
-  const editedDate = new Date(editedDetails.datetime);
+  const editedDate = editedDetails ? new Date(editedDetails.datetime) : new Date();
 
   return (
     <div className="space-y-6">
@@ -203,7 +248,7 @@ export default function EventDetailsPage({
         </div>
         <CardHeader>
            <div className="flex justify-between items-center">
-            {isEditing ? (
+            {isEditing && editedDetails ? (
               <Input
                 name="name"
                 value={editedDetails.name}
@@ -229,7 +274,7 @@ export default function EventDetailsPage({
                     <FilePenLine className="h-5 w-5" />
                     <span className="sr-only">Edit Event</span>
                   </Button>
-                  <Button variant="destructive" size="icon">
+                  <Button variant="destructive" size="icon" onClick={handleDeleteClick}>
                     <Trash2 className="h-5 w-5" />
                      <span className="sr-only">Delete Event</span>
                   </Button>
@@ -242,7 +287,7 @@ export default function EventDetailsPage({
           <div className="flex items-center gap-4 text-muted-foreground">
             <div className='flex items-center gap-2'>
               <Calendar className="h-5 w-5" />
-               {isEditing ? (
+               {isEditing && editedDetails ? (
                 <div className="flex gap-2">
                   <Input 
                     type="date"
@@ -268,7 +313,7 @@ export default function EventDetailsPage({
           </div>
           <div className="flex items-start gap-2 text-foreground/80">
             <Info className="h-5 w-5 mt-1 shrink-0" />
-            {isEditing ? (
+            {isEditing && editedDetails ? (
               <Textarea 
                 name="description" 
                 value={editedDetails.description} 
@@ -283,11 +328,11 @@ export default function EventDetailsPage({
               <Users className="h-5 w-5 mt-1 shrink-0" />
               <div>
                   <h3 className="font-semibold">Organized by:</h3>
-                   {isEditing ? (
+                   {isEditing && editedDetails ? (
                     <Input 
                       name="organizers" 
-                      value={editedDetails.organizers.join(', ')} 
-                      onChange={(e) => setEditedDetails(prev => ({ ...prev, organizers: e.target.value.split(',').map(s => s.trim())}))}
+                      value={(editedDetails.organizers || []).join(', ')} 
+                      onChange={(e) => setEditedDetails(prev => prev ? ({ ...prev, organizers: e.target.value.split(',').map(s => s.trim())}) : null)}
                       className="w-full"
                     />
                   ) : (
@@ -374,66 +419,75 @@ export default function EventDetailsPage({
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>#</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Mobile Number</TableHead>
-                <TableHead>No. of People</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {paginatedRsvpList.map((rsvp) => (
-                <TableRow key={rsvp.seq}>
-                  <TableCell>{rsvp.seq}</TableCell>
-                  <TableCell>{rsvp.name}</TableCell>
-                  <TableCell>{rsvp.mobile}</TableCell>
-                  <TableCell className="text-center">{rsvp.people}</TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="capitalize w-28 justify-start">
-                          <Badge variant={statusVariant(rsvp.status)} className="w-full">
-                            {rsvp.status}
-                          </Badge>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        {statusOptions.map(status => (
-                          <DropdownMenuItem key={status} onSelect={() => handleStatusChange(rsvp.seq, status)}>
-                            {status}
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+          {rsvpsLoading ? (<p>Loading RSVPs...</p>) : (
+          <>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>#</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Mobile Number</TableHead>
+                  <TableHead>No. of People</TableHead>
+                  <TableHead>Status</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-           <div className="flex items-center justify-end space-x-2 pt-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handlePreviousPage}
-              disabled={currentPage === 1}
-            >
-              Previous
-            </Button>
-            <span className="text-sm text-muted-foreground">
-              Page {currentPage} of {totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleNextPage}
-              disabled={currentPage === totalPages}
-            >
-              Next
-            </Button>
-          </div>
+              </TableHeader>
+              <TableBody>
+                {paginatedRsvpList.map((rsvp, index) => (
+                  <TableRow key={rsvp.id}>
+                    <TableCell>{(currentPage - 1) * ITEMS_PER_PAGE + index + 1}</TableCell>
+                    <TableCell>{rsvp.name}</TableCell>
+                    <TableCell>{rsvp.mobile}</TableCell>
+                    <TableCell className="text-center">{rsvp.people}</TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" className="capitalize w-28 justify-start">
+                            <Badge variant={statusVariant(rsvp.status)} className="w-full">
+                              {rsvp.status}
+                            </Badge>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          {statusOptions.map(status => (
+                            <DropdownMenuItem key={status} onSelect={() => handleStatusChange(rsvp.id, status)}>
+                              {status}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            <div className="flex items-center justify-end space-x-2 pt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePreviousPage}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                Page {currentPage} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleNextPage}
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </Button>
+            </div>
+            {rsvpList.length === 0 && (
+                <div className="text-center py-10 text-muted-foreground">
+                    <p>No RSVPs for this event yet.</p>
+                </div>
+            )}
+          </>
+          )}
         </CardContent>
       </Card>
     </div>
