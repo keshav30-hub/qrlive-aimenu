@@ -49,10 +49,7 @@ type TableData = {
 }
 
 const topPages = [
-  { name: '/menu/starters', visits: 1024 },
-  { name: '/menu/main-course', visits: 980 },
-  { name: '/offers', visits: 750 },
-  { name: '/cart', visits: 500 },
+  { name: 'N/A', visits: 0 },
 ];
 
 export default function SetupQrMenuPage() {
@@ -132,8 +129,8 @@ export default function SetupQrMenuPage() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12</div>
-            <p className="text-xs text-muted-foreground">Currently browsing the menu</p>
+            <div className="text-2xl font-bold">0</div>
+            <p className="text-xs text-muted-foreground">Analytics data not available</p>
           </CardContent>
         </Card>
         <Card>
@@ -144,8 +141,8 @@ export default function SetupQrMenuPage() {
             <Smartphone className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">+235</div>
-            <p className="text-xs text-muted-foreground">+12.1% from yesterday</p>
+            <div className="text-2xl font-bold">0</div>
+            <p className="text-xs text-muted-foreground">Analytics data not available</p>
           </CardContent>
         </Card>
         <Card>
@@ -220,7 +217,7 @@ export default function SetupQrMenuPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {(tables || []).map((table, index) => (
+                {tables.map((table, index) => (
                   <TableRow key={table.id}>
                     <TableCell>{index + 1}</TableCell>
                     <TableCell className="font-medium">{table.name}</TableCell>
