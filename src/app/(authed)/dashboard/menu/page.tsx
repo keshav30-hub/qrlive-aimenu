@@ -330,7 +330,7 @@ export default function MenuPage() {
         } else {
              await addDoc(categoriesRef, { 
                 ...currentCategory,
-                imageUrl: `https://picsum.photos/seed/cat${categories.length + 1}/600/400`,
+                imageUrl: `https://picsum.photos/seed/cat${(categories || []).length + 1}/600/400`,
                 imageHint: 'new category',
                 createdAt: serverTimestamp() 
             });
@@ -571,7 +571,7 @@ export default function MenuPage() {
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">All Categories</SelectItem>
-                                {categories.map(cat => <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>)}
+                                {categories && categories.map(cat => <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>)}
                             </SelectContent>
                         </Select>
                         <Select value={filterType} onValueChange={setFilterType}>
@@ -731,7 +731,7 @@ export default function MenuPage() {
             </Sheet>
           </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {categoriesLoading ? <p>Loading categories...</p> : categories.map((category) => (
+                {categoriesLoading ? <p>Loading categories...</p> : (categories || []).map((category) => (
                 <Card key={category.id} className="overflow-hidden flex flex-col">
                     <div className="relative w-full h-40">
                         <Image
@@ -772,7 +772,7 @@ export default function MenuPage() {
                 </Card>
                 ))}
             </div>
-            {categories.length === 0 && !categoriesLoading && (
+            {(!categories || categories.length === 0) && !categoriesLoading && (
                  <div className="mt-4 text-center text-muted-foreground">
                     <p>No categories have been added yet.</p>
                 </div>
@@ -860,7 +860,7 @@ export default function MenuPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {combosLoading ? <TableRow><TableCell colSpan={6}>Loading...</TableCell></TableRow> : combos.map((combo, index) => (
+                    {combosLoading ? <TableRow><TableCell colSpan={6}>Loading...</TableCell></TableRow> : (combos || []).map((combo, index) => (
                       <TableRow key={combo.id}>
                         <TableCell>{index + 1}</TableCell>
                         <TableCell className="font-medium">{combo.name}</TableCell>
