@@ -220,7 +220,7 @@ export default function SetupQrMenuPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {tables.map((table, index) => (
+                {(tables || []).map((table, index) => (
                   <TableRow key={table.id}>
                     <TableCell>{index + 1}</TableCell>
                     <TableCell className="font-medium">{table.name}</TableCell>
@@ -243,7 +243,7 @@ export default function SetupQrMenuPage() {
                 ))}
               </TableBody>
             </Table>
-              {tables.length === 0 && !tablesLoading && (
+              {(tables || []).length === 0 && !tablesLoading && (
                   <div className="text-center py-10 text-muted-foreground">
                       <p>No tables added yet. Click &quot;Add Table&quot; to get started.</p>
                   </div>
