@@ -41,11 +41,23 @@ export default function OnboardingPage() {
         });
         return;
     }
+
+    const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+
     if (!businessName || !ownerName || !contact || !address || !gst) {
         toast({
             variant: "destructive",
             title: "Missing Fields",
             description: "Please fill out all required fields.",
+        });
+        return;
+    }
+
+    if (!gstRegex.test(gst.toUpperCase())) {
+        toast({
+            variant: "destructive",
+            title: "Invalid GST Format",
+            description: "Please enter a valid 15-character GST number.",
         });
         return;
     }
@@ -57,7 +69,7 @@ export default function OnboardingPage() {
         ownerName,
         contact,
         address: selectedPlace?.formatted_address || address,
-        gst,
+        gst: gst.toUpperCase(),
         latitude: selectedPlace?.geometry?.location?.lat() || null,
         longitude: selectedPlace?.geometry?.location?.lng() || null,
         businessId: 'Menu-25-DFCV68',
@@ -145,7 +157,14 @@ export default function OnboardingPage() {
             <Label htmlFor="gst-detail">GST Detail</Label>
             <div className="relative">
               <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input id="gst-detail" value={gst} onChange={(e) => setGst(e.target.value)} placeholder="Enter your GST number" className="pl-10" />
+              <Input 
+                id="gst-detail" 
+                value={gst} 
+                onChange={(e) => setGst(e.target.value.toUpperCase())} 
+                placeholder="Enter your 15-digit GST number" 
+                className="pl-10"
+                maxLength={15} 
+              />
             </div>
           </div>
         </CardContent>
