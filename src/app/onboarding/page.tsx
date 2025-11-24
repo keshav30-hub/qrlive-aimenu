@@ -115,7 +115,20 @@ export default function OnboardingPage() {
             <Label htmlFor="mobile-number">Mobile Number</Label>
             <div className="relative">
               <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input id="mobile-number" type="tel" value={contact} onChange={(e) => setContact(e.target.value)} placeholder="e.g., 9876543210" className="pl-10" />
+              <Input 
+                id="mobile-number" 
+                type="tel" 
+                value={contact} 
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (/^\d*$/.test(value)) {
+                    setContact(value);
+                  }
+                }} 
+                placeholder="e.g., 9876543210" 
+                className="pl-10"
+                maxLength={10}
+              />
             </div>
           </div>
           <div className="space-y-2">
