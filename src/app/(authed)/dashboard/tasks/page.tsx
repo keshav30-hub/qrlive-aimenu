@@ -52,13 +52,13 @@ export default function TasksPage() {
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
   const tasksRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'tasks') : null, [firestore, user]);
-  const { data: tasks = [], isLoading: tasksLoading } = useCollection<Task>(tasksRef);
+  const { data: tasks, isLoading: tasksLoading } = useCollection<Task>(tasksRef);
 
   const [currentPage, setCurrentPage] = useState(1);
   const { showNewTask } = useTaskNotification();
 
-  const unattendedTasks = useMemo(() => tasks.filter(t => t.status === 'unattended'), [tasks]);
-  const taskHistory = useMemo(() => tasks.filter(t => t.status !== 'unattended'), [tasks]);
+  const unattendedTasks = useMemo(() => (tasks || []).filter(t => t.status === 'unattended'), [tasks]);
+  const taskHistory = useMemo(() => (tasks || []).filter(t => t.status !== 'unattended'), [tasks]);
 
   const totalPages = Math.ceil(taskHistory.length / ITEMS_PER_PAGE);
 
@@ -211,5 +211,3 @@ export default function TasksPage() {
     </div>
   );
 }
-
-    
