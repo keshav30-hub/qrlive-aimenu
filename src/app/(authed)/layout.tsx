@@ -49,7 +49,11 @@ function AuthRedirect({ children }: { children: React.ReactNode }) {
     }
     
     if (user && userProfile?.onboarding) {
-        return <>{children}</>;
+        return (
+            <TaskNotificationProvider>
+                {children}
+            </TaskNotificationProvider>
+        );
     }
 
     // Fallback for cases where user exists but profile doesn't, or redirecting.
@@ -68,7 +72,6 @@ export default function AuthedLayout({
 }) {
   return (
     <AuthRedirect>
-        <TaskNotificationProvider>
         <div className="h-screen overflow-hidden">
             <div className="flex h-full">
             <SidebarProvider>
@@ -79,7 +82,6 @@ export default function AuthedLayout({
             </SidebarProvider>
             </div>
         </div>
-        </TaskNotificationProvider>
     </AuthRedirect>
   );
 }

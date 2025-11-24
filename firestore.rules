@@ -78,6 +78,11 @@ service cloud.firestore {
       allow read, write, delete: if isOwner(userId);
     }
     
+    match /users/{userId}/urgent_feedback/{feedbackId} {
+      allow create: if true; // Anyone can create an urgent feedback
+      allow read, delete: if isOwner(userId); // Only owner can read/delete
+    }
+
     match /aifa_feedback/{feedbackId} {
         allow create: if true;
         allow read, write, delete: if isAdmin();

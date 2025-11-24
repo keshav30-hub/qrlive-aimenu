@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from "@/components/ui/button";
@@ -151,24 +152,9 @@ const GoogleReviewButton = ({ href }: { href: string }) => (
 );
 
 
-const isFirebaseTimestamp = (value: any): value is { toDate: () => Date } => {
-    return value && typeof value.toDate === 'function';
-};
-
 // Helper function to convert any complex objects (like Firebase Timestamps) to simple ones.
 const sanitizeDataForServerAction = (data: any[]): any[] => {
-    return JSON.parse(JSON.stringify(data, (key, value) => {
-        if (value && typeof value === 'object' && value.seconds !== undefined && value.nanoseconds !== undefined) {
-             try {
-                // Check if it's a Firestore-like timestamp object
-                return new Date(value.seconds * 1000 + value.nanoseconds / 1000000).toISOString();
-            } catch (e) {
-                // Not a valid timestamp, return as is
-                return value;
-            }
-        }
-        return value;
-    }));
+    return JSON.parse(JSON.stringify(data));
 };
 
 
@@ -176,6 +162,7 @@ export default function AIFAPage() {
     const router = useRouter();
     const params = useParams();
     const businessSlug = params['business-name'];
+    const tableNumber = params['table-number'] as string;
     const { format } = useCurrency();
     const { toast } = useToast();
     
@@ -284,7 +271,7 @@ export default function AIFAPage() {
     const handleFeedbackSubmit = async (feedback: any) => {
         if (!businessData) return;
         try {
-            await submitFeedback(businessData.id, feedback);
+            await submitFeedback(businessData.id, feedback, tableNumber);
             
             const feedbackMessage = `submitted-${feedback.rating} star rating and ${feedback.comment || 'no description'}`;
 
@@ -361,7 +348,7 @@ export default function AIFAPage() {
                     priceSymbol: format(0).replace(/[\d.,\s]/g, ''),
                     googleReviewLink: businessData.googleReviewLink,
                     menuCategories: sanitizeDataForServerAction(menuCategories).map(c => ({name: c.name, description: c.description})),
-                    menuItems: sanitizeDataForServerAction(menuItems).map(i => ({...i, price: (i.mrp || i.price || '0').toString(), tags: i.tags || [] })),
+                    menuItems: sanitizeDataForServerAction(menuItems).map(i => ({...i, price: (i.mrp || '0').toString(), tags: i.tags || [] })),
                     events: sanitizeDataForServerAction(events),
                     history: historyForAI,
                     prompt,

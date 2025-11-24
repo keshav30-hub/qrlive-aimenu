@@ -143,7 +143,7 @@ export async function getEvents(userId: string): Promise<Event[]> {
     }
 }
 
-export async function submitFeedback(userId: string, feedback: { target: string; rating: number; comment: string; imageUrl?: string | null }) {
+export async function submitFeedback(userId: string, feedback: { target: string; rating: number; comment: string; imageUrl?: string | null }, table: string) {
     const firestore = await getFirestoreInstance();
     let feedbackRef;
 
@@ -158,6 +158,17 @@ export async function submitFeedback(userId: string, feedback: { target: string;
     if (feedback.target === 'Business') {
         feedbackRef = collection(firestore, 'users', userId, 'feedback');
         await addDoc(feedbackRef, feedbackData);
+
+        // If rating is 1 or 2 stars, also add to urgent_feedback
+        if (feedback.rating <= 2) {
+            const urgentFeedbackRef = collection(firestore, 'users', userId, 'urgent_feedback');
+            await addDoc(urgentFeedbackRef, {
+                ...feedbackData,
+                table: table,
+                type: 'Low Rating',
+                time: new Date().toISOString(),
+            });
+        }
 
     } else { // AIFA Feedback
         feedbackRef = collection(firestore, 'aifa_feedback');
