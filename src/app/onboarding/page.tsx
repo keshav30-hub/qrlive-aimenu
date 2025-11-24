@@ -41,7 +41,7 @@ export default function OnboardingPage() {
         });
         return;
     }
-    if (!businessName || !ownerName || !contact || !address) {
+    if (!businessName || !ownerName || !contact || !address || !gst) {
         toast({
             variant: "destructive",
             title: "Missing Fields",
@@ -142,7 +142,7 @@ export default function OnboardingPage() {
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="gst-detail">GST Detail (Optional)</Label>
+            <Label htmlFor="gst-detail">GST Detail</Label>
             <div className="relative">
               <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input id="gst-detail" value={gst} onChange={(e) => setGst(e.target.value)} placeholder="Enter your GST number" className="pl-10" />
