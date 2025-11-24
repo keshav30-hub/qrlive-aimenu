@@ -182,7 +182,7 @@ export default function QrMenuPage() {
     0
   );
   
-  const aifaUrl = `/qrmenu/${userId}/${tableNumber}/aifa`;
+  const aifaUrl = `/qrmenu/${businessData?.businessId || businessSlug}/${tableNumber}/aifa`;
 
   if (isLoading || eventsLoading) {
     return <div className="flex h-screen items-center justify-center">Loading Menu...</div>
@@ -273,7 +273,7 @@ export default function QrMenuPage() {
           <main className="p-4">
             <div className="grid grid-cols-2 gap-4">
               {(categories || []).map((category) => (
-                  <Link key={category.name} href={`/qrmenu/${businessSlug}/${tableNumber}/${category.name.toLowerCase().replace(/ /g, '-')}`}>
+                  <Link key={category.name} href={`/qrmenu/${businessData?.businessId || businessSlug}/${tableNumber}/${category.name.toLowerCase().replace(/ /g, '-')}`}>
                       <Card className="overflow-hidden">
                           <div className="relative h-24 w-full">
                               <Image

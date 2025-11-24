@@ -49,7 +49,7 @@ type TableData = {
 }
 
 type UserProfile = {
-    businessName?: string;
+    businessId?: string;
 }
 
 const topPages = [
@@ -72,9 +72,8 @@ export default function SetupQrMenuPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   
   const businessSlug = useMemo(() => {
-    if (!userProfile?.businessName) return 'your-business';
-    return userProfile.businessName.toLowerCase().replace(/\s+/g, '-');
-  }, [userProfile]);
+    return userProfile?.businessId || user?.uid || 'your-business';
+  }, [userProfile, user]);
 
 
   const handleAddTable = async () => {

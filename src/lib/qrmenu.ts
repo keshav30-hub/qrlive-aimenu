@@ -53,6 +53,7 @@ export type BusinessData = {
     id: string;
     name: string;
     logo: string;
+    businessId?: string;
     googleReviewLink?: string;
 };
 
@@ -65,27 +66,34 @@ async function getFirestoreInstance() {
 export async function getBusinessDataBySlug(slug: string): Promise<{ businessData: BusinessData | null, userId: string | null }> {
     const firestore = await getFirestoreInstance();
     const usersRef = collection(firestore, 'users');
-    const businessName = slug.replace(/-/g, ' ');
-    // First, try querying by business name slug
-    const q = query(usersRef, where('businessName', '==', businessName), limit(1));
+    
+    // Create queries to check against businessName, businessId, and finally userId
+    const queries = [
+      query(usersRef, where('businessName', '==', slug.replace(/-/g, ' ')), limit(1)),
+      query(usersRef, where('businessId', '==', slug), limit(1)),
+    ];
 
     try {
-        const querySnapshot = await getDocs(q);
-        if (!querySnapshot.empty) {
-            const userDoc = querySnapshot.docs[0];
-            const userData = userDoc.data();
-            return {
-                businessData: {
-                    id: userDoc.id,
-                    name: userData.businessName || 'Unnamed Business',
-                    logo: userData.logo || 'https://picsum.photos/seed/logo/100/100',
-                    googleReviewLink: userData.googleReviewLink,
-                },
-                userId: userDoc.id,
-            };
+        // Try querying by business name and businessId first
+        for (const q of queries) {
+            const querySnapshot = await getDocs(q);
+            if (!querySnapshot.empty) {
+                const userDoc = querySnapshot.docs[0];
+                const userData = userDoc.data();
+                return {
+                    businessData: {
+                        id: userDoc.id,
+                        name: userData.businessName || 'Unnamed Business',
+                        logo: userData.logo || 'https://picsum.photos/seed/logo/100/100',
+                        businessId: userData.businessId,
+                        googleReviewLink: userData.googleReviewLink,
+                    },
+                    userId: userDoc.id,
+                };
+            }
         }
 
-        // If no match by slug, try treating the slug as a user ID
+        // If no match, try treating the slug as a user ID as a fallback
         const userDocById = await getDoc(doc(firestore, 'users', slug));
         if (userDocById.exists()) {
             const userData = userDocById.data();
@@ -94,14 +102,15 @@ export async function getBusinessDataBySlug(slug: string): Promise<{ businessDat
                     id: userDocById.id,
                     name: userData.businessName || 'Unnamed Business',
                     logo: userData.logo || 'https://picsum.photos/seed/logo/100/100',
+                    businessId: userData.businessId,
                     googleReviewLink: userData.googleReviewLink,
                 },
                 userId: userDocById.id,
             };
         }
 
-        // If neither worked, no business found
-        console.warn(`No business found for slug or ID: ${slug}`);
+        // If nothing worked, no business found
+        console.warn(`No business found for slug, business ID, or user ID: ${slug}`);
         return { businessData: null, userId: null };
 
     } catch (error) {
