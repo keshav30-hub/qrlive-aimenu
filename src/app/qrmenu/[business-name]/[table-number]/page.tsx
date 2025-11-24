@@ -76,6 +76,7 @@ export default function QrMenuPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRequestingService, setIsRequestingService] = useState(false);
+  const [isServiceRequestDialogOpen, setIsServiceRequestDialogOpen] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -109,6 +110,7 @@ export default function QrMenuPage() {
             title: "Request Sent",
             description: "A staff member will be with you shortly.",
         });
+        setIsServiceRequestDialogOpen(false); // Close dialog on success
     } catch(error) {
         console.error("Service request failed:", error);
         toast({
@@ -182,7 +184,7 @@ export default function QrMenuPage() {
               </p>
             </div>
           </div>
-          <Dialog>
+          <Dialog open={isServiceRequestDialogOpen} onOpenChange={setIsServiceRequestDialogOpen}>
             <DialogTrigger asChild>
                 <Button size="icon" className="bg-primary text-primary-foreground">
                     <Bell className="h-6 w-6" />
