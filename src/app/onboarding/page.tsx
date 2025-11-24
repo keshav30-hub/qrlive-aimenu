@@ -60,8 +60,6 @@ export default function OnboardingPage() {
         return;
     }
 
-    const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
-
     if (!businessName || !ownerName || !contact || !address || !gst || !businessType) {
         toast({
             variant: "destructive",
@@ -70,8 +68,9 @@ export default function OnboardingPage() {
         });
         return;
     }
-
-    if (!gstRegex.test(gst.toUpperCase())) {
+    
+    const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+    if (!gstRegex.test(gst)) {
         toast({
             variant: "destructive",
             title: "Invalid GST Format",
@@ -89,7 +88,7 @@ export default function OnboardingPage() {
         ownerName,
         contact,
         address: selectedPlace?.formatted_address || address,
-        gst: gst.toUpperCase(),
+        gst: gst,
         businessType,
         latitude: selectedPlace?.geometry?.location?.lat() || null,
         longitude: selectedPlace?.geometry?.location?.lng() || null,
