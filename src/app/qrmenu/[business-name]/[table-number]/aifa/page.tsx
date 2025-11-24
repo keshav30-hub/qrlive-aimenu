@@ -161,13 +161,32 @@ const sanitizeDataForServerAction = (data: any[]): any[] => {
     return data.map(item => {
         const sanitizedItem: { [key: string]: any } = {};
         for (const key in item) {
-            const value = item[key];
-            if (isFirebaseTimestamp(value)) {
-                sanitizedItem[key] = value.toDate().toISOString();
-            } else if (Array.isArray(value)) {
-                sanitizedItem[key] = sanitizeDataForServerAction(value);
-            } else {
-                sanitizedItem[key] = value;
+            if (Object.prototype.hasOwnProperty.call(item, key)) {
+                const value = item[key];
+                if (isFirebaseTimestamp(value)) {
+                    sanitizedItem[key] = value.toDate().toISOString();
+                } else if (Array.isArray(value)) {
+                    // Recursively sanitize arrays
+                    sanitizedItem[key] = sanitizeDataForServerAction(value);
+                } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+                    // This is a simple object, but let's check its properties too
+                    const nestedSanitized: { [key: string]: any } = {};
+                    for (const nestedKey in value) {
+                         if (Object.prototype.hasOwnProperty.call(value, nestedKey)) {
+                            const nestedValue = value[nestedKey];
+                             if (isFirebaseTimestamp(nestedValue)) {
+                                nestedSanitized[nestedKey] = nestedValue.toDate().toISOString();
+                            } else {
+                                nestedSanitized[nestedKey] = nestedValue;
+                            }
+                         }
+                    }
+                    sanitizedItem[key] = nestedSanitized;
+                }
+                
+                else {
+                    sanitizedItem[key] = value;
+                }
             }
         }
         return sanitizedItem;
@@ -364,7 +383,7 @@ export default function AIFAPage() {
                     priceSymbol: format(0).replace(/[\d.,\s]/g, ''),
                     googleReviewLink: businessData.googleReviewLink,
                     menuCategories: sanitizeDataForServerAction(menuCategories).map(c => ({name: c.name, description: c.description})),
-                    menuItems: sanitizeDataForServerAction(menuItems).map(i => ({...i, price: (i.price || '0').toString(), tags: i.tags || [] })),
+                    menuItems: sanitizeDataForServerAction(menuItems).map(i => ({...i, price: (i.mrp || i.price || '0').toString(), tags: i.tags || [] })),
                     events: sanitizeDataForServerAction(events),
                     history: historyForAI,
                     prompt,
@@ -452,7 +471,7 @@ export default function AIFAPage() {
                     </div>
                 </ScrollArea>
 
-                <div className="p-4 bg-white dark:bg-gray-950 border-t">
+                <div className="p-4 bg-white dark:bg-gray-950 border-t z-20">
                     <div className="flex items-center gap-2">
                         <Input 
                             placeholder="Ask me for suggestions..." 
@@ -476,3 +495,5 @@ export default function AIFAPage() {
     );
 }
 
+
+    
