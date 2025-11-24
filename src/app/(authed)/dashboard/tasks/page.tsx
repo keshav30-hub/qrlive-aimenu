@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Card,
   CardContent,
@@ -65,6 +65,41 @@ export default function TasksPage() {
   const unattendedTasks = useMemo(() => tasksDoc?.pendingCalls || [], [tasksDoc]);
   const taskHistory = useMemo(() => (tasksDoc?.attendedCalls || []).sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()), [tasksDoc]);
 
+  const prevPendingCallsRef = useRef<Task[]>([]);
+
+  useEffect(() => {
+    // When the component first loads and we have data, initialize the ref.
+    if (unattendedTasks.length > 0 && prevPendingCallsRef.current.length === 0) {
+      prevPendingCallsRef.current = unattendedTasks;
+      return;
+    }
+    
+    // If the new list is longer than the old one, a task was added.
+    if (unattendedTasks.length > prevPendingCallsRef.current.length) {
+      // Find the new task(s). This handles multiple additions between renders if needed.
+      const newTasks = unattendedTasks.filter(
+        task => !prevPendingCallsRef.current.some(
+          prevTask => prevTask.time === task.time && prevTask.table === task.table && prevTask.request === task.request
+        )
+      );
+      
+      if (newTasks.length > 0) {
+        // Show notification for the newest task.
+        const latestTask = newTasks.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())[0];
+        showNewTask({
+          tableName: latestTask.table,
+          requestType: latestTask.request,
+          dateTime: new Date(latestTask.time).toLocaleTimeString(),
+        });
+      }
+    }
+
+    // Update the ref to the current state for the next render.
+    prevPendingCallsRef.current = unattendedTasks;
+
+  }, [unattendedTasks, showNewTask]);
+
+
   const totalPages = Math.ceil(taskHistory.length / ITEMS_PER_PAGE);
 
   const paginatedTasks = useMemo(() => {
@@ -99,14 +134,22 @@ export default function TasksPage() {
     }
   };
   
-  const simulateTask = () => {
+  const simulateTask = async () => {
+    if (!tasksLiveRef) return;
     const sampleTask = {
-        table: 'Table 7',
+        table: 'Table 7 (Simulated)',
         request: 'Call Captain',
         time: new Date().toISOString(),
         status: 'unattended' as const
     };
-    showNewTask(sampleTask);
+    try {
+      await updateDoc(tasksLiveRef, {
+        pendingCalls: arrayUnion(sampleTask)
+      });
+    } catch(e) {
+      console.error(e);
+      toast({ variant: "destructive", title: "Error", description: "Could not simulate task." });
+    }
   };
 
   return (
