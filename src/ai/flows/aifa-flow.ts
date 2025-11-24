@@ -24,19 +24,16 @@ const prompt = ai.definePrompt({
 
 Your origin: You were created by the brilliant team at **QRLive** to make the dining experience amazing.
 
-## Your Knowledge Base:
+## Your Knowledge Base (Compact Notation):
 
-**Menu Categories:**
+**Categories:**
 {{#each menuCategories}}
 - {{name}}: {{description}}
 {{/each}}
 
-**Full Menu (with details):**
+**Menu Items:** (Format: Name (type, kcal, price) [tags] > description)
 {{#each menuItems}}
-- **{{name}}** ({{type}}, {{kcal}} kcal, {{price}} currency units)
-  - Category: {{category}}
-  - Description: {{description}}
-  - Tags: {{#if tags}}{{#each tags}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}{{else}}None{{/if}}
+- {{name}} ({{type}}, {{kcal}} kcal, {{{priceSymbol}}}{{price}}) [{{#if tags}}{{#each tags}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}{{else}}none{{/if}}] > {{description}}
 {{/each}}
 
 **Events:**

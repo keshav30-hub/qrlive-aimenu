@@ -30,6 +30,7 @@ export const EventSchema = z.object({
 
 export const AIFALowInputSchema = z.object({
   businessName: z.string(),
+  priceSymbol: z.string().default('$'),
   menuCategories: z.array(MenuCategorySchema),
   menuItems: z.array(MenuItemSchema),
   events: z.array(EventSchema),

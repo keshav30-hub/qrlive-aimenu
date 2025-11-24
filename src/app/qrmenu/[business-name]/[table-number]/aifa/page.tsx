@@ -16,6 +16,7 @@ import Link from 'next/link';
 import { runAifaFlow } from "@/ai/flows/aifa-flow";
 import { type AIFALowInput } from "@/ai/flows/aifa-schema";
 import { menu as menuData, events as allEvents, businessData } from '@/lib/qrmenu-mock';
+import { useCurrency } from "@/hooks/use-currency";
 
 
 type Message = {
@@ -121,6 +122,7 @@ export default function AIFAPage() {
     const router = useRouter();
     const params = useParams();
     const businessNameParam = params['business-name'] ? (params['business-name'] as string).replace(/-/g, ' ') : businessData.name;
+    const { format } = useCurrency();
     
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputValue, setInputValue] = useState('');
@@ -233,6 +235,7 @@ export default function AIFAPage() {
             else {
                  const flowInput: AIFALowInput = {
                     businessName: businessNameParam,
+                    priceSymbol: format(0).replace(/[\d.,\s]/g, ''),
                     menuCategories: menuData.categories.map(c => ({name: c.name, description: c.description})),
                     menuItems: menuData.items.map(i => ({...i, price: i.price.toString(), tags: i.tags || [] })),
                     events: allEvents,
