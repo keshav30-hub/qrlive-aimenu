@@ -1,7 +1,6 @@
 
 'use client';
 
-import { useState } from 'react';
 import {
   Card,
   CardContent,
@@ -21,6 +20,25 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { signOut } from 'firebase/auth';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+
+const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+
+const onboardingSchema = z.object({
+  businessName: z.string().min(1, { message: 'Business name is required' }),
+  ownerName: z.string().min(1, { message: 'Owner name is required' }),
+  contact: z.string().length(10, { message: 'Mobile number must be 10 digits' }),
+  businessType: z.string().min(1, { message: 'Please select a business type' }),
+  address: z.string().min(1, { message: 'Address is required' }),
+  gst: z.string().regex(gstRegex, { message: 'Invalid GST number format' }),
+  latitude: z.number().nullable(),
+  longitude: z.number().nullable(),
+});
+
+type OnboardingFormData = z.infer<typeof onboardingSchema>;
 
 function generateBusinessId() {
     const year = new Date().getFullYear().toString().slice(-2);
@@ -36,21 +54,29 @@ export default function OnboardingPage() {
   const router = useRouter();
   const { user, firestore, auth } = useFirebase();
   const { toast } = useToast();
-  
-  const [businessName, setBusinessName] = useState('');
-  const [ownerName, setOwnerName] = useState('');
-  const [contact, setContact] = useState('');
-  const [address, setAddress] = useState('');
-  const [gst, setGst] = useState('');
-  const [businessType, setBusinessType] = useState('');
-  const [selectedPlace, setSelectedPlace] = useState<google.maps.places.PlaceResult | null>(null);
-  
+
+  const form = useForm<OnboardingFormData>({
+    resolver: zodResolver(onboardingSchema),
+    defaultValues: {
+      businessName: '',
+      ownerName: '',
+      contact: '',
+      businessType: '',
+      address: '',
+      gst: '',
+      latitude: null,
+      longitude: null,
+    },
+  });
+
+  const { formState: { isSubmitting } } = form;
+
   const handleLogout = async () => {
     await signOut(auth);
     router.push('/login');
   };
 
-  const handleCompleteOnboarding = async () => {
+  const onSubmit = async (data: OnboardingFormData) => {
     if (!user || !firestore) {
         toast({
             variant: "destructive",
@@ -60,40 +86,19 @@ export default function OnboardingPage() {
         return;
     }
 
-    if (!businessName || !ownerName || !contact || !address || !gst || !businessType) {
-        toast({
-            variant: "destructive",
-            title: "Missing Fields",
-            description: "Please fill out all required fields.",
-        });
-        return;
-    }
-    
-    const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
-    if (!gstRegex.test(gst)) {
-        toast({
-            variant: "destructive",
-            title: "Invalid GST Format",
-            description: "Please enter a valid 15-character GST number.",
-        });
-        return;
-    }
-
     try {
       const userRef = doc(firestore, 'users', user.uid);
       const businessId = generateBusinessId();
 
-      // Use updateDoc instead of setDoc with merge, as the document already exists.
-      // This aligns with the 'update' permission in the security rules.
       await updateDoc(userRef, {
-        businessName,
-        ownerName,
-        contact,
-        address: selectedPlace?.formatted_address || address,
-        gst: gst,
-        businessType,
-        latitude: selectedPlace?.geometry?.location?.lat() || null,
-        longitude: selectedPlace?.geometry?.location?.lng() || null,
+        businessName: data.businessName,
+        ownerName: data.ownerName,
+        contact: data.contact,
+        address: data.address,
+        gst: data.gst,
+        businessType: data.businessType,
+        latitude: data.latitude,
+        longitude: data.longitude,
         businessId: businessId,
         onboarding: true,
       });
@@ -115,11 +120,13 @@ export default function OnboardingPage() {
   };
 
   const handlePlaceSelect = (place: google.maps.places.PlaceResult | null) => {
-    setSelectedPlace(place);
-    if (place?.formatted_address) {
-      setAddress(place.formatted_address);
+    if (place) {
+      form.setValue('address', place.formatted_address || '', { shouldValidate: true });
+      form.setValue('latitude', place.geometry?.location?.lat() || null);
+      form.setValue('longitude', place.geometry?.location?.lng() || null);
     }
   };
+
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-100 dark:bg-black p-4">
@@ -138,88 +145,145 @@ export default function OnboardingPage() {
               </Button>
            </div>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="business-name">Business Name</Label>
-            <div className="relative">
-              <Building className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input id="business-name" value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="e.g., The Gourmet Place" className="pl-10" />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="owner-name">Owner Name</Label>
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input id="owner-name" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} placeholder="e.g., John Doe" className="pl-10" />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="mobile-number">Mobile Number</Label>
-            <div className="relative">
-              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input 
-                id="mobile-number" 
-                type="tel" 
-                value={contact} 
-                onChange={(e) => {
-                  const value = e.target.value;
-                  if (/^\d*$/.test(value) && value.length <= 10) {
-                    setContact(value);
-                  }
-                }} 
-                placeholder="e.g., 9876543210" 
-                className="pl-10"
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)}>
+            <CardContent className="space-y-4">
+              <FormField
+                control={form.control}
+                name="businessName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Business Name</FormLabel>
+                    <div className="relative">
+                        <Building className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <FormControl>
+                          <Input placeholder="e.g., The Gourmet Place" className="pl-10" {...field} />
+                        </FormControl>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="business-type">Business Type</Label>
-            <div className="relative">
-              <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
-              <Select value={businessType} onValueChange={setBusinessType}>
-                <SelectTrigger className="pl-10">
-                  <SelectValue placeholder="Select a business type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="cafe">Cafe</SelectItem>
-                  <SelectItem value="restaurant">Restaurant</SelectItem>
-                  <SelectItem value="bar">Bar</SelectItem>
-                  <SelectItem value="pub">Pub</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="full-address">Full Address</Label>
-            <div className="relative">
-              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
-              <PlacesAutocomplete 
-                onPlaceSelect={handlePlaceSelect}
-                value={address}
-                onValueChange={setAddress}
+              <FormField
+                control={form.control}
+                name="ownerName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Owner Name</FormLabel>
+                    <div className="relative">
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <FormControl>
+                          <Input placeholder="e.g., John Doe" className="pl-10" {...field} />
+                        </FormControl>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="gst-detail">GST Detail</Label>
-            <div className="relative">
-              <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input 
-                id="gst-detail" 
-                value={gst} 
-                onChange={(e) => setGst(e.target.value.toUpperCase())} 
-                placeholder="Enter your 15-digit GST number" 
-                className="pl-10"
-                maxLength={15} 
+              <FormField
+                control={form.control}
+                name="contact"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Mobile Number</FormLabel>
+                    <div className="relative">
+                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <FormControl>
+                          <Input 
+                            type="tel" 
+                            placeholder="e.g., 9876543210" 
+                            className="pl-10"
+                            maxLength={10}
+                            {...field}
+                            onChange={(e) => {
+                                const value = e.target.value;
+                                if (/^\d*$/.test(value)) {
+                                  field.onChange(value);
+                                }
+                            }}
+                          />
+                        </FormControl>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </div>
-          </div>
-        </CardContent>
-        <CardFooter>
-          <Button className="w-full" onClick={handleCompleteOnboarding}>
-            Complete Onboarding
-          </Button>
-        </CardFooter>
+              <FormField
+                control={form.control}
+                name="businessType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Business Type</FormLabel>
+                     <div className="relative">
+                        <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                                <SelectTrigger className="pl-10">
+                                    <SelectValue placeholder="Select a business type" />
+                                </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                <SelectItem value="cafe">Cafe</SelectItem>
+                                <SelectItem value="restaurant">Restaurant</SelectItem>
+                                <SelectItem value="bar">Bar</SelectItem>
+                                <SelectItem value="pub">Pub</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+               <FormField
+                control={form.control}
+                name="address"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Full Address</FormLabel>
+                     <div className="relative">
+                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
+                        <FormControl>
+                           <PlacesAutocomplete 
+                                onPlaceSelect={handlePlaceSelect}
+                                value={field.value}
+                                onValueChange={(value) => field.onChange(value)}
+                            />
+                        </FormControl>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="gst"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>GST Detail</FormLabel>
+                    <div className="relative">
+                        <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <FormControl>
+                          <Input 
+                            placeholder="Enter your 15-digit GST number" 
+                            className="pl-10"
+                            maxLength={15} 
+                            {...field}
+                             onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                          />
+                        </FormControl>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+            <CardFooter>
+              <Button type="submit" className="w-full" disabled={isSubmitting}>
+                {isSubmitting ? 'Completing...' : 'Complete Onboarding'}
+              </Button>
+            </CardFooter>
+          </form>
+        </Form>
       </Card>
     </div>
   );
