@@ -23,7 +23,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     // If user is already logged in, redirect to dashboard
-    if (!isUserloading && user) {
+    if (!isUserLoading && user) {
       router.push('/dashboard');
     }
   }, [user, isUserLoading, router]);
@@ -50,7 +50,7 @@ export default function LoginPage() {
   if (isUserLoading || user) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-100">
-        <p className="text-black">Loading...</p>
+        <p>Loading...</p>
       </div>
     );
   }
