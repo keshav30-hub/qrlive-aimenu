@@ -30,13 +30,12 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { collection } from 'firebase/firestore';
+import { collection, Timestamp } from 'firebase/firestore';
 
 
 type Feedback = {
   id: string;
-  timestamp: string;
-  tableName: string; // This field does not exist in the schema, will show as undefined
+  timestamp: Timestamp;
   comment: string;
   imageUrl?: string;
   rating: number;
@@ -56,7 +55,7 @@ export default function FeedbackPage() {
   const feedbackRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'feedback') : null, [firestore, user]);
   const { data: feedbackListData, isLoading: feedbackLoading } = useCollection<Feedback>(feedbackRef);
 
-  const feedbackList = feedbackListData || [];
+  const feedbackList = useMemo(() => feedbackListData?.sort((a, b) => b.timestamp.toMillis() - a.timestamp.toMillis()) || [], [feedbackListData]);
   const [currentPage, setCurrentPage] = useState(1);
 
   const totalReviews = feedbackList.length || 0;
@@ -93,6 +92,13 @@ export default function FeedbackPage() {
   const handleNextPage = () => {
     setCurrentPage((prev) => Math.min(prev + 1, totalPages));
   };
+
+  const toDate = (timestamp: any) => {
+    if (timestamp?.toDate) {
+      return timestamp.toDate();
+    }
+    return new Date(timestamp);
+  }
 
 
   return (
@@ -148,7 +154,7 @@ export default function FeedbackPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Feedback ID</TableHead>
+                  <TableHead>#</TableHead>
                   <TableHead>Date & Time</TableHead>
                   <TableHead>Comment</TableHead>
                   <TableHead>Image</TableHead>
@@ -156,12 +162,12 @@ export default function FeedbackPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paginatedFeedback.map((feedback) => (
+                {paginatedFeedback.map((feedback, index) => (
                   <Dialog key={feedback.id}>
                     <DialogTrigger asChild>
                       <TableRow className="cursor-pointer">
-                        <TableCell className="font-medium">{feedback.id.substring(0, 5)}...</TableCell>
-                        <TableCell>{new Date(feedback.timestamp).toLocaleString('en-GB')}</TableCell>
+                        <TableCell className="font-medium">{(currentPage - 1) * ITEMS_PER_PAGE + index + 1}</TableCell>
+                        <TableCell>{toDate(feedback.timestamp).toLocaleString('en-GB')}</TableCell>
                         <TableCell className="max-w-xs truncate">{feedback.comment}</TableCell>
                         <TableCell>
                           {feedback.imageUrl ? (
@@ -179,7 +185,7 @@ export default function FeedbackPage() {
                       <DialogHeader>
                         <DialogTitle>Feedback Details</DialogTitle>
                         <DialogDescription>
-                          {new Date(feedback.timestamp).toLocaleDateString('en-GB')} at {new Date(feedback.timestamp).toLocaleTimeString()}
+                          {toDate(feedback.timestamp).toLocaleDateString('en-GB')} at {toDate(feedback.timestamp).toLocaleTimeString()}
                         </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-4 py-4">
