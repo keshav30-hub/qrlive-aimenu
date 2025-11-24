@@ -53,6 +53,16 @@
           "type": "string",
           "description": "The GST detail for the business."
         },
+        "businessType": {
+          "type": "string",
+          "description": "The type of the business.",
+          "enum": [
+            "cafe",
+            "restaurant",
+            "bar",
+            "pub"
+          ]
+        },
         "latitude": {
           "type": "number",
           "description": "Latitude of the user's business location."
@@ -67,7 +77,8 @@
         "email",
         "createdAt",
         "lastLoginAt",
-        "onboarding"
+        "onboarding",
+        "businessType"
       ]
     },
     "MenuItem": {
@@ -617,4 +628,3 @@
     }
   }
 }
-    

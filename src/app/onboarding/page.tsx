@@ -13,12 +13,13 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Building, User, Phone, MapPin, FileText } from 'lucide-react';
+import { Building, User, Phone, MapPin, FileText, Briefcase } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { PlacesAutocomplete } from '@/components/places-autocomplete';
 import { useFirebase } from '@/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -30,6 +31,7 @@ export default function OnboardingPage() {
   const [contact, setContact] = useState('');
   const [address, setAddress] = useState('');
   const [gst, setGst] = useState('');
+  const [businessType, setBusinessType] = useState('');
   const [selectedPlace, setSelectedPlace] = useState<google.maps.places.PlaceResult | null>(null);
 
   const handleCompleteOnboarding = async () => {
@@ -44,7 +46,7 @@ export default function OnboardingPage() {
 
     const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
 
-    if (!businessName || !ownerName || !contact || !address || !gst) {
+    if (!businessName || !ownerName || !contact || !address || !gst || !businessType) {
         toast({
             variant: "destructive",
             title: "Missing Fields",
@@ -70,6 +72,7 @@ export default function OnboardingPage() {
         contact,
         address: selectedPlace?.formatted_address || address,
         gst: gst.toUpperCase(),
+        businessType,
         latitude: selectedPlace?.geometry?.location?.lat() || null,
         longitude: selectedPlace?.geometry?.location?.lng() || null,
         businessId: 'Menu-25-DFCV68',
@@ -141,6 +144,23 @@ export default function OnboardingPage() {
                 className="pl-10"
                 maxLength={10}
               />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="business-type">Business Type</Label>
+            <div className="relative">
+              <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
+              <Select value={businessType} onValueChange={setBusinessType}>
+                <SelectTrigger className="pl-10">
+                  <SelectValue placeholder="Select a business type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cafe">Cafe</SelectItem>
+                  <SelectItem value="restaurant">Restaurant</SelectItem>
+                  <SelectItem value="bar">Bar</SelectItem>
+                  <SelectItem value="pub">Pub</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <div className="space-y-2">
