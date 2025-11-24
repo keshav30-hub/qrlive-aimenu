@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -48,10 +48,12 @@ import {
   SprayCan,
   Loader2,
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { getBusinessDataBySlug, getEvents, getMenuData, type BusinessData, type Event, type Category, submitServiceRequest } from '@/lib/qrmenu';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useUser, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
 
 
 const serviceRequests = [
@@ -67,32 +69,40 @@ export default function QrMenuPage() {
   const { 'business-name': businessSlug, 'table-number': tableNumber } = params;
   const { format } = useCurrency();
   const { toast } = useToast();
+  const { firestore } = useUser();
+  const router = useRouter();
 
   const [cart, setCart] = useState<any[]>([]);
 
   const [businessData, setBusinessData] = useState<BusinessData | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
-  const [events, setEvents] = useState<Event[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRequestingService, setIsRequestingService] = useState(false);
   const [isServiceRequestDialogOpen, setIsServiceRequestDialogOpen] = useState(false);
 
+  // Fetch real-time events
+  const eventsRef = useMemoFirebase(() => {
+    if (!userId) return null;
+    return query(collection(firestore, 'users', userId, 'events'), where('active', '==', true));
+  }, [firestore, userId]);
+  const { data: events, isLoading: eventsLoading } = useCollection<Event>(eventsRef);
+
   useEffect(() => {
     async function fetchData() {
-      if (typeof businessSlug !== 'string') return;
+      if (typeof businessSlug !== 'string') {
+        setIsLoading(false);
+        return;
+      }
       
-      const { businessData, userId: fetchedUserId } = await getBusinessDataBySlug(businessSlug as string);
+      setIsLoading(true);
+      const { businessData: bd, userId: fetchedUserId } = await getBusinessDataBySlug(businessSlug as string);
       
-      if (businessData && fetchedUserId) {
-        setBusinessData(businessData);
+      if (bd && fetchedUserId) {
+        setBusinessData(bd);
         setUserId(fetchedUserId);
-        const [fetchedEvents, menuData] = await Promise.all([
-          getEvents(fetchedUserId),
-          getMenuData(fetchedUserId)
-        ]);
-        setEvents(fetchedEvents);
-        setCategories(menuData.categories);
+        const { categories: menuCategories } = await getMenuData(fetchedUserId);
+        setCategories(menuCategories);
       }
       setIsLoading(false);
     }
@@ -174,7 +184,7 @@ export default function QrMenuPage() {
   
   const aifaUrl = `/qrmenu/${userId}/${tableNumber}/aifa`;
 
-  if (isLoading) {
+  if (isLoading || eventsLoading) {
     return <div className="flex h-screen items-center justify-center">Loading Menu...</div>
   }
   
@@ -239,6 +249,7 @@ export default function QrMenuPage() {
               <CarouselContent>
                 {events.map((event) => (
                   <CarouselItem key={event.id}>
+                    <Link href={`/events/${event.id}`}>
                       <div className="relative h-40 w-full rounded-lg overflow-hidden">
                         <Image
                           src={event.imageUrl}
@@ -252,6 +263,7 @@ export default function QrMenuPage() {
                           <h3 className="text-white font-bold text-lg">{event.name}</h3>
                         </div>
                       </div>
+                    </Link>
                   </CarouselItem>
                 ))}
               </CarouselContent>
@@ -261,7 +273,7 @@ export default function QrMenuPage() {
           <main className="p-4">
             <div className="grid grid-cols-2 gap-4">
               {(categories || []).map((category) => (
-                  <Link key={category.name} href={`/qrmenu/${userId}/${tableNumber}/${category.name.toLowerCase().replace(/ /g, '-')}`}>
+                  <Link key={category.name} href={`/qrmenu/${businessSlug}/${tableNumber}/${category.name.toLowerCase().replace(/ /g, '-')}`}>
                       <Card className="overflow-hidden">
                           <div className="relative h-24 w-full">
                               <Image
@@ -375,7 +387,13 @@ export default function QrMenuPage() {
         
         <div className="fixed bottom-4 right-1/2 translate-x-[calc(50vw-1rem)] max-w-[calc(480px-2rem)] w-full sm:translate-x-0 sm:right-4 sm:max-w-none sm:w-auto" style={{ right: 'calc(50% - 224px + 1rem)'}}>
              <Link href={aifaUrl}>
-                <Button size="icon" className="h-14 w-14 rounded-full shadow-lg bg-primary text-primary-foreground">
+                <Button size="icon" className="h-14 w-14 rounded-full shadow-lg bg-primary text-primary-foreground"
+                onClick={(e) => {
+                    if(!userId) {
+                        e.preventDefault();
+                        toast({variant: 'destructive', title: 'AI Assistant Not Ready', description: 'Please wait a moment and try again.'})
+                    }
+                }}>
                     <Sparkles className="h-7 w-7" />
                     <span className="sr-only">AI Food Assistant</span>
                 </Button>

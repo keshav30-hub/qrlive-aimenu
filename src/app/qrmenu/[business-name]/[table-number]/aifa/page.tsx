@@ -152,8 +152,7 @@ const GoogleReviewButton = ({ href }: { href: string }) => (
 );
 
 
-// Helper function to convert any complex objects (like Firebase Timestamps) to simple ones.
-const sanitizeDataForServerAction = (data: any[]): any[] => {
+const processDataForServerAction = (data: any) => {
     return JSON.parse(JSON.stringify(data));
 };
 
@@ -347,9 +346,9 @@ export default function AIFAPage() {
                     businessName: businessData.name,
                     priceSymbol: format(0).replace(/[\d.,\s]/g, ''),
                     googleReviewLink: businessData.googleReviewLink,
-                    menuCategories: sanitizeDataForServerAction(menuCategories).map(c => ({name: c.name, description: c.description})),
-                    menuItems: sanitizeDataForServerAction(menuItems).map(i => ({...i, price: (i.mrp || '0').toString(), tags: i.tags || [] })),
-                    events: sanitizeDataForServerAction(events),
+                    menuCategories: processDataForServerAction(menuCategories).map((c: any) => ({name: c.name, description: c.description})),
+                    menuItems: processDataForServerAction(menuItems).map((i: any) => ({...i, price: (i.mrp || '0').toString(), tags: i.tags || [] })),
+                    events: processDataForServerAction(events),
                     history: historyForAI,
                     prompt,
                 };
