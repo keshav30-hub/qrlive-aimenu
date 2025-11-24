@@ -87,7 +87,12 @@ const FeedbackForm = ({ target, onSubmit }: { target: string, onSubmit: (feedbac
     };
     
     const handleSubmit = async () => {
-        if (rating === 0) return;
+        if (rating === 0 || (rating <= 2 && !comment.trim())) {
+             // For low ratings, description is mandatory. This is handled by the AI prompt, but good to have client side too.
+             // We will let the AI handle the mandatory description message for a better conversational flow.
+             // For now, we just disable the button.
+             return;
+        }
         setIsSubmitting(true);
         await onSubmit({
             target,
@@ -97,6 +102,8 @@ const FeedbackForm = ({ target, onSubmit }: { target: string, onSubmit: (feedbac
         });
         setIsSubmitting(false);
     }
+
+    const isSubmitDisabled = isSubmitting || rating === 0 || (rating <= 2 && !comment.trim());
 
     return (
         <div className="space-y-4 rounded-lg border bg-background p-4">
@@ -128,7 +135,7 @@ const FeedbackForm = ({ target, onSubmit }: { target: string, onSubmit: (feedbac
                 </Label>
                 <Input id="feedback-image" type="file" className="sr-only" accept="image/*" onChange={handleImageChange} disabled={isSubmitting} />
             </div>
-            <Button className="w-full" onClick={handleSubmit} disabled={isSubmitting || rating === 0}>
+            <Button className="w-full" onClick={handleSubmit} disabled={isSubmitDisabled}>
                 {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Send className="mr-2 h-4 w-4" />}
                 {isSubmitting ? 'Submitting...' : 'Submit Feedback'}
             </Button>
@@ -252,8 +259,16 @@ export default function AIFAPage() {
         if (!businessData) return;
         try {
             await submitFeedback(businessData.id, feedback);
-            addMessage('aifa', 'Thank you for your feedback! It helps us improve.');
-            toast({ title: "Feedback submitted successfully!" });
+            
+            if (feedback.rating <= 2) {
+                const feedbackMessage = `submitted-${feedback.rating} star rating and ${feedback.comment || 'no description'}`;
+                addMessage('user', feedbackMessage);
+                await getAIResponse(feedbackMessage);
+            } else {
+                addMessage('aifa', 'Thank you for your feedback! It helps us improve.');
+                toast({ title: "Feedback submitted successfully!" });
+            }
+
         } catch (error) {
             console.error("Feedback submission error:", error);
             addMessage('aifa', 'Sorry, I had trouble submitting your feedback. Please try again in a moment.');
@@ -426,4 +441,3 @@ export default function AIFAPage() {
     );
 }
 
-    
