@@ -57,7 +57,7 @@ export default function SetupQrMenuPage() {
   const { toast } = useToast();
   
   const tablesRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'tables') : null, [firestore, user]);
-  const { data: tables = [], isLoading: tablesLoading } = useCollection<TableData>(tablesRef);
+  const { data: tables, isLoading: tablesLoading } = useCollection<TableData>(tablesRef);
 
   const [newTableName, setNewTableName] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -217,7 +217,7 @@ export default function SetupQrMenuPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {tables.map((table, index) => (
+                {(tables || []).map((table, index) => (
                   <TableRow key={table.id}>
                     <TableCell>{index + 1}</TableCell>
                     <TableCell className="font-medium">{table.name}</TableCell>
