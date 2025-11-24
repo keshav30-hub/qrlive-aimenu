@@ -28,6 +28,12 @@ type UserProfile = {
     adminAccessCode?: string;
 };
 
+type StaffMember = {
+    id: string;
+    name: string;
+    accessCode?: string;
+};
+
 type Notification = {
     id: string;
     message: string;
@@ -40,16 +46,22 @@ function AuthRedirect({ children }: { children: React.ReactNode }) {
     const { user, isUserLoading } = useUser();
     const { firestore } = useFirebase();
     const router = useRouter();
+    const { toast } = useToast();
 
     const userDocRef = useMemoFirebase(() => {
         if (!user || !firestore) return null;
         return doc(firestore, 'users', user.uid);
     }, [user, firestore]);
     
+    const staffRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'staff') : null, [firestore, user]);
+    
     const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userDocRef);
-    const isDataLoading = isUserLoading || isProfileLoading;
-    const [isUnlocked, setIsUnlocked] = useState(false);
+    const { data: staffList, isLoading: isStaffLoading } = useCollection<StaffMember>(staffRef);
 
+    const isDataLoading = isUserLoading || isProfileLoading || isStaffLoading;
+    const [isUnlocked, setIsUnlocked] = useState(false);
+    
+    const anyAccessCodeExists = !!userProfile?.adminAccessCode || (staffList || []).some(s => s.accessCode);
 
     useEffect(() => {
         if (!isDataLoading) {
@@ -61,7 +73,12 @@ function AuthRedirect({ children }: { children: React.ReactNode }) {
         }
     }, [user, userProfile, isDataLoading, router]);
 
-    const isLoading = isUserLoading || (user && isProfileLoading);
+    const handleUnlock = (role: string, name: string) => {
+        setIsUnlocked(true);
+        toast({ title: 'Dashboard Unlocked', description: `Welcome, ${name}!`});
+    };
+
+    const isLoading = isUserLoading || (user && (isProfileLoading || isStaffLoading));
 
     if (isLoading) {
         return (
@@ -72,8 +89,12 @@ function AuthRedirect({ children }: { children: React.ReactNode }) {
     }
     
     if (user && userProfile?.onboarding) {
-        if (userProfile.adminAccessCode && !isUnlocked) {
-            return <LockScreen code={userProfile.adminAccessCode} onUnlock={() => setIsUnlocked(true)} />;
+        if (anyAccessCodeExists && !isUnlocked) {
+            return <LockScreen 
+                onUnlock={handleUnlock}
+                adminCode={userProfile.adminAccessCode}
+                staff={staffList || []}
+            />;
         }
         return (
             <TaskNotificationProvider>
@@ -82,7 +103,6 @@ function AuthRedirect({ children }: { children: React.ReactNode }) {
         );
     }
 
-    // Fallback for cases where user exists but profile doesn't, or redirecting.
     return (
         <div className="flex h-screen items-center justify-center">
             <p>Loading...</p>
@@ -218,3 +238,5 @@ export default function AuthedLayout({
     </AuthRedirect>
   );
 }
+
+    

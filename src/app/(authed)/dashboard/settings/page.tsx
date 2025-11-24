@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -16,8 +17,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import Link from 'next/link';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { useFirebase, useDoc, useCollection, useMemoFirebase } from '@/firebase';
+import { doc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useFirebaseStorage } from '@/firebase/storage/use-firebase-storage';
 
@@ -35,18 +36,27 @@ type BusinessInfo = {
   businessId?: string;
 };
 
+type StaffMember = {
+    id: string;
+    accessCode?: string;
+};
+
 export default function SettingsPage() {
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
   const { uploadFile, deleteFile, isLoading: isUploading } = useFirebaseStorage();
   
   const userRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+  const staffRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'staff') : null, [firestore, user]);
+
   const { data: businessInfo, isLoading: isInfoLoading } = useDoc<BusinessInfo>(userRef);
+  const { data: staffList } = useCollection<StaffMember>(staffRef);
 
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editedInfo, setEditedInfo] = useState<BusinessInfo | null>(null);
   const [showAccessCode, setShowAccessCode] = useState(false);
+  const [accessCodeError, setAccessCodeError] = useState<string | null>(null);
   
   useEffect(() => {
     if (businessInfo) {
@@ -64,10 +74,36 @@ export default function SettingsPage() {
 
   const handleCancel = () => {
     setIsEditing(false);
+    setAccessCodeError(null);
+  };
+  
+  const isAccessCodeUnique = async (code: string) => {
+    if (!user || !staffRef) return false;
+
+    // Check against other staff members
+    const staffQuery = query(staffRef, where("accessCode", "==", code));
+    const staffSnapshot = await getDocs(staffQuery);
+
+    return staffSnapshot.empty;
   };
 
   const handleSave = async () => {
     if (!userRef || !editedInfo) return;
+    
+    // Validate Access Code
+    if (editedInfo.adminAccessCode) {
+        if (!/^\d{6}$/.test(editedInfo.adminAccessCode)) {
+            setAccessCodeError("Access code must be a 6-digit number.");
+            return;
+        }
+        const isUnique = await isAccessCodeUnique(editedInfo.adminAccessCode);
+        if (!isUnique) {
+            setAccessCodeError("This access code is already in use by a staff member.");
+            return;
+        }
+    }
+    setAccessCodeError(null);
+
     setIsSaving(true);
     try {
       await updateDoc(userRef, { ...editedInfo });
@@ -83,6 +119,9 @@ export default function SettingsPage() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
+    if (name === 'adminAccessCode') {
+        setAccessCodeError(null);
+    }
     setEditedInfo(prev => prev ? ({ ...prev, [name]: value }) : null);
   };
   
@@ -94,7 +133,6 @@ export default function SettingsPage() {
       const uploadResult = await uploadFile(newLogoPath, file);
       
       if (uploadResult) {
-        // If there was an old logo, delete it
         if (editedInfo.logoStoragePath) {
           await deleteFile(editedInfo.logoStoragePath);
         }
@@ -252,7 +290,7 @@ export default function SettingsPage() {
               {isEditing ? (
                 <Input id="phone" name="phone" value={editedInfo.phone || ''} onChange={handleInputChange} />
               ) : (
-                <p className="font-medium">{businessInfo.phone}</p>
+                <p className="font-medium">{businessInfo.phone || '-'}</p>
               )}
             </div>
             <div className="space-y-1 md:col-span-2">
@@ -268,20 +306,31 @@ export default function SettingsPage() {
                {isEditing ? (
                 <Input id="googleReviewLink" name="googleReviewLink" value={editedInfo.googleReviewLink || ''} onChange={handleInputChange} />
               ) : (
-                <p className="font-medium">{businessInfo.googleReviewLink}</p>
+                <p className="font-medium">{businessInfo.googleReviewLink || '-'}</p>
               )}
             </div>
              <div className="space-y-1">
               <Label htmlFor="adminAccessCode">Admin Access Code</Label>
               {isEditing ? (
-                 <div className="relative">
-                    <Input id="adminAccessCode" name="adminAccessCode" type={showAccessCode ? 'text' : 'password'} value={editedInfo.adminAccessCode || ''} onChange={handleInputChange} />
-                    <Button variant="ghost" size="icon" className="absolute right-0 top-0 h-full" onClick={() => setShowAccessCode(!showAccessCode)}>
-                        {showAccessCode ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </Button>
+                <div>
+                    <div className="relative">
+                        <Input 
+                            id="adminAccessCode" 
+                            name="adminAccessCode" 
+                            type={showAccessCode ? 'text' : 'password'} 
+                            value={editedInfo.adminAccessCode || ''} 
+                            onChange={handleInputChange}
+                            maxLength={6}
+                            pattern="\d{6}"
+                        />
+                        <Button variant="ghost" size="icon" className="absolute right-0 top-0 h-full" onClick={() => setShowAccessCode(!showAccessCode)}>
+                            {showAccessCode ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                    </div>
+                    {accessCodeError && <p className="text-sm text-destructive mt-1">{accessCodeError}</p>}
                 </div>
               ) : (
-                <p className="font-medium">{businessInfo.adminAccessCode ? '********' : 'Not set'}</p>
+                <p className="font-medium">{businessInfo.adminAccessCode ? '••••••' : 'Not set'}</p>
               )}
             </div>
           </div>
@@ -350,3 +399,5 @@ export default function SettingsPage() {
     </div>
   );
 }
+
+    

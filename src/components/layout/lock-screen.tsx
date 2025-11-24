@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -16,23 +17,30 @@ import { Lock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface LockScreenProps {
-    code: string;
-    onUnlock: () => void;
+    onUnlock: (role: string, name: string) => void;
+    adminCode?: string;
+    staff: { id: string; name: string; accessCode?: string }[];
 }
 
-export function LockScreen({ code, onUnlock }: LockScreenProps) {
+export function LockScreen({ onUnlock, adminCode, staff }: LockScreenProps) {
     const [inputCode, setInputCode] = useState('');
     const [error, setError] = useState(false);
     const { toast } = useToast();
 
     const handleUnlock = () => {
-        if (inputCode === code) {
-            onUnlock();
-            toast({ title: 'Success', description: 'Dashboard unlocked.' });
-        } else {
-            setError(true);
-            setTimeout(() => setError(false), 500); // Reset error state for animation
+        if (adminCode && inputCode === adminCode) {
+            onUnlock("Admin", "Admin");
+            return;
         }
+
+        const matchedStaff = staff.find(s => s.accessCode === inputCode);
+        if (matchedStaff) {
+            onUnlock("Staff", matchedStaff.name);
+            return;
+        }
+
+        setError(true);
+        setTimeout(() => setError(false), 500); // Reset error state for animation
     };
 
     return (
@@ -49,7 +57,7 @@ export function LockScreen({ code, onUnlock }: LockScreenProps) {
                             Dashboard Locked
                         </DialogTitle>
                         <DialogDescription>
-                            Please enter the admin access code to continue.
+                            Please enter the access code to continue.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
@@ -64,7 +72,8 @@ export function LockScreen({ code, onUnlock }: LockScreenProps) {
                                 onChange={(e) => setInputCode(e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && handleUnlock()}
                                 className="col-span-3"
-                                placeholder="Enter access code"
+                                placeholder="Enter 6-digit code"
+                                maxLength={6}
                             />
                         </div>
                         {error && <p className="text-center text-sm text-destructive">Incorrect code. Please try again.</p>}
@@ -105,3 +114,5 @@ declare module "@/components/ui/dialog" {
         hideCloseButton?: boolean;
     }
 }
+
+    

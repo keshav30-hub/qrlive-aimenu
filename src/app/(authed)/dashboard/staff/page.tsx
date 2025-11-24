@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -59,8 +60,8 @@ import {
 } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { useFirebase, useCollection, useDoc, useMemoFirebase } from '@/firebase';
+import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 
 type AttendanceStatus = 'Present' | 'Absent' | 'Paid Leave' | 'Half Day';
@@ -71,6 +72,7 @@ type StaffMember = {
   avatar: string;
   status: AttendanceStatus;
   active: boolean;
+  accessCode?: string;
 };
 
 type Shift = {
@@ -112,9 +114,11 @@ export default function StaffPage() {
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
   
+  const userRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const staffRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'staff') : null, [firestore, user]);
   const shiftsRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'shifts') : null, [firestore, user]);
 
+  const { data: adminUser } = useDoc<{ adminAccessCode?: string }>(userRef);
   const { data: staffListData, isLoading: staffLoading } = useCollection<StaffMember>(staffRef);
   const { data: shiftsData, isLoading: shiftsLoading } = useCollection<Shift>(shiftsRef);
   
@@ -133,11 +137,15 @@ export default function StaffPage() {
   const [newShiftTo, setNewShiftTo] = useState('');
   const [isSavingShift, setIsSavingShift] = useState(false);
 
+  // State for staff form
+  const [newStaff, setNewStaff] = useState<Partial<StaffMember>>({});
+  const [isSavingStaff, setIsSavingStaff] = useState(false);
+  const [accessCodeError, setAccessCodeError] = useState<string | null>(null);
+
   const handleStatusChange = async (staffId: string, newStatus: AttendanceStatus) => {
     if (!staffRef) return;
     try {
       const staffDoc = doc(staffRef, staffId);
-      // This is a simplified attendance update. A real app would use a subcollection for attendance records.
       await updateDoc(staffDoc, { status: newStatus });
     } catch(e) {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not update status.' });
@@ -190,6 +198,61 @@ export default function StaffPage() {
         setIsSavingShift(false);
     }
   };
+
+  const isAccessCodeUnique = async (code: string, currentStaffId?: string) => {
+      if (!staffRef) return false;
+      
+      // Check against admin
+      if (adminUser?.adminAccessCode === code) return false;
+
+      // Check against other staff members
+      const q = query(staffRef, where("accessCode", "==", code));
+      const querySnapshot = await getDocs(q);
+      if (querySnapshot.empty) return true;
+
+      // If we are editing, allow the same code for the same user
+      if (currentStaffId && querySnapshot.docs.length === 1 && querySnapshot.docs[0].id === currentStaffId) {
+          return true;
+      }
+      
+      return false;
+  };
+
+  const handleSaveStaff = async () => {
+    if (!staffRef) return;
+
+    if (newStaff.accessCode) {
+        if (!/^\d{6}$/.test(newStaff.accessCode)) {
+            setAccessCodeError("Access code must be a 6-digit number.");
+            return;
+        }
+        const isUnique = await isAccessCodeUnique(newStaff.accessCode, newStaff.id);
+        if (!isUnique) {
+            setAccessCodeError("This access code is already in use.");
+            return;
+        }
+    }
+    setAccessCodeError(null);
+    
+    setIsSavingStaff(true);
+    try {
+      if (newStaff.id) { // Editing existing staff
+        const staffDoc = doc(staffRef, newStaff.id);
+        await updateDoc(staffDoc, newStaff);
+        toast({ title: 'Success', description: 'Staff member updated.'});
+      } else { // Adding new staff
+        await addDoc(staffRef, { ...newStaff, active: true, status: 'Present', avatar: `https://i.pravatar.cc/150?u=${Date.now()}` });
+        toast({ title: 'Success', description: 'Staff member added.'});
+      }
+      setIsSheetOpen(false);
+      setNewStaff({});
+    } catch(e) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not save staff member.' });
+      console.error(e);
+    } finally {
+      setIsSavingStaff(false);
+    }
+  }
 
 
   return (
@@ -419,16 +482,16 @@ export default function StaffPage() {
               </div>
               <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
                 <SheetTrigger asChild>
-                  <Button>
+                  <Button onClick={() => { setNewStaff({}); setIsSheetOpen(true); }}>
                     <PlusCircle className="mr-2" />
                     Add Staff
                   </Button>
                 </SheetTrigger>
                 <SheetContent className="w-full sm:max-w-md">
                    <SheetHeader>
-                    <SheetTitle>Add New Staff Member</SheetTitle>
+                    <SheetTitle>{newStaff.id ? 'Edit Staff Member' : 'Add New Staff Member'}</SheetTitle>
                     <SheetDescription>
-                      Fill in the details below to add a new team member.
+                      Fill in the details below to manage a team member.
                     </SheetDescription>
                   </SheetHeader>
                   <ScrollArea className="h-[calc(100%-120px)] pr-4">
@@ -439,7 +502,17 @@ export default function StaffPage() {
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="full-name">Full Name</Label>
-                            <Input id="full-name" placeholder="e.g. John Doe" />
+                            <Input id="full-name" placeholder="e.g. John Doe" value={newStaff.name || ''} onChange={(e) => setNewStaff(p => ({...p, name: e.target.value}))}/>
+                        </div>
+                         <div className="space-y-2">
+                            <Label htmlFor="access-code">Access Code (6-digits)</Label>
+                             <Input id="access-code" placeholder="e.g. 123456" maxLength={6} value={newStaff.accessCode || ''} onChange={(e) => {
+                                 setAccessCodeError(null);
+                                 if (/^\d*$/.test(e.target.value)) {
+                                     setNewStaff(p => ({...p, accessCode: e.target.value}));
+                                 }
+                             }} />
+                             {accessCodeError && <p className="text-sm text-destructive">{accessCodeError}</p>}
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="dob">Date of Birth</Label>
@@ -507,7 +580,10 @@ export default function StaffPage() {
                   </ScrollArea>
                    <SheetFooter>
                     <Button variant="outline" onClick={() => setIsSheetOpen(false)}>Cancel</Button>
-                    <Button>Save Staff</Button>
+                    <Button onClick={handleSaveStaff} disabled={isSavingStaff}>
+                        {isSavingStaff ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
+                        {isSavingStaff ? "Saving..." : "Save Staff"}
+                    </Button>
                   </SheetFooter>
                 </SheetContent>
               </Sheet>
@@ -515,19 +591,18 @@ export default function StaffPage() {
             <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {staffLoading ? <p>Loading...</p> : staffList.map((staff) => (
                     <Card key={staff.id} className="overflow-hidden">
-                        <Link href={`/dashboard/staff/${staff.id}`} className="block hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                            <CardContent className="pt-6 flex flex-col items-center justify-center text-center gap-3">
-                                <Avatar className="h-24 w-24">
-                                    <AvatarImage src={staff.avatar} alt={staff.name} />
-                                    <AvatarFallback>
-                                    {staff.name.split(' ').map((n) => n[0]).join('')}
-                                    </AvatarFallback>
-                                </Avatar>
-                                <div className='space-y-1'>
-                                    <CardTitle className="text-xl">{staff.name}</CardTitle>
-                                </div>
-                            </CardContent>
-                        </Link>
+                        <CardContent className="pt-6 flex flex-col items-center justify-center text-center gap-3">
+                            <Avatar className="h-24 w-24">
+                                <AvatarImage src={staff.avatar} alt={staff.name} />
+                                <AvatarFallback>
+                                {staff.name.split(' ').map((n) => n[0]).join('')}
+                                </AvatarFallback>
+                            </Avatar>
+                            <div className='space-y-1'>
+                                <CardTitle className="text-xl">{staff.name}</CardTitle>
+                                {staff.accessCode && <p className="text-xs text-muted-foreground font-mono">Code: {staff.accessCode}</p>}
+                            </div>
+                        </CardContent>
                          <CardFooter className="flex justify-end p-2 bg-gray-50 dark:bg-gray-800/50">
                              <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
@@ -537,8 +612,8 @@ export default function StaffPage() {
                                 </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                <DropdownMenuItem>Edit</DropdownMenuItem>
-                                <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => { setNewStaff(staff); setIsSheetOpen(true); }}>Edit</DropdownMenuItem>
+                                    <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
                         </CardFooter>
@@ -556,3 +631,5 @@ export default function StaffPage() {
     </div>
   );
 }
+
+    
