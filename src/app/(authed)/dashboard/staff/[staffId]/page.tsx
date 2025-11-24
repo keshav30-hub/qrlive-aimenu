@@ -82,7 +82,7 @@ const generateAttendanceData = (year: number) => {
   
 export default function StaffDetailsPage() {
   const params = useParams();
-  const staffId = params.staffName as string; // Assuming the slug is the staff ID
+  const staffId = params.staffId as string;
   const { firestore, user } = useFirebase();
   const router = useRouter();
   const { toast } = useToast();
@@ -392,5 +392,3 @@ export default function StaffDetailsPage() {
     </div>
   );
 }
-
-    
