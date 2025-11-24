@@ -13,17 +13,28 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Building, User, Phone, MapPin, FileText, Briefcase } from 'lucide-react';
+import { Building, User, Phone, MapPin, FileText, Briefcase, LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { PlacesAutocomplete } from '@/components/places-autocomplete';
 import { useFirebase } from '@/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { signOut } from 'firebase/auth';
+
+function generateBusinessId() {
+    const year = new Date().getFullYear().toString().slice(-2);
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let randomPart = '';
+    for (let i = 0; i < 6; i++) {
+        randomPart += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return `Menu-${year}-${randomPart}`;
+}
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { user, firestore } = useFirebase();
+  const { user, firestore, auth } = useFirebase();
   const { toast } = useToast();
   
   const [businessName, setBusinessName] = useState('');
@@ -33,6 +44,11 @@ export default function OnboardingPage() {
   const [gst, setGst] = useState('');
   const [businessType, setBusinessType] = useState('');
   const [selectedPlace, setSelectedPlace] = useState<google.maps.places.PlaceResult | null>(null);
+  
+  const handleLogout = async () => {
+    await signOut(auth);
+    router.push('/login');
+  };
 
   const handleCompleteOnboarding = async () => {
     if (!user || !firestore) {
@@ -66,6 +82,8 @@ export default function OnboardingPage() {
 
     try {
       const userRef = doc(firestore, 'users', user.uid);
+      const businessId = generateBusinessId();
+
       await setDoc(userRef, {
         businessName,
         ownerName,
@@ -75,7 +93,7 @@ export default function OnboardingPage() {
         businessType,
         latitude: selectedPlace?.geometry?.location?.lat() || null,
         longitude: selectedPlace?.geometry?.location?.lng() || null,
-        businessId: 'Menu-25-DFCV68',
+        businessId: businessId,
         onboarding: true,
       }, { merge: true });
       
@@ -104,12 +122,20 @@ export default function OnboardingPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-100 dark:bg-black p-4">
-      <Card className="w-full max-w-lg">
+      <Card className="w-full max-w-lg relative">
         <CardHeader>
-          <CardTitle className="text-2xl">Welcome to QRLive Menu</CardTitle>
-          <CardDescription>
-            Let's get your business set up. Please fill in the details below.
-          </CardDescription>
+           <div className="flex justify-between items-start">
+             <div>
+                <CardTitle className="text-2xl">Welcome to QRLive Menu</CardTitle>
+                <CardDescription>
+                    Let's get your business set up. Please fill in the details below.
+                </CardDescription>
+             </div>
+              <Button variant="ghost" size="icon" onClick={handleLogout} className="absolute top-4 right-4">
+                <LogOut className="h-5 w-5" />
+                <span className="sr-only">Logout</span>
+              </Button>
+           </div>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-2">
@@ -136,13 +162,12 @@ export default function OnboardingPage() {
                 value={contact} 
                 onChange={(e) => {
                   const value = e.target.value;
-                  if (/^\d*$/.test(value)) {
+                  if (/^\d*$/.test(value) && value.length <= 10) {
                     setContact(value);
                   }
                 }} 
                 placeholder="e.g., 9876543210" 
                 className="pl-10"
-                maxLength={10}
               />
             </div>
           </div>
