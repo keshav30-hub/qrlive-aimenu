@@ -62,13 +62,15 @@ export default function TasksPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const { showNewTask } = useTaskNotification();
 
-  const unattendedTasks = useMemo(() => tasksDoc?.pendingCalls || [], [tasksDoc]);
+  const unattendedTasks = useMemo(() => (tasksDoc?.pendingCalls || []).sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime()), [tasksDoc]);
   const taskHistory = useMemo(() => (tasksDoc?.attendedCalls || []).sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()), [tasksDoc]);
 
   const prevPendingCallsRef = useRef<Task[]>([]);
 
   useEffect(() => {
     // When the component first loads and we have data, initialize the ref.
+    if (tasksLoading) return;
+
     if (unattendedTasks.length > 0 && prevPendingCallsRef.current.length === 0) {
       prevPendingCallsRef.current = unattendedTasks;
       return;
@@ -97,7 +99,7 @@ export default function TasksPage() {
     // Update the ref to the current state for the next render.
     prevPendingCallsRef.current = unattendedTasks;
 
-  }, [unattendedTasks, showNewTask]);
+  }, [unattendedTasks, showNewTask, tasksLoading]);
 
 
   const totalPages = Math.ceil(taskHistory.length / ITEMS_PER_PAGE);

@@ -101,11 +101,28 @@ export default function QrMenuPage() {
   }, [businessSlug]);
 
   const handleServiceRequest = async (requestType: string) => {
-    if (!userId || typeof tableNumber !== 'string') return;
+    if (!userId || typeof tableNumber !== 'string' || typeof businessSlug !== 'string') return;
+
+    const cooldownMinutes = 5;
+    const cooldownKey = `serviceRequestCooldown_${businessSlug}_${tableNumber}`;
+    const lastRequestTime = localStorage.getItem(cooldownKey);
+    const now = new Date().getTime();
+
+    if (lastRequestTime && (now - parseInt(lastRequestTime, 10)) < cooldownMinutes * 60 * 1000) {
+      const remainingTime = Math.ceil((cooldownMinutes * 60 * 1000 - (now - parseInt(lastRequestTime, 10))) / (60 * 1000));
+      toast({
+        variant: "destructive",
+        title: "Please wait",
+        description: `You can make another request in ${remainingTime} minute(s).`,
+      });
+      return;
+    }
+
 
     setIsRequestingService(true);
     try {
         await submitServiceRequest(userId, tableNumber, requestType);
+        localStorage.setItem(cooldownKey, now.toString());
         toast({
             title: "Request Sent",
             description: "A staff member will be with you shortly.",
