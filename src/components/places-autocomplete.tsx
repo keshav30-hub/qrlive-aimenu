@@ -1,31 +1,33 @@
-
 "use client";
 
-import React, { useEffect, useRef, useState } from 'react';
-
-// Define the custom event type for gmp-placechange
-interface PlaceChangeEvent extends Event {
-  detail: {
-    place: google.maps.places.PlaceResult;
-  };
-}
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
+import { MapPin } from 'lucide-react';
 
 const MAP_ID = 'google-map-script-places';
 
 interface PlacesAutocompleteProps {
   onPlaceSelect: (place: google.maps.places.PlaceResult | null) => void;
-  onValueChange: (value: string) => void;
-  value: string;
+  value?: string;
+  onChange?: (value: string) => void;
 }
 
-export function PlacesAutocomplete({ onPlaceSelect, onValueChange, value }: PlacesAutocompleteProps) {
+export function PlacesAutocomplete({
+  onPlaceSelect,
+  value,
+  onChange,
+}: PlacesAutocompleteProps) {
   const [isApiLoaded, setIsApiLoaded] = useState(false);
-  const autocompleteRef = useRef<HTMLElement & { value: string } | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
 
   useEffect(() => {
     const apiKey = process.env.NEXT_PUBLIC_PLACES_API_KEY;
     if (!apiKey) {
-      console.error("Google Places API key is missing. Please add NEXT_PUBLIC_PLACES_API_KEY to your .env file.");
+      console.error(
+        'Google Places API key is missing. Please add NEXT_PUBLIC_PLACES_API_KEY to your .env file.'
+      );
       return;
     }
 
@@ -36,19 +38,17 @@ export function PlacesAutocomplete({ onPlaceSelect, onValueChange, value }: Plac
         }
         return;
       }
-      
+
       const script = document.createElement('script');
       script.id = MAP_ID;
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&v=beta`;
-      script.async = true;
-      script.defer = true;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&v=beta&async=1&defer=1`;
       
       script.onload = () => {
         setIsApiLoaded(true);
       };
 
       script.onerror = () => {
-        console.error("Failed to load Google Maps script.");
+        console.error('Failed to load Google Maps script.');
       };
 
       document.head.appendChild(script);
@@ -60,37 +60,26 @@ export function PlacesAutocomplete({ onPlaceSelect, onValueChange, value }: Plac
       loadScript();
     }
   }, []);
-  
-  useEffect(() => {
-    const autocompleteElement = autocompleteRef.current;
-    if (!isApiLoaded || !autocompleteElement) return;
-
-    const handlePlaceChange = (event: Event) => {
-        const placeChangeEvent = event as PlaceChangeEvent;
-        const place = placeChangeEvent.detail.place;
-        onPlaceSelect(place);
-    };
-    
-    const handleInput = (event: Event) => {
-        const target = event.target as HTMLInputElement;
-        onValueChange(target.value);
-    };
-    
-    autocompleteElement.addEventListener('gmp-placechange', handlePlaceChange);
-    autocompleteElement.addEventListener('input', handleInput);
-
-    return () => {
-        autocompleteElement.removeEventListener('gmp-placechange', handlePlaceChange);
-        autocompleteElement.removeEventListener('input', handleInput);
-    };
-  }, [isApiLoaded, onPlaceSelect, onValueChange]);
 
   useEffect(() => {
-    if (autocompleteRef.current && autocompleteRef.current.value !== value) {
-      autocompleteRef.current.value = value;
+    if (isApiLoaded && inputRef.current) {
+      autocompleteRef.current = new window.google.maps.places.Autocomplete(
+        inputRef.current,
+        {
+          types: ['address'],
+          componentRestrictions: { country: 'in' },
+        }
+      );
+
+      autocompleteRef.current.addListener('place_changed', () => {
+        const place = autocompleteRef.current?.getPlace();
+        if (place) {
+            onPlaceSelect(place);
+            onChange?.(place.formatted_address || '');
+        }
+      });
     }
-  }, [value]);
-
+  }, [isApiLoaded, onPlaceSelect, onChange]);
 
   if (!isApiLoaded) {
     return (
@@ -99,22 +88,15 @@ export function PlacesAutocomplete({ onPlaceSelect, onValueChange, value }: Plac
   }
 
   return (
-      <gmp-place-autocomplete
-        ref={autocompleteRef}
+    <div className="relative">
+      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
+      <Input
+        ref={inputRef}
+        value={value}
+        onChange={(e) => onChange?.(e.target.value)}
         placeholder="Start typing your address..."
-        country-codes="in"
-      ></gmp-place-autocomplete>
+        className="pl-10"
+      />
+    </div>
   );
-}
-
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      'gmp-place-autocomplete': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement> & {
-          'country-codes'?: string;
-          placeholder?: string;
-          value?: string;
-        }, HTMLElement>;
-    }
-  }
 }

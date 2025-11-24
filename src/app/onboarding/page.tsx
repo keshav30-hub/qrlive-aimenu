@@ -239,16 +239,13 @@ export default function OnboardingPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Full Address</FormLabel>
-                     <div className="relative">
-                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
-                        <FormControl>
-                           <PlacesAutocomplete 
-                                onPlaceSelect={handlePlaceSelect}
-                                value={field.value}
-                                onValueChange={field.onChange}
-                            />
-                        </FormControl>
-                    </div>
+                    <FormControl>
+                      <PlacesAutocomplete
+                        onPlaceSelect={handlePlaceSelect}
+                        value={field.value}
+                        onChange={field.onChange}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
