@@ -52,8 +52,6 @@ import { useState, useEffect, useMemo } from 'react';
 import { getBusinessDataBySlug, getEvents, getMenuData, type BusinessData, type Event, type Category, submitServiceRequest } from '@/lib/qrmenu';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useUser, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
 
 
 const serviceRequests = [
@@ -69,7 +67,6 @@ export default function QrMenuPage() {
   const { 'business-name': businessSlug, 'table-number': tableNumber } = params;
   const { format } = useCurrency();
   const { toast } = useToast();
-  const { firestore } = useUser();
   const router = useRouter();
 
   const [cart, setCart] = useState<any[]>([]);
@@ -77,16 +74,10 @@ export default function QrMenuPage() {
   const [businessData, setBusinessData] = useState<BusinessData | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRequestingService, setIsRequestingService] = useState(false);
   const [isServiceRequestDialogOpen, setIsServiceRequestDialogOpen] = useState(false);
-
-  // Fetch real-time events
-  const eventsRef = useMemoFirebase(() => {
-    if (!userId) return null;
-    return query(collection(firestore, 'users', userId, 'events'), where('active', '==', true));
-  }, [firestore, userId]);
-  const { data: events, isLoading: eventsLoading } = useCollection<Event>(eventsRef);
 
   useEffect(() => {
     async function fetchData() {
@@ -101,8 +92,12 @@ export default function QrMenuPage() {
       if (bd && fetchedUserId) {
         setBusinessData(bd);
         setUserId(fetchedUserId);
-        const { categories: menuCategories } = await getMenuData(fetchedUserId);
-        setCategories(menuCategories);
+        const [menuData, eventsData] = await Promise.all([
+          getMenuData(fetchedUserId),
+          getEvents(fetchedUserId),
+        ]);
+        setCategories(menuData.categories);
+        setEvents(eventsData);
       }
       setIsLoading(false);
     }
@@ -184,7 +179,7 @@ export default function QrMenuPage() {
   
   const aifaUrl = `/qrmenu/${businessData?.businessId || businessSlug}/${tableNumber}/aifa`;
 
-  if (isLoading || eventsLoading) {
+  if (isLoading) {
     return <div className="flex h-screen items-center justify-center">Loading Menu...</div>
   }
   
