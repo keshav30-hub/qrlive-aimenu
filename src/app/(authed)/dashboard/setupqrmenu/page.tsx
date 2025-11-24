@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Card,
   CardContent,
@@ -39,13 +39,17 @@ import {
   Trash2,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirebase, useCollection, useDoc, useMemoFirebase } from '@/firebase';
 import { collection, addDoc, deleteDoc, doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 
 type TableData = {
   id: string;
   name: string;
+}
+
+type UserProfile = {
+    businessName?: string;
 }
 
 const topPages = [
@@ -57,10 +61,19 @@ export default function SetupQrMenuPage() {
   const { toast } = useToast();
   
   const tablesRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'tables') : null, [firestore, user]);
+  const userRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+
   const { data: tables, isLoading: tablesLoading } = useCollection<TableData>(tablesRef);
+  const { data: userProfile } = useDoc<UserProfile>(userRef);
 
   const [newTableName, setNewTableName] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  
+  const businessSlug = useMemo(() => {
+    if (!userProfile?.businessName) return 'your-business';
+    return userProfile.businessName.toLowerCase().replace(/\s+/g, '-');
+  }, [userProfile]);
+
 
   const handleAddTable = async () => {
     if (newTableName.trim() && tablesRef) {
@@ -88,9 +101,8 @@ export default function SetupQrMenuPage() {
   };
   
   const handleDownloadQr = (tableName: string) => {
-    // This generates a QR code that links to the menu for the specific table.
-    // In a real application, you would replace `the-gourmet-place` with the actual business slug.
-    const menuUrl = `${window.location.origin}/qrmenu/the-gourmet-place/${tableName.toLowerCase().replace(/ /g, '-')}`;
+    const tableSlug = tableName.toLowerCase().replace(/ /g, '-');
+    const menuUrl = `${window.location.origin}/qrmenu/${businessSlug}/${tableSlug}`;
     const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(
       menuUrl
     )}`;
@@ -226,7 +238,7 @@ export default function SetupQrMenuPage() {
                         <Download className="mr-2 h-4 w-4" />
                         Download QR
                       </Button>
-                      <Link href={`/qrmenu/the-gourmet-place/${table.id}`} target="_blank">
+                      <Link href={`/qrmenu/${businessSlug}/${table.name.toLowerCase().replace(/ /g, '-')}`} target="_blank">
                         <Button variant="outline" size="sm">
                           <ExternalLink className="mr-2 h-4 w-4" />
                           Visit

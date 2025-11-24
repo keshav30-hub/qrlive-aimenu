@@ -212,6 +212,10 @@ export default function MenuPage() {
   const handleRadioChange = (value: string) => {
     setCurrentItem(prev => ({ ...prev, type: value as 'veg' | 'non-veg' }));
   };
+  
+  const handleCategorySelectChange = (value: string) => {
+    setCurrentItem(prev => ({...prev, category: value }));
+  }
 
   const handleAddonChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -269,7 +273,10 @@ export default function MenuPage() {
   };
 
   const handleSaveItem = async () => {
-    if (!menuItemsRef) return;
+    if (!menuItemsRef || !currentItem.category) {
+        toast({ variant: "destructive", title: "Missing Category", description: "Please select a category for the item." });
+        return;
+    }
     setIsSavingItem(true);
     try {
         const itemData = {
@@ -355,7 +362,7 @@ export default function MenuPage() {
     if (id === 'startTime' || id === 'endTime') {
         setCurrentCategory(prev => ({ 
             ...prev, 
-            availability: { ...prev.availability, [id]: value } 
+            availability: { ...(prev.availability || { days: [], startTime: '', endTime: '' }), [id]: value } 
         }));
     } else {
         setCurrentCategory(prev => ({ ...prev, [id]: value }));
@@ -367,7 +374,7 @@ const handleCategoryDayChange = (dayId: string, checked: boolean) => {
     const newDays = checked ? [...currentDays, dayId] : currentDays.filter(d => d !== dayId);
     setCurrentCategory(prev => ({
         ...prev,
-        availability: { ...prev.availability, days: newDays }
+        availability: { ...(prev.availability || { days: [], startTime: '', endTime: '' }), days: newDays }
     }));
 }
 
@@ -527,6 +534,23 @@ const handleCategoryDayChange = (dayId: string, checked: boolean) => {
                     <div className="space-y-2">
                       <Label htmlFor="name">Item Name</Label>
                       <Input id="name" name="name" value={currentItem.name} onChange={handleInputChange} placeholder="e.g. Classic Burger" />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="category">Category</Label>
+                        <Select onValueChange={handleCategorySelectChange} value={currentItem.category}>
+                            <SelectTrigger id="category">
+                                <SelectValue placeholder="Select a category" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {categoriesLoading ? (
+                                    <SelectItem value="loading" disabled>Loading...</SelectItem>
+                                ) : (
+                                    categories.map(cat => (
+                                        <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
+                                    ))
+                                )}
+                            </SelectContent>
+                        </Select>
                     </div>
                      <div className="space-y-2">
                       <Label>Type</Label>
@@ -1001,5 +1025,3 @@ const handleCategoryDayChange = (dayId: string, checked: boolean) => {
     </div>
   );
 }
-
-    
