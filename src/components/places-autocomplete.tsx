@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -39,7 +40,7 @@ export function PlacesAutocomplete({ onPlaceSelect, onValueChange, value }: Plac
       const script = document.createElement('script');
       script.id = MAP_ID;
       script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&v=beta`;
-      script.async = true;
+      script.async = true; // Use async and defer for best practice
       script.defer = true;
       
       script.onload = () => {

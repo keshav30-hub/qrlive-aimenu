@@ -117,7 +117,7 @@ export default function OnboardingPage() {
     if (place?.formatted_address) {
       setAddress(place.formatted_address);
     }
-  }
+  };
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-100 dark:bg-black p-4">
