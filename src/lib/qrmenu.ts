@@ -66,18 +66,15 @@ export async function getBusinessDataBySlug(slug: string): Promise<{ businessDat
     const firestore = await getFirestoreInstance();
     const usersRef = collection(firestore, 'users');
     const businessName = slug.replace(/-/g, ' ');
+    // First, try querying by business name slug
     const q = query(usersRef, where('businessName', '==', businessName), limit(1));
 
     try {
         const querySnapshot = await getDocs(q);
-        if (querySnapshot.empty) {
-             const userDoc = await getDoc(doc(firestore, 'users', slug));
-             if(!userDoc.exists()) {
-                console.warn(`No business found for slug or ID: ${slug}`);
-                return { businessData: null, userId: null };
-             }
-             const userData = userDoc.data();
-             return {
+        if (!querySnapshot.empty) {
+            const userDoc = querySnapshot.docs[0];
+            const userData = userDoc.data();
+            return {
                 businessData: {
                     id: userDoc.id,
                     name: userData.businessName || 'Unnamed Business',
@@ -87,17 +84,26 @@ export async function getBusinessDataBySlug(slug: string): Promise<{ businessDat
                 userId: userDoc.id,
             };
         }
-        const userDoc = querySnapshot.docs[0];
-        const userData = userDoc.data();
-        return {
-            businessData: {
-                id: userDoc.id,
-                name: userData.businessName || 'Unnamed Business',
-                logo: userData.logo || 'https://picsum.photos/seed/logo/100/100',
-                googleReviewLink: userData.googleReviewLink,
-            },
-            userId: userDoc.id,
-        };
+
+        // If no match by slug, try treating the slug as a user ID
+        const userDocById = await getDoc(doc(firestore, 'users', slug));
+        if (userDocById.exists()) {
+            const userData = userDocById.data();
+            return {
+                businessData: {
+                    id: userDocById.id,
+                    name: userData.businessName || 'Unnamed Business',
+                    logo: userData.logo || 'https://picsum.photos/seed/logo/100/100',
+                    googleReviewLink: userData.googleReviewLink,
+                },
+                userId: userDocById.id,
+            };
+        }
+
+        // If neither worked, no business found
+        console.warn(`No business found for slug or ID: ${slug}`);
+        return { businessData: null, userId: null };
+
     } catch (error) {
         console.error("Error fetching business data:", error);
         return { businessData: null, userId: null };
