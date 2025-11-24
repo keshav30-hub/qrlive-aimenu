@@ -152,6 +152,29 @@ const GoogleReviewButton = ({ href }: { href: string }) => (
 );
 
 
+const isFirebaseTimestamp = (value: any): value is { toDate: () => Date } => {
+    return value && typeof value.toDate === 'function';
+};
+
+// Helper function to convert any complex objects (like Firebase Timestamps) to simple ones.
+const sanitizeDataForServerAction = (data: any[]): any[] => {
+    return data.map(item => {
+        const sanitizedItem: { [key: string]: any } = {};
+        for (const key in item) {
+            const value = item[key];
+            if (isFirebaseTimestamp(value)) {
+                sanitizedItem[key] = value.toDate().toISOString();
+            } else if (Array.isArray(value)) {
+                sanitizedItem[key] = sanitizeDataForServerAction(value);
+            } else {
+                sanitizedItem[key] = value;
+            }
+        }
+        return sanitizedItem;
+    });
+};
+
+
 export default function AIFAPage() {
     const router = useRouter();
     const params = useParams();
@@ -298,7 +321,7 @@ export default function AIFAPage() {
     const processAIResponse = (response: string) => {
         if (response.includes('[SUGGEST_FEEDBACK]')) {
             const cleanResponse = response.replace('[SUGGEST_FEEDBACK]', '').trim();
-            addMessage('aifa', cleanResponse);
+            if (cleanResponse) addMessage('aifa', cleanResponse);
             addMessage('aifa', <div><p>I can help with that. Who is this feedback for?</p><FeedbackTargetSelection onSelect={handleFeedbackTarget} /></div>);
         } else if (response.includes('[GOOGLE_REVIEW_LINK]')) {
             const cleanResponse = response.replace('[GOOGLE_REVIEW_LINK]', '').trim();
@@ -340,9 +363,9 @@ export default function AIFAPage() {
                     businessName: businessData.name,
                     priceSymbol: format(0).replace(/[\d.,\s]/g, ''),
                     googleReviewLink: businessData.googleReviewLink,
-                    menuCategories: menuCategories.map(c => ({name: c.name, description: c.description})),
-                    menuItems: menuItems.map(i => ({...i, price: (i.price || '0').toString(), tags: i.tags || [] })),
-                    events: events,
+                    menuCategories: sanitizeDataForServerAction(menuCategories).map(c => ({name: c.name, description: c.description})),
+                    menuItems: sanitizeDataForServerAction(menuItems).map(i => ({...i, price: (i.price || '0').toString(), tags: i.tags || [] })),
+                    events: sanitizeDataForServerAction(events),
                     history: historyForAI,
                     prompt,
                 };
@@ -453,4 +476,3 @@ export default function AIFAPage() {
     );
 }
 
-    
