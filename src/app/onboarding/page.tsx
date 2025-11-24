@@ -11,7 +11,6 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Building, User, Phone, MapPin, FileText, Briefcase, LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { PlacesAutocomplete } from '@/components/places-autocomplete';
@@ -32,7 +31,7 @@ const onboardingSchema = z.object({
   ownerName: z.string().min(1, { message: 'Owner name is required' }),
   contact: z.string().length(10, { message: 'Mobile number must be 10 digits' }),
   businessType: z.string().min(1, { message: 'Please select a business type' }),
-  address: z.string().min(1, { message: 'Address is required' }),
+  address: z.string().min(1, { message: 'Full Address is required' }),
   gst: z.string().regex(gstRegex, { message: 'Invalid GST number format' }),
   latitude: z.number().nullable(),
   longitude: z.number().nullable(),
@@ -234,7 +233,7 @@ export default function OnboardingPage() {
                   </FormItem>
                 )}
               />
-               <FormField
+              <FormField
                 control={form.control}
                 name="address"
                 render={({ field }) => (
@@ -246,7 +245,7 @@ export default function OnboardingPage() {
                            <PlacesAutocomplete 
                                 onPlaceSelect={handlePlaceSelect}
                                 value={field.value}
-                                onValueChange={(value) => field.onChange(value)}
+                                onValueChange={field.onChange}
                             />
                         </FormControl>
                     </div>

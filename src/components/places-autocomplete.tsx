@@ -40,7 +40,7 @@ export function PlacesAutocomplete({ onPlaceSelect, onValueChange, value }: Plac
       const script = document.createElement('script');
       script.id = MAP_ID;
       script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&v=beta`;
-      script.async = true; // Use async and defer for best practice
+      script.async = true;
       script.defer = true;
       
       script.onload = () => {
@@ -69,9 +69,6 @@ export function PlacesAutocomplete({ onPlaceSelect, onValueChange, value }: Plac
         const placeChangeEvent = event as PlaceChangeEvent;
         const place = placeChangeEvent.detail.place;
         onPlaceSelect(place);
-        if (place?.formatted_address) {
-          onValueChange(place.formatted_address);
-        }
     };
     
     const handleInput = (event: Event) => {
