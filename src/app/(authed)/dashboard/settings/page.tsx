@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -11,7 +10,7 @@ import {
 } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Edit, Save, X, Upload, Fingerprint, RefreshCw, Crown, ExternalLink, Instagram, Globe, Eye, EyeOff } from 'lucide-react';
+import { Edit, Save, X, Upload, Fingerprint, RefreshCw, Crown, ExternalLink, Instagram, Globe, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -42,6 +41,7 @@ export default function SettingsPage() {
   const { data: businessInfo, isLoading: isInfoLoading } = useDoc<BusinessInfo>(userRef);
 
   const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [editedInfo, setEditedInfo] = useState<BusinessInfo | null>(null);
   const [showAccessCode, setShowAccessCode] = useState(false);
   
@@ -65,6 +65,7 @@ export default function SettingsPage() {
 
   const handleSave = async () => {
     if (!userRef || !editedInfo) return;
+    setIsSaving(true);
     try {
       await updateDoc(userRef, { ...editedInfo });
       toast({ title: 'Success', description: 'Business info updated.'});
@@ -72,6 +73,8 @@ export default function SettingsPage() {
     } catch(e) {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not save changes.' });
       console.error(e);
+    } finally {
+        setIsSaving(false);
     }
   };
 
@@ -158,13 +161,13 @@ export default function SettingsPage() {
           </div>
           {isEditing ? (
             <div className="flex gap-2">
-              <Button variant="outline" onClick={handleCancel}>
+              <Button variant="outline" onClick={handleCancel} disabled={isSaving}>
                 <X className="mr-2 h-4 w-4" />
                 Cancel
               </Button>
-              <Button onClick={handleSave}>
-                <Save className="mr-2 h-4 w-4" />
-                Save Changes
+              <Button onClick={handleSave} disabled={isSaving}>
+                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                {isSaving ? 'Saving...' : 'Save Changes'}
               </Button>
             </div>
           ) : (
@@ -231,7 +234,7 @@ export default function SettingsPage() {
             <div className="space-y-1">
               <Label htmlFor="phone">Business Phone Number (Optional)</Label>
               {isEditing ? (
-                <Input id="phone" name="phone" value={editedInfo.phone} onChange={handleInputChange} />
+                <Input id="phone" name="phone" value={editedInfo.phone || ''} onChange={handleInputChange} />
               ) : (
                 <p className="font-medium">{businessInfo.phone}</p>
               )}
@@ -247,7 +250,7 @@ export default function SettingsPage() {
             <div className="space-y-1">
               <Label htmlFor="googleReviewLink">Google Review Link</Label>
                {isEditing ? (
-                <Input id="googleReviewLink" name="googleReviewLink" value={editedInfo.googleReviewLink} onChange={handleInputChange} />
+                <Input id="googleReviewLink" name="googleReviewLink" value={editedInfo.googleReviewLink || ''} onChange={handleInputChange} />
               ) : (
                 <p className="font-medium">{businessInfo.googleReviewLink}</p>
               )}
@@ -256,7 +259,7 @@ export default function SettingsPage() {
               <Label htmlFor="adminAccessCode">Admin Access Code</Label>
               {isEditing ? (
                  <div className="relative">
-                    <Input id="adminAccessCode" name="adminAccessCode" type={showAccessCode ? 'text' : 'password'} value={editedInfo.adminAccessCode} onChange={handleInputChange} />
+                    <Input id="adminAccessCode" name="adminAccessCode" type={showAccessCode ? 'text' : 'password'} value={editedInfo.adminAccessCode || ''} onChange={handleInputChange} />
                     <Button variant="ghost" size="icon" className="absolute right-0 top-0 h-full" onClick={() => setShowAccessCode(!showAccessCode)}>
                         {showAccessCode ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </Button>

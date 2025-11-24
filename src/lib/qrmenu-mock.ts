@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -7,10 +6,10 @@ import {
   query,
   where,
   limit,
-  getDoc,
   doc,
+  addDoc,
+  serverTimestamp,
 } from 'firebase/firestore';
-import { firestore } from '@/firebase/config';
 import { initializeFirebase } from '@/firebase';
 
 export type Category = {
@@ -63,7 +62,7 @@ export async function getBusinessDataBySlug(slug: string): Promise<{ businessDat
     const usersRef = collection(firestore, 'users');
     // In a real-world scenario, you might have a dedicated field for the URL slug.
     // For this app, we'll query by the businessName, assuming it's unique and used as the slug.
-    const q = query(usersRef, where('businessName', '==', slug), limit(1));
+    const q = query(usersRef, where('businessName', '==', slug.replace(/-/g, ' ')), limit(1));
 
     try {
         const querySnapshot = await getDocs(q);
@@ -119,3 +118,41 @@ export async function getEvents(userId: string): Promise<Event[]> {
         return [];
     }
 }
+
+export async function submitFeedback(userId: string, feedback: { target: string; rating: number; comment: string; imageUrl?: string | null }) {
+    const firestore = await getFirestoreInstance();
+    let feedbackRef;
+
+    const feedbackData = {
+        rating: feedback.rating,
+        comment: feedback.comment,
+        imageUrl: feedback.imageUrl || '',
+        timestamp: serverTimestamp(),
+        userId: userId, // associate feedback with the business user
+    };
+
+    if (feedback.target === 'Business') {
+        feedbackRef = collection(firestore, 'users', userId, 'feedback');
+    } else { // AIFA Feedback
+        feedbackRef = collection(firestore, 'qrlive-feedback');
+    }
+
+    await addDoc(feedbackRef, feedbackData);
+}
+
+export async function submitServiceRequest(userId: string, table: string, requestType: string) {
+  const firestore = await getFirestoreInstance();
+  const tasksRef = collection(firestore, 'users', userId, 'tasks');
+  
+  const newTask = {
+    tableName: table,
+    requestType: requestType,
+    dateTime: new Date().toISOString(),
+    status: 'unattended',
+    staff: '',
+  };
+  
+  await addDoc(tasksRef, newTask);
+}
+
+    

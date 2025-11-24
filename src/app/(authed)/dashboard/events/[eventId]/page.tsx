@@ -1,4 +1,3 @@
-
 'use client';
 
 import Image from 'next/image';
@@ -6,7 +5,6 @@ import Link from 'next/link';
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
@@ -19,7 +17,7 @@ import {
   TableCell,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { User, Calendar, Clock, Info, Users, PlusCircle, FilePenLine, Trash2, Download, ChevronLeft, Check, X } from 'lucide-react';
+import { User, Calendar, Clock, Info, Users, PlusCircle, FilePenLine, Trash2, Download, ChevronLeft, Check, X, Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -50,7 +48,7 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { Textarea } from '@/components/ui/textarea';
 import { useFirebase, useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { doc, collection, updateDoc, deleteDoc } from 'firebase/firestore';
+import { doc, collection, updateDoc, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 
@@ -100,6 +98,10 @@ export default function EventDetailsPage({
   const router = useRouter();
   const { toast } = useToast();
 
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isAddingRsvp, setIsAddingRsvp] = useState(false);
+
   const eventRef = useMemoFirebase(() => {
     if (!user || !params.eventId) return null;
     return doc(firestore, 'users', user.uid, 'events', params.eventId);
@@ -111,19 +113,21 @@ export default function EventDetailsPage({
   }, [eventRef]);
 
   const { data: eventDetails, isLoading: eventLoading, error: eventError } = useDoc<EventDetails>(eventRef);
-  const { data: rsvpList = [], isLoading: rsvpsLoading } = useCollection<Rsvp>(rsvpsRef);
+  const { data: rsvpList, isLoading: rsvpsLoading } = useCollection<Rsvp>(rsvpsRef);
 
   const [isEditing, setIsEditing] = useState(false);
   const [editedDetails, setEditedDetails] = useState<EventDetails | null>(null);
   
   const [currentPage, setCurrentPage] = useState(1);
+  const [isRsvpDialogOpen, setIsRsvpDialogOpen] = useState(false);
+  const [newRsvp, setNewRsvp] = useState({ name: '', mobile: '', email: '', people: 1, status: 'Interested'});
 
-  const totalPages = Math.ceil(rsvpList.length / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil((rsvpList || []).length / ITEMS_PER_PAGE);
 
   const paginatedRsvpList = useMemo(() => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     const endIndex = startIndex + ITEMS_PER_PAGE;
-    return rsvpList.slice(startIndex, endIndex);
+    return (rsvpList || []).slice(startIndex, endIndex);
   }, [currentPage, rsvpList]);
 
   const handlePreviousPage = () => {
@@ -152,7 +156,7 @@ export default function EventDetailsPage({
     (doc as any).autoTable({
       startY: 20,
       head: [['#', 'Name', 'Mobile Number', 'No. of People']],
-      body: rsvpList.map((rsvp, i) => [i + 1, rsvp.name, rsvp.mobile, rsvp.people]),
+      body: (rsvpList || []).map((rsvp, i) => [i + 1, rsvp.name, rsvp.mobile, rsvp.people]),
     });
     doc.save('rsvp-details.pdf');
   };
@@ -170,6 +174,7 @@ export default function EventDetailsPage({
 
   const handleSaveClick = async () => {
     if (!eventRef || !editedDetails) return;
+    setIsSaving(true);
     try {
       await updateDoc(eventRef, { ...editedDetails });
       setIsEditing(false);
@@ -177,11 +182,14 @@ export default function EventDetailsPage({
     } catch (e) {
       toast({ variant: "destructive", title: "Error", description: "Could not save event details." });
       console.error(e);
+    } finally {
+        setIsSaving(false);
     }
   };
 
   const handleDeleteClick = async () => {
     if (!eventRef) return;
+    setIsDeleting(true);
     try {
       await deleteDoc(eventRef);
       toast({ title: "Success", description: "Event deleted." });
@@ -189,6 +197,8 @@ export default function EventDetailsPage({
     } catch (e) {
       toast({ variant: "destructive", title: "Error", description: "Could not delete event." });
       console.error(e);
+    } finally {
+        setIsDeleting(false);
     }
   }
   
@@ -212,6 +222,27 @@ export default function EventDetailsPage({
     }
 
     setEditedDetails(prev => prev ? ({ ...prev, datetime: currentDateTime.toISOString() }) : null);
+  };
+
+  const handleRsvpInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { id, value } = e.target;
+    setNewRsvp(prev => ({...prev, [id]: value }));
+  }
+
+  const handleSaveRsvp = async () => {
+    if (!rsvpsRef || !newRsvp.name || !newRsvp.mobile) return;
+    setIsAddingRsvp(true);
+    try {
+        await addDoc(rsvpsRef, { ...newRsvp, createdAt: serverTimestamp() });
+        toast({ title: "Success", description: "RSVP added." });
+        setIsRsvpDialogOpen(false);
+        setNewRsvp({ name: '', mobile: '', email: '', people: 1, status: 'Interested'});
+    } catch(e) {
+        toast({ variant: "destructive", title: "Error", description: "Could not add RSVP." });
+        console.error(e);
+    } finally {
+        setIsAddingRsvp(false);
+    }
   };
 
   if (eventLoading) {
@@ -261,11 +292,12 @@ export default function EventDetailsPage({
             <div className="flex gap-2">
               {isEditing ? (
                 <>
-                  <Button variant="outline" onClick={handleCancelClick}>
+                  <Button variant="outline" onClick={handleCancelClick} disabled={isSaving}>
                     <X className="mr-2 h-4 w-4" /> Cancel
                   </Button>
-                  <Button onClick={handleSaveClick}>
-                    <Check className="mr-2 h-4 w-4" /> Save
+                  <Button onClick={handleSaveClick} disabled={isSaving}>
+                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                    {isSaving ? 'Saving...' : 'Save'}
                   </Button>
                 </>
               ) : (
@@ -274,8 +306,8 @@ export default function EventDetailsPage({
                     <FilePenLine className="h-5 w-5" />
                     <span className="sr-only">Edit Event</span>
                   </Button>
-                  <Button variant="destructive" size="icon" onClick={handleDeleteClick}>
-                    <Trash2 className="h-5 w-5" />
+                  <Button variant="destructive" size="icon" onClick={handleDeleteClick} disabled={isDeleting}>
+                    {isDeleting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Trash2 className="h-5 w-5" />}
                      <span className="sr-only">Delete Event</span>
                   </Button>
                 </>
@@ -336,7 +368,7 @@ export default function EventDetailsPage({
                       className="w-full"
                     />
                   ) : (
-                    <p>{eventDetails.organizers.join(', ')}</p>
+                    <p>{(eventDetails.organizers || []).join(', ')}</p>
                   )}
               </div>
           </div>
@@ -356,7 +388,7 @@ export default function EventDetailsPage({
                 <Download className="mr-2" />
                 Download PDF
             </Button>
-            <Dialog>
+            <Dialog open={isRsvpDialogOpen} onOpenChange={setIsRsvpDialogOpen}>
               <DialogTrigger asChild>
                 <Button>
                   <PlusCircle className="mr-2" />
@@ -375,44 +407,45 @@ export default function EventDetailsPage({
                     <Label htmlFor="name" className="text-right">
                       Name
                     </Label>
-                    <Input id="name" placeholder="Guest Name" className="col-span-3" />
+                    <Input id="name" placeholder="Guest Name" className="col-span-3" value={newRsvp.name} onChange={handleRsvpInputChange} />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="mobile" className="text-right">
                       Mobile
                     </Label>
-                    <Input id="mobile" placeholder="Mobile Number" type="tel" pattern="[0-9]{10}" maxLength={10} className="col-span-3" />
+                    <Input id="mobile" placeholder="Mobile Number" type="tel" pattern="[0-9]{10}" maxLength={10} className="col-span-3" value={newRsvp.mobile} onChange={handleRsvpInputChange} />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="email" className="text-right">
                       Email (Optional)
                     </Label>
-                    <Input id="email" type="email" placeholder="Email Address" className="col-span-3" />
+                    <Input id="email" type="email" placeholder="Email Address" className="col-span-3" value={newRsvp.email} onChange={handleRsvpInputChange} />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="people" className="text-right">
                       No. of People
                     </Label>
-                    <Input id="people" type="number" placeholder="1" className="col-span-3" />
+                    <Input id="people" type="number" placeholder="1" className="col-span-3" value={newRsvp.people} onChange={(e) => setNewRsvp(p => ({...p, people: parseInt(e.target.value, 10)}))}/>
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="status" className="text-right">
                       Status
                     </Label>
-                    <Select>
+                    <Select value={newRsvp.status} onValueChange={(value) => setNewRsvp(p => ({...p, status: value as any}))}>
                       <SelectTrigger className="col-span-3">
                         <SelectValue placeholder="Select status" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="interested">Interested</SelectItem>
-                        <SelectItem value="attended">Attended</SelectItem>
-                        <SelectItem value="no-show">No Show</SelectItem>
+                        {statusOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button type="submit">Save RSVP</Button>
+                  <Button onClick={handleSaveRsvp} disabled={isAddingRsvp}>
+                    {isAddingRsvp ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
+                    {isAddingRsvp ? 'Saving...' : 'Save RSVP'}
+                  </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -481,7 +514,7 @@ export default function EventDetailsPage({
                 Next
               </Button>
             </div>
-            {rsvpList.length === 0 && (
+            {(rsvpList || []).length === 0 && (
                 <div className="text-center py-10 text-muted-foreground">
                     <p>No RSVPs for this event yet.</p>
                 </div>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useParams } from 'next/navigation';
@@ -46,9 +45,11 @@ import {
   Sparkles,
   GlassWater,
   SprayCan,
+  Loader2,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { getBusinessDataBySlug, getEvents, getMenuData, type BusinessData, type Event, type Category } from '@/lib/qrmenu-mock';
+import { getBusinessDataBySlug, getEvents, getMenuData, type BusinessData, type Event, type Category, submitServiceRequest } from '@/lib/qrmenu-mock';
+import { useToast } from '@/hooks/use-toast';
 
 
 const serviceRequests = [
@@ -63,24 +64,29 @@ export default function QrMenuPage() {
   const params = useParams();
   const { 'business-name': businessSlug, 'table-number': tableNumber } = params;
   const { format } = useCurrency();
+  const { toast } = useToast();
+
   const [cart, setCart] = useState<any[]>([]);
 
   const [businessData, setBusinessData] = useState<BusinessData | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRequestingService, setIsRequestingService] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
       if (typeof businessSlug !== 'string') return;
       
-      const { businessData, userId } = await getBusinessDataBySlug(businessSlug as string);
+      const { businessData, userId: fetchedUserId } = await getBusinessDataBySlug(businessSlug as string);
       
-      if (businessData && userId) {
+      if (businessData && fetchedUserId) {
         setBusinessData(businessData);
+        setUserId(fetchedUserId);
         const [fetchedEvents, menuData] = await Promise.all([
-          getEvents(userId),
-          getMenuData(userId)
+          getEvents(fetchedUserId),
+          getMenuData(fetchedUserId)
         ]);
         setEvents(fetchedEvents);
         setCategories(menuData.categories);
@@ -90,6 +96,28 @@ export default function QrMenuPage() {
 
     fetchData();
   }, [businessSlug]);
+
+  const handleServiceRequest = async (requestType: string) => {
+    if (!userId || typeof tableNumber !== 'string') return;
+
+    setIsRequestingService(true);
+    try {
+        await submitServiceRequest(userId, tableNumber, requestType);
+        toast({
+            title: "Request Sent",
+            description: "A staff member will be with you shortly.",
+        });
+    } catch(error) {
+        console.error("Service request failed:", error);
+        toast({
+            variant: "destructive",
+            title: "Request Failed",
+            description: "Could not send your request. Please try again.",
+        });
+    } finally {
+        setIsRequestingService(false);
+    }
+  };
 
   const addToCart = (item: any) => {
     setCart((prevCart) => {
@@ -119,7 +147,7 @@ export default function QrMenuPage() {
   };
 
   const cartTotal = cart.reduce(
-    (total, item) => total + item.price * item.quantity,
+    (total, item) => total + Number(item.price) * item.quantity,
     0
   );
   
@@ -168,8 +196,8 @@ export default function QrMenuPage() {
                  </DialogHeader>
                  <div className="flex flex-wrap gap-3 py-4">
                     {serviceRequests.map(req => (
-                        <Button key={req.text} variant="outline" className="flex-grow h-16 flex-col gap-1">
-                            {req.icon}
+                        <Button key={req.text} variant="outline" className="flex-grow h-16 flex-col gap-1" onClick={() => handleServiceRequest(req.text)} disabled={isRequestingService}>
+                            {isRequestingService ? <Loader2 className="h-5 w-5 animate-spin"/> : req.icon}
                             <span>{req.text}</span>
                         </Button>
                     ))}
@@ -334,3 +362,5 @@ export default function QrMenuPage() {
     </div>
   );
 }
+
+    

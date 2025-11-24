@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Button } from "@/components/ui/button";
@@ -6,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar } from "@/components/ui/avatar";
 import { useRouter, useParams } from "next/navigation";
-import { ChevronLeft, Send, Sparkles, ImagePlus } from "lucide-react";
+import { ChevronLeft, Send, Sparkles, ImagePlus, Loader2 } from "lucide-react";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import Image from "next/image";
@@ -16,8 +15,9 @@ import Link from 'next/link';
 import { runAifaFlow } from "@/ai/flows/aifa-flow";
 import { type AIFALowInput } from "@/ai/flows/aifa-schema";
 import { useCurrency } from "@/hooks/use-currency";
-import { getBusinessDataBySlug, getEvents, getMenuData, type BusinessData, type Event, type Category as MenuCategory, type MenuItem } from '@/lib/qrmenu-mock';
+import { getBusinessDataBySlug, getEvents, getMenuData, type BusinessData, type Event, type Category as MenuCategory, type MenuItem, submitFeedback } from '@/lib/qrmenu-mock';
 import { Star } from 'lucide-react';
+import { useToast } from "@/hooks/use-toast";
 
 
 type Message = {
@@ -59,16 +59,11 @@ const EventCard = ({ event }: { event: Event }) => (
     </Card>
 );
 
-const FeedbackTargetSelection = ({ onSelect }: { onSelect: (target: string) => void }) => (
-    <div className="flex gap-2 justify-center py-2">
-        <Button variant="outline" onClick={() => onSelect('Business')}>Business</Button>
-        <Button variant="outline" onClick={() => onSelect('AIFA')}>AIFA</Button>
-    </div>
-);
-
-const FeedbackForm = ({ target }: { target: string }) => {
+const FeedbackForm = ({ target, onSubmit }: { target: string, onSubmit: (feedback: any) => Promise<void> }) => {
     const [rating, setRating] = useState(0);
+    const [comment, setComment] = useState('');
     const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -80,13 +75,25 @@ const FeedbackForm = ({ target }: { target: string }) => {
             reader.readAsDataURL(file);
         }
     };
+    
+    const handleSubmit = async () => {
+        if (rating === 0) return;
+        setIsSubmitting(true);
+        await onSubmit({
+            target,
+            rating,
+            comment,
+            imageUrl: imagePreview,
+        });
+        setIsSubmitting(false);
+    }
 
     return (
         <div className="space-y-4 rounded-lg border bg-background p-4">
             <h4 className="font-medium text-center">Feedback for {target}</h4>
             <div className="flex justify-center gap-1">
                 {[1, 2, 3, 4, 5].map((star) => (
-                    <button key={star} onClick={() => setRating(star)}>
+                    <button key={star} onClick={() => setRating(star)} disabled={isSubmitting}>
                         <Star
                             className={`h-8 w-8 ${
                                 rating >= star
@@ -97,9 +104,9 @@ const FeedbackForm = ({ target }: { target: string }) => {
                     </button>
                 ))}
             </div>
-            <Textarea placeholder="Tell us more about your experience..." />
+            <Textarea placeholder="Tell us more about your experience..." value={comment} onChange={(e) => setComment(e.target.value)} disabled={isSubmitting} />
             <div className="space-y-2">
-                 <Label htmlFor="feedback-image" className="cursor-pointer flex items-center justify-center gap-2 rounded-md border-2 border-dashed border-muted-foreground/50 p-4 text-muted-foreground hover:bg-accent">
+                 <Label htmlFor="feedback-image" className={`cursor-pointer flex items-center justify-center gap-2 rounded-md border-2 border-dashed border-muted-foreground/50 p-4 text-muted-foreground ${!isSubmitting && 'hover:bg-accent'}`}>
                     {imagePreview ? (
                         <Image src={imagePreview} alt="Image preview" width={80} height={80} className="h-20 w-20 object-cover rounded-md" />
                     ) : (
@@ -109,10 +116,11 @@ const FeedbackForm = ({ target }: { target: string }) => {
                         </>
                     )}
                 </Label>
-                <Input id="feedback-image" type="file" className="sr-only" accept="image/*" onChange={handleImageChange} />
+                <Input id="feedback-image" type="file" className="sr-only" accept="image/*" onChange={handleImageChange} disabled={isSubmitting} />
             </div>
-            <Button className="w-full">
-                <Send className="mr-2 h-4 w-4" /> Submit Feedback
+            <Button className="w-full" onClick={handleSubmit} disabled={isSubmitting || rating === 0}>
+                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Send className="mr-2 h-4 w-4" />}
+                {isSubmitting ? 'Submitting...' : 'Submit Feedback'}
             </Button>
         </div>
     );
@@ -124,6 +132,7 @@ export default function AIFAPage() {
     const params = useParams();
     const businessSlug = params['business-name'];
     const { format } = useCurrency();
+    const { toast } = useToast();
     
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputValue, setInputValue] = useState('');
@@ -218,11 +227,24 @@ export default function AIFAPage() {
         });
     };
     
+    const handleFeedbackSubmit = async (feedback: any) => {
+        if (!businessData) return;
+        try {
+            await submitFeedback(businessData.id, feedback);
+            addMessage('aifa', 'Thank you for your feedback! It helps us improve.');
+            toast({ title: "Feedback submitted successfully!" });
+        } catch (error) {
+            console.error("Feedback submission error:", error);
+            addMessage('aifa', 'Sorry, I had trouble submitting your feedback. Please try again in a moment.');
+            toast({ variant: "destructive", title: "Submission failed", description: "Could not submit your feedback." });
+        }
+    };
+    
     const handleFeedbackTarget = (target: string) => {
         addMessage('user', `Feedback for ${target}`);
         setIsThinking(true);
         setTimeout(() => {
-            addMessage('aifa', <FeedbackForm target={target} />);
+            addMessage('aifa', <FeedbackForm target={target} onSubmit={handleFeedbackSubmit} />);
             setIsThinking(false);
         }, 300);
     }
@@ -376,3 +398,5 @@ export default function AIFAPage() {
         </div>
     );
 }
+
+    
