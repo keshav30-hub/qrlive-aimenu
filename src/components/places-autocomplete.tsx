@@ -13,10 +13,11 @@ const MAP_ID = 'google-map-script-places';
 
 interface PlacesAutocompleteProps {
   onPlaceSelect: (place: google.maps.places.PlaceResult | null) => void;
+  onInputChange: (value: string) => void;
   defaultValue?: string;
 }
 
-export function PlacesAutocomplete({ onPlaceSelect, defaultValue }: PlacesAutocompleteProps) {
+export function PlacesAutocomplete({ onPlaceSelect, onInputChange, defaultValue }: PlacesAutocompleteProps) {
   const [isApiLoaded, setIsApiLoaded] = useState(false);
   const autocompleteRef = useRef<HTMLElement | null>(null);
   const isInitialized = useRef(false);
@@ -105,14 +106,20 @@ export function PlacesAutocomplete({ onPlaceSelect, defaultValue }: PlacesAutoco
         const place = placeChangeEvent.detail.place;
         onPlaceSelect(place);
     };
+
+    const handleInput = (event: Event) => {
+        onInputChange((event.target as HTMLInputElement).value);
+    };
     
     autocompleteElement.addEventListener('gmp-placechange', handlePlaceChange);
+    autocompleteElement.addEventListener('input', handleInput);
     isInitialized.current = true;
 
     return () => {
         autocompleteElement.removeEventListener('gmp-placechange', handlePlaceChange);
+        autocompleteElement.removeEventListener('input', handleInput);
     };
-  }, [isApiLoaded, onPlaceSelect, defaultValue]);
+  }, [isApiLoaded, onPlaceSelect, defaultValue, onInputChange]);
 
   if (!isApiLoaded) {
     return (
