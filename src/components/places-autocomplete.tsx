@@ -13,14 +13,13 @@ const MAP_ID = 'google-map-script-places';
 
 interface PlacesAutocompleteProps {
   onPlaceSelect: (place: google.maps.places.PlaceResult | null) => void;
-  onInputChange: (value: string) => void;
-  defaultValue?: string;
+  onValueChange: (value: string) => void;
+  value: string;
 }
 
-export function PlacesAutocomplete({ onPlaceSelect, onInputChange, defaultValue }: PlacesAutocompleteProps) {
+export function PlacesAutocomplete({ onPlaceSelect, onValueChange, value }: PlacesAutocompleteProps) {
   const [isApiLoaded, setIsApiLoaded] = useState(false);
-  const autocompleteRef = useRef<HTMLElement | null>(null);
-  const isInitialized = useRef(false);
+  const autocompleteRef = useRef<HTMLElement & { value: string } | null>(null);
 
   useEffect(() => {
     const apiKey = process.env.NEXT_PUBLIC_PLACES_API_KEY;
@@ -60,66 +59,40 @@ export function PlacesAutocomplete({ onPlaceSelect, onInputChange, defaultValue 
       loadScript();
     }
   }, []);
-
-  useEffect(() => {
-    if (isApiLoaded) {
-      // Inject styles once API is loaded to ensure they are not overridden
-      const style = document.createElement('style');
-      style.textContent = `
-        gmp-place-autocomplete::part(input) {
-          background-color: hsl(var(--background));
-          color: hsl(var(--foreground));
-          display: flex;
-          height: 2.5rem; /* h-10 */
-          width: 100%;
-          border-radius: 0.375rem; /* rounded-md */
-          border: 1px solid hsl(var(--input));
-          padding: 0.5rem 0.75rem;
-          padding-left: 2.5rem; /* pl-10 for the icon */
-          font-size: 0.875rem; /* md:text-sm */
-          line-height: 1.25rem;
-        }
-        gmp-place-autocomplete::part(input):focus {
-          outline: 2px solid transparent;
-          outline-offset: 2px;
-          border-color: hsl(var(--ring));
-        }
-      `;
-      document.head.appendChild(style);
-      return () => {
-        document.head.removeChild(style);
-      };
-    }
-  }, [isApiLoaded]);
-
+  
   useEffect(() => {
     const autocompleteElement = autocompleteRef.current;
-    if (!isApiLoaded || !autocompleteElement || isInitialized.current) return;
-    
-    // Set initial value if provided
-    if (defaultValue) {
-        (autocompleteElement as any).value = defaultValue;
-    }
+    if (!isApiLoaded || !autocompleteElement) return;
 
     const handlePlaceChange = (event: Event) => {
         const placeChangeEvent = event as PlaceChangeEvent;
         const place = placeChangeEvent.detail.place;
         onPlaceSelect(place);
+        if (place?.formatted_address) {
+          onValueChange(place.formatted_address);
+        }
     };
-
+    
     const handleInput = (event: Event) => {
-        onInputChange((event.target as HTMLInputElement).value);
+        const target = event.target as HTMLInputElement;
+        onValueChange(target.value);
     };
     
     autocompleteElement.addEventListener('gmp-placechange', handlePlaceChange);
     autocompleteElement.addEventListener('input', handleInput);
-    isInitialized.current = true;
 
     return () => {
         autocompleteElement.removeEventListener('gmp-placechange', handlePlaceChange);
         autocompleteElement.removeEventListener('input', handleInput);
     };
-  }, [isApiLoaded, onPlaceSelect, defaultValue, onInputChange]);
+  }, [isApiLoaded, onPlaceSelect, onValueChange]);
+
+  useEffect(() => {
+    if (autocompleteRef.current && autocompleteRef.current.value !== value) {
+      autocompleteRef.current.value = value;
+    }
+  }, [value]);
+
 
   if (!isApiLoaded) {
     return (

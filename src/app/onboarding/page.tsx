@@ -115,8 +115,8 @@ export default function OnboardingPage() {
 
   const handlePlaceSelect = (place: google.maps.places.PlaceResult | null) => {
     setSelectedPlace(place);
-    if (place) {
-      setAddress(place.formatted_address || '');
+    if (place?.formatted_address) {
+      setAddress(place.formatted_address);
     }
   }
 
@@ -193,9 +193,9 @@ export default function OnboardingPage() {
             <div className="relative">
               <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
               <PlacesAutocomplete 
-                onPlaceSelect={handlePlaceSelect} 
-                onInputChange={setAddress}
-                defaultValue={address} 
+                onPlaceSelect={handlePlaceSelect}
+                value={address}
+                onValueChange={setAddress}
               />
             </div>
           </div>
