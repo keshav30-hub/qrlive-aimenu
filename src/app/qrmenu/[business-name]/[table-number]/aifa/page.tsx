@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Button } from "@/components/ui/button";
@@ -158,39 +157,18 @@ const isFirebaseTimestamp = (value: any): value is { toDate: () => Date } => {
 
 // Helper function to convert any complex objects (like Firebase Timestamps) to simple ones.
 const sanitizeDataForServerAction = (data: any[]): any[] => {
-    return data.map(item => {
-        const sanitizedItem: { [key: string]: any } = {};
-        for (const key in item) {
-            if (Object.prototype.hasOwnProperty.call(item, key)) {
-                const value = item[key];
-                if (isFirebaseTimestamp(value)) {
-                    sanitizedItem[key] = value.toDate().toISOString();
-                } else if (Array.isArray(value)) {
-                    // Recursively sanitize arrays
-                    sanitizedItem[key] = sanitizeDataForServerAction(value);
-                } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-                    // This is a simple object, but let's check its properties too
-                    const nestedSanitized: { [key: string]: any } = {};
-                    for (const nestedKey in value) {
-                         if (Object.prototype.hasOwnProperty.call(value, nestedKey)) {
-                            const nestedValue = value[nestedKey];
-                             if (isFirebaseTimestamp(nestedValue)) {
-                                nestedSanitized[nestedKey] = nestedValue.toDate().toISOString();
-                            } else {
-                                nestedSanitized[nestedKey] = nestedValue;
-                            }
-                         }
-                    }
-                    sanitizedItem[key] = nestedSanitized;
-                }
-                
-                else {
-                    sanitizedItem[key] = value;
-                }
+    return JSON.parse(JSON.stringify(data, (key, value) => {
+        if (value && typeof value === 'object' && value.seconds !== undefined && value.nanoseconds !== undefined) {
+             try {
+                // Check if it's a Firestore-like timestamp object
+                return new Date(value.seconds * 1000 + value.nanoseconds / 1000000).toISOString();
+            } catch (e) {
+                // Not a valid timestamp, return as is
+                return value;
             }
         }
-        return sanitizedItem;
-    });
+        return value;
+    }));
 };
 
 
@@ -439,7 +417,7 @@ export default function AIFAPage() {
                     </Button>
                 </header>
                 
-                <ScrollArea className="flex-1" viewportRef={scrollViewportRef}>
+                <ScrollArea className="flex-1 z-0" viewportRef={scrollViewportRef}>
                     <div className="space-y-6 p-4">
                         {messages.map(message => (
                             <div key={message.id} className={`flex items-start gap-2 ${message.sender === 'user' ? 'justify-end' : ''}`}>
@@ -494,6 +472,3 @@ export default function AIFAPage() {
         </div>
     );
 }
-
-
-    
