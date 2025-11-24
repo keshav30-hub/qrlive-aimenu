@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { createContext, useContext, useState, useRef, ReactNode, useEffect } from 'react';
+import React, { createContext, useContext, useState, useRef, ReactNode, useEffect, useCallback } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,11 +35,18 @@ type TaskDoc = {
     pendingCalls?: Task[];
 };
 
+type NewTaskPayload = {
+    tableName: string;
+    requestType: string;
+    dateTime: string;
+};
 
 type TaskNotificationContextType = {
   isMuted: boolean;
   toggleMute: () => void;
   unattendedTaskCount: number;
+  setUnattendedTaskCount: (count: number) => void;
+  showNewTask: (payload: NewTaskPayload) => void;
 };
 
 const TaskNotificationContext = createContext<TaskNotificationContextType | undefined>(undefined);
@@ -59,6 +66,7 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
   const [notification, setNotification] = useState<{title: string, description: string, data: any, onAcknowledge: () => void} | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [unattendedTaskCount, setUnattendedTaskCount] = useState(0);
   const [acknowledgedTaskTimes, setAcknowledgedTaskTimes] = useState<Set<string>>(new Set());
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -71,6 +79,10 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
   const { data: urgentFeedbacks } = useCollection<UrgentFeedback>(urgentFeedbackRef);
 
   const totalUnattendedCount = (unattendedTasks?.length || 0) + (urgentFeedbacks?.length || 0);
+  
+  useEffect(() => {
+    setUnattendedTaskCount(totalUnattendedCount);
+  }, [totalUnattendedCount]);
 
   // Initialize audio element
   useEffect(() => {
@@ -86,7 +98,7 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
     const audio = audioRef.current;
     if (!audio) return;
 
-    if (totalUnattendedCount > 0 && !isMuted) {
+    if (unattendedTaskCount > 0 && !isMuted) {
       audio.play().catch(error => console.error("Audio playback failed:", error));
     } else {
       audio.pause();
@@ -99,7 +111,7 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
             audio.currentTime = 0;
         }
     }
-  }, [totalUnattendedCount, isMuted]);
+  }, [unattendedTaskCount, isMuted]);
 
   // Effect to show notifications for new tasks
   useEffect(() => {
@@ -149,6 +161,11 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
   const toggleMute = () => {
     setIsMuted(prev => !prev);
   };
+  
+  const showNewTask = useCallback((payload: NewTaskPayload) => {
+    // This function can be used by other components to manually trigger a notification if needed
+    // For now, it's primarily driven by the useEffect hooks above
+  }, []);
 
   const closeDialog = () => {
     if (notification?.data.Time) {
@@ -163,14 +180,16 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
       closeDialog();
   }
 
-  const value = { 
+  const value: TaskNotificationContextType = { 
     isMuted, 
     toggleMute,
-    unattendedTaskCount: totalUnattendedCount,
+    unattendedTaskCount,
+    setUnattendedTaskCount,
+    showNewTask
   };
 
   return (
-    <TaskNotificationContext.Provider value={value as any}>
+    <TaskNotificationContext.Provider value={value}>
       {children}
       <AlertDialog open={isDialogOpen} onOpenChange={(open) => !open && closeDialog()}>
         <AlertDialogContent>
