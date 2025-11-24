@@ -268,13 +268,9 @@ export default function AIFAPage() {
             
             const feedbackMessage = `submitted-${feedback.rating} star rating and ${feedback.comment || 'no description'}`;
 
-            if (feedback.rating <= 3) {
-                addMessage('user', feedbackMessage);
-                await getAIResponse(feedbackMessage);
-            } else {
-                 addMessage('aifa', "Thank you so much for your kind words! We're thrilled you had a great experience.");
-                 await getAIResponse(feedbackMessage);
-            }
+            addMessage('user', feedbackMessage);
+            await getAIResponse(feedbackMessage);
+
             toast({ title: "Feedback submitted successfully!" });
 
         } catch (error) {
@@ -345,7 +341,7 @@ export default function AIFAPage() {
                     priceSymbol: format(0).replace(/[\d.,\s]/g, ''),
                     googleReviewLink: businessData.googleReviewLink,
                     menuCategories: menuCategories.map(c => ({name: c.name, description: c.description})),
-                    menuItems: menuItems.filter(i => i.price).map(i => ({...i, price: i.price.toString(), tags: i.tags || [] })),
+                    menuItems: menuItems.map(i => ({...i, price: (i.price || '0').toString(), tags: i.tags || [] })),
                     events: events,
                     history: historyForAI,
                     prompt,
@@ -456,3 +452,5 @@ export default function AIFAPage() {
         </div>
     );
 }
+
+    
