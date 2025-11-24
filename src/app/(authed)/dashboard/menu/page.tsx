@@ -147,10 +147,13 @@ export default function MenuPage() {
   const menuItemsRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'menuItems') : null, [firestore, user]);
   const combosRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'combos') : null, [firestore, user]);
 
-  const { data: categories = [], isLoading: categoriesLoading } = useCollection<Category>(categoriesRef);
-  const { data: items = [], isLoading: itemsLoading } = useCollection<MenuItem>(menuItemsRef);
-  const { data: combos = [], isLoading: combosLoading } = useCollection<Combo>(combosRef);
+  const { data: categoriesData, isLoading: categoriesLoading } = useCollection<Category>(categoriesRef);
+  const { data: itemsData, isLoading: itemsLoading } = useCollection<MenuItem>(menuItemsRef);
+  const { data: combosData, isLoading: combosLoading } = useCollection<Combo>(combosRef);
 
+  const categories = categoriesData || [];
+  const items = itemsData || [];
+  const combos = combosData || [];
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isEditingItem, setIsEditingItem] = useState(false);
@@ -195,7 +198,7 @@ export default function MenuPage() {
     }
   };
 
-  const filteredComboItems = (items || []).filter(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredComboItems = items.filter(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
   const handleItemCheckboxChange = (itemName: string, checked: boolean) => {
     setSelectedItems(prev => 
@@ -478,7 +481,7 @@ const handleCategoryDayChange = (dayId: string, checked: boolean) => {
     }
   };
 
-  const filteredItems = (items || [])
+  const filteredItems = items
     .filter(item => item.name.toLowerCase().includes(itemSearch.toLowerCase()))
     .filter(item => filterCategory === 'all' || item.category === filterCategory)
     .filter(item => filterType === 'all' || item.type === filterType);
@@ -854,7 +857,7 @@ const handleCategoryDayChange = (dayId: string, checked: boolean) => {
             </Sheet>
           </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {categoriesLoading ? <p>Loading categories...</p> : (categories || []).map((category) => (
+                {categoriesLoading ? <p>Loading categories...</p> : categories.map((category) => (
                 <Card key={category.id} className="overflow-hidden flex flex-col">
                     <div className="relative w-full h-40">
                         <Image
@@ -983,7 +986,7 @@ const handleCategoryDayChange = (dayId: string, checked: boolean) => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {combosLoading ? <TableRow><TableCell colSpan={6}>Loading...</TableCell></TableRow> : (combos || []).map((combo, index) => (
+                    {combosLoading ? <TableRow><TableCell colSpan={6}>Loading...</TableCell></TableRow> : combos.map((combo, index) => (
                       <TableRow key={combo.id}>
                         <TableCell>{index + 1}</TableCell>
                         <TableCell className="font-medium">{combo.name}</TableCell>

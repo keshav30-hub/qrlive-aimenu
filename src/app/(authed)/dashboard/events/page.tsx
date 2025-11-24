@@ -71,7 +71,9 @@ export default function EventsPage() {
   const { uploadFile, deleteFile, isLoading: isUploading } = useFirebaseStorage();
   
   const eventsRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'events') : null, [firestore, user]);
-  const { data: events, isLoading: eventsLoading } = useCollection<Event>(eventsRef);
+  const { data: eventsData, isLoading: eventsLoading } = useCollection<Event>(eventsRef);
+
+  const events = eventsData || [];
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -105,7 +107,7 @@ export default function EventsPage() {
       } else {
           await addDoc(eventsRef, { 
               ...currentEvent,
-              imageUrl: currentEvent.imageUrl || `https://picsum.photos/seed/event${(events || []).length + 1}/600/400`,
+              imageUrl: currentEvent.imageUrl || `https://picsum.photos/seed/event${events.length + 1}/600/400`,
               imageHint: currentEvent.imageHint || 'new event',
               createdAt: serverTimestamp() 
           });
@@ -291,7 +293,7 @@ export default function EventsPage() {
         <p>Loading events...</p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {(events || []).map((event) => (
+          {events.map((event) => (
             <Card key={event.id} className="overflow-hidden flex flex-col">
               <Link href={`/dashboard/events/${event.id}`} className="block hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors flex-grow">
                 <div className="relative w-full h-48">
@@ -341,7 +343,7 @@ export default function EventsPage() {
           ))}
         </div>
       )}
-       {(!events || events.length === 0) && !eventsLoading && (
+       {events.length === 0 && !eventsLoading && (
           <div className="text-center py-10 text-muted-foreground">
             <p>No events created yet. Click "Add Event" to get started.</p>
           </div>

@@ -52,14 +52,14 @@ export default function DashboardOverviewPage() {
   const { data: staffList } = useCollection<Staff>(staffRef);
   const { data: tables } = useCollection<Table>(tablesRef);
 
-  const unattendedTasksCount = useMemo(() => tasks?.filter(t => t.status === 'unattended').length || 0, [tasks]);
+  const unattendedTasksCount = useMemo(() => (tasks || []).filter(t => t.status === 'unattended').length, [tasks]);
   const averageFeedback = useMemo(() => {
     if (!feedbackList || feedbackList.length === 0) return '0.0';
     const totalRating = feedbackList.reduce((acc, f) => acc + f.rating, 0);
     return (totalRating / feedbackList.length).toFixed(1);
   }, [feedbackList]);
-  const activeEventsCount = useMemo(() => events?.filter(e => e.active).length || 0, [events]);
-  const activeStaffCount = useMemo(() => staffList?.filter(s => s.active).length || 0, [staffList]);
+  const activeEventsCount = useMemo(() => (events || []).filter(e => e.active).length, [events]);
+  const activeStaffCount = useMemo(() => (staffList || []).filter(s => s.active).length, [staffList]);
 
 
   const stats = [

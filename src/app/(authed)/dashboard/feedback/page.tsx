@@ -54,17 +54,18 @@ const ITEMS_PER_PAGE = 10;
 export default function FeedbackPage() {
   const { firestore, user } = useFirebase();
   const feedbackRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'feedback') : null, [firestore, user]);
-  const { data: feedbackList, isLoading: feedbackLoading } = useCollection<Feedback>(feedbackRef);
+  const { data: feedbackListData, isLoading: feedbackLoading } = useCollection<Feedback>(feedbackRef);
 
+  const feedbackList = feedbackListData || [];
   const [currentPage, setCurrentPage] = useState(1);
 
-  const totalReviews = feedbackList?.length || 0;
+  const totalReviews = feedbackList.length || 0;
   const averageRating = totalReviews > 0
-    ? ((feedbackList || []).reduce((acc, f) => acc + f.rating, 0) / totalReviews).toFixed(1)
+    ? (feedbackList.reduce((acc, f) => acc + f.rating, 0) / totalReviews).toFixed(1)
     : '0.0';
 
   const ratingCounts = useMemo(() => {
-    const counts = (feedbackList || []).reduce((acc, f) => {
+    const counts = feedbackList.reduce((acc, f) => {
       acc[f.rating] = (acc[f.rating] || 0) + 1;
       return acc;
     }, {} as { [key: number]: number });
@@ -78,9 +79,9 @@ export default function FeedbackPage() {
   }, [feedbackList]);
   
 
-  const totalPages = Math.ceil((feedbackList?.length || 0) / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(feedbackList.length / ITEMS_PER_PAGE);
 
-  const paginatedFeedback = (feedbackList || []).slice(
+  const paginatedFeedback = feedbackList.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
@@ -227,7 +228,7 @@ export default function FeedbackPage() {
                 Next
               </Button>
             </div>
-            {(feedbackList?.length || 0) === 0 && !feedbackLoading && (
+            {feedbackList.length === 0 && !feedbackLoading && (
                 <div className="text-center py-10 text-muted-foreground">
                     <p>No feedback has been received yet.</p>
                 </div>

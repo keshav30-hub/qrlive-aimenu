@@ -63,8 +63,10 @@ export default function SetupQrMenuPage() {
   const tablesRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'tables') : null, [firestore, user]);
   const userRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
 
-  const { data: tables, isLoading: tablesLoading } = useCollection<TableData>(tablesRef);
+  const { data: tablesData, isLoading: tablesLoading } = useCollection<TableData>(tablesRef);
   const { data: userProfile } = useDoc<UserProfile>(userRef);
+
+  const tables = tablesData || [];
 
   const [newTableName, setNewTableName] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -229,7 +231,7 @@ export default function SetupQrMenuPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {(tables || []).map((table, index) => (
+                {tables.map((table, index) => (
                   <TableRow key={table.id}>
                     <TableCell>{index + 1}</TableCell>
                     <TableCell className="font-medium">{table.name}</TableCell>
@@ -252,7 +254,7 @@ export default function SetupQrMenuPage() {
                 ))}
               </TableBody>
             </Table>
-              {(tables || []).length === 0 && !tablesLoading && (
+              {tables.length === 0 && !tablesLoading && (
                   <div className="text-center py-10 text-muted-foreground">
                       <p>No tables added yet. Click &quot;Add Table&quot; to get started.</p>
                   </div>
