@@ -61,6 +61,37 @@ export function PlacesAutocomplete({ onPlaceSelect, defaultValue }: PlacesAutoco
   }, []);
 
   useEffect(() => {
+    if (isApiLoaded) {
+      // Inject styles once API is loaded to ensure they are not overridden
+      const style = document.createElement('style');
+      style.textContent = `
+        gmp-place-autocomplete::part(input) {
+          background-color: hsl(var(--background));
+          color: hsl(var(--foreground));
+          display: flex;
+          height: 2.5rem; /* h-10 */
+          width: 100%;
+          border-radius: 0.375rem; /* rounded-md */
+          border: 1px solid hsl(var(--input));
+          padding: 0.5rem 0.75rem;
+          padding-left: 2.5rem; /* pl-10 for the icon */
+          font-size: 0.875rem; /* md:text-sm */
+          line-height: 1.25rem;
+        }
+        gmp-place-autocomplete::part(input):focus {
+          outline: 2px solid transparent;
+          outline-offset: 2px;
+          border-color: hsl(var(--ring));
+        }
+      `;
+      document.head.appendChild(style);
+      return () => {
+        document.head.removeChild(style);
+      };
+    }
+  }, [isApiLoaded]);
+
+  useEffect(() => {
     const autocompleteElement = autocompleteRef.current;
     if (!isApiLoaded || !autocompleteElement || isInitialized.current) return;
     
@@ -94,7 +125,6 @@ export function PlacesAutocomplete({ onPlaceSelect, defaultValue }: PlacesAutoco
         ref={autocompleteRef}
         placeholder="Start typing your address..."
         country-codes="in"
-        part="input"
       ></gmp-place-autocomplete>
   );
 }
@@ -105,7 +135,6 @@ declare global {
       'gmp-place-autocomplete': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement> & {
           'country-codes'?: string;
           placeholder?: string;
-          part?: string;
           value?: string;
         }, HTMLElement>;
     }
