@@ -37,6 +37,7 @@ export type MenuItem = {
   imageUrl: string;
   imageHint: string;
   available: boolean;
+  mrp?: string;
 };
 
 export type Event = {
@@ -57,8 +58,12 @@ export type BusinessData = {
     googleReviewLink?: string;
 };
 
+// This function ensures we always get a valid Firestore instance.
 async function getFirestoreInstance() {
     const { firestore } = initializeFirebase();
+    if (!firestore) {
+        throw new Error("Firestore is not initialized");
+    }
     return firestore;
 }
 
