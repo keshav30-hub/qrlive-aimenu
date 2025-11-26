@@ -52,7 +52,7 @@ type Event = {
   imageStoragePath?: string;
   imageHint: string;
   active: boolean;
-  organizers: string;
+  organizers: string[];
   terms: string;
 };
 
@@ -61,7 +61,7 @@ const defaultEvent: Omit<Event, 'id' | 'imageUrl' | 'imageHint' > = {
     description: '',
     datetime: new Date().toISOString(),
     active: true,
-    organizers: '',
+    organizers: [],
     terms: '',
 };
 
@@ -104,6 +104,7 @@ export default function EventsPage() {
           ...currentEvent,
           imageUrl: currentEvent.imageUrl || `https://picsum.photos/seed/event${events.length + 1}/600/400`,
           imageHint: currentEvent.imageHint || 'new event',
+          organizers: Array.isArray(currentEvent.organizers) ? currentEvent.organizers : (currentEvent.organizers as unknown as string || '').split(',').map(s => s.trim()).filter(Boolean),
       };
       
       if (isEditing && currentEvent.id) {
@@ -156,6 +157,11 @@ export default function EventsPage() {
       const { id, value } = e.target;
       setCurrentEvent(prev => ({ ...prev, [id]: value }));
   };
+
+  const handleOrganizersChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { value } = e.target;
+    setCurrentEvent(prev => ({ ...prev, organizers: value.split(',').map(s => s.trim()) }));
+  }
 
   const handleDateChange = (date: Date | undefined) => {
       if (!date || !currentEvent.datetime) return;
@@ -267,8 +273,8 @@ export default function EventsPage() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="organizers">Event Organizers (Optional)</Label>
-                <Input id="organizers" value={currentEvent.organizers} onChange={handleInputChange} placeholder="e.g. John Doe, Jane Smith" />
+                <Label htmlFor="organizers">Event Organizers (Optional, comma-separated)</Label>
+                <Input id="organizers" value={Array.isArray(currentEvent.organizers) ? currentEvent.organizers.join(', ') : currentEvent.organizers} onChange={handleOrganizersChange} placeholder="e.g. John Doe, Jane Smith" />
               </div>
                <Accordion type="single" collapsible>
                 <AccordionItem value="item-1">
