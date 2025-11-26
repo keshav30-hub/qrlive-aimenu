@@ -210,6 +210,12 @@ export default function EventDetailsPage({
     setEditedDetails(prev => prev ? ({ ...prev, [name]: value }) : null);
   };
 
+  const handleOrganizersChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!editedDetails) return;
+    const { value } = e.target;
+    setEditedDetails(prev => prev ? ({ ...prev, organizers: value.split(',').map(s => s.trim()) }) : null);
+  };
+
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!editedDetails) return;
     const { name, value } = e.target;
@@ -366,7 +372,7 @@ export default function EventDetailsPage({
                     <Input 
                       name="organizers" 
                       value={(editedDetails.organizers || []).join(', ')} 
-                      onChange={(e) => setEditedDetails(prev => prev ? ({ ...prev, organizers: e.target.value.split(',').map(s => s.trim())}) : null)}
+                      onChange={handleOrganizersChange}
                       className="w-full"
                     />
                   ) : (
@@ -528,3 +534,5 @@ export default function EventDetailsPage({
     </div>
   );
 }
+
+    

@@ -104,7 +104,7 @@ export default function EventsPage() {
           ...currentEvent,
           imageUrl: currentEvent.imageUrl || `https://picsum.photos/seed/event${events.length + 1}/600/400`,
           imageHint: currentEvent.imageHint || 'new event',
-          organizers: Array.isArray(currentEvent.organizers) ? currentEvent.organizers : (currentEvent.organizers as unknown as string || '').split(',').map(s => s.trim()).filter(Boolean),
+          organizers: Array.isArray(currentEvent.organizers) ? currentEvent.organizers : ((currentEvent.organizers as string) || '').split(',').map(s => s.trim()).filter(Boolean),
       };
       
       if (isEditing && currentEvent.id) {
@@ -358,3 +358,5 @@ export default function EventsPage() {
     </div>
   );
 }
+
+    

@@ -380,7 +380,8 @@ export default function AIFAPage() {
             else {
                  const eventsForAI = activeEvents.map(e => ({
                     ...e,
-                    datetime: new Date(e.datetime).toLocaleString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                    datetime: new Date(e.datetime).toLocaleString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+                    organizers: Array.isArray(e.organizers) ? e.organizers : ((e.organizers as any) || '').split(',').map((s: string) => s.trim()).filter(Boolean),
                  }));
 
                  const flowInput: AIFALowInput = {
@@ -500,3 +501,5 @@ export default function AIFAPage() {
         </div>
     );
 }
+
+    
