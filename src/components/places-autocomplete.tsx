@@ -35,6 +35,8 @@ export function PlacesAutocomplete({
         inputRef.current,
         {
           componentRestrictions: { country: 'in' },
+           // Request more fields to get the full address details
+          fields: ["address_components", "geometry", "icon", "name", "formatted_address"],
         }
       );
 
@@ -50,13 +52,17 @@ export function PlacesAutocomplete({
     }
     
     if (document.getElementById(scriptId)) {
-        // Script is already in the DOM, wait for it to load.
         const existingScript = document.getElementById(scriptId) as HTMLScriptElement;
         const handleLoad = () => {
           initializeAutocomplete();
           existingScript.removeEventListener('load', handleLoad);
         };
-        existingScript.addEventListener('load', handleLoad);
+        // If the script is already there, it might be loading, so add a listener
+        if (existingScript.dataset.loaded) {
+             initializeAutocomplete();
+        } else {
+             existingScript.addEventListener('load', handleLoad);
+        }
         return;
     }
 
@@ -64,6 +70,7 @@ export function PlacesAutocomplete({
     script.id = scriptId;
     script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&async=1&defer=1`;
     script.onload = () => {
+      script.setAttribute('data-loaded', 'true');
       initializeAutocomplete();
     };
     script.onerror = () => {

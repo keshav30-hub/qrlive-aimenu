@@ -120,7 +120,15 @@ export default function OnboardingPage() {
   
   const handlePlaceSelect = (place: google.maps.places.PlaceResult | null) => {
     if (place) {
-      form.setValue('address', place.formatted_address || '', { shouldValidate: true });
+      // Construct a more detailed address string
+      let detailedAddress = place.name;
+      if (place.formatted_address && !place.formatted_address.startsWith(place.name || '')) {
+          detailedAddress = `${place.name}, ${place.formatted_address}`;
+      } else if (place.formatted_address) {
+          detailedAddress = place.formatted_address;
+      }
+      
+      form.setValue('address', detailedAddress, { shouldValidate: true });
       form.setValue('latitude', place.geometry?.location?.lat() || null);
       form.setValue('longitude', place.geometry?.location?.lng() || null);
     }
