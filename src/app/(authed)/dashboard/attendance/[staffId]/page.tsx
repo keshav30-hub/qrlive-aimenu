@@ -69,16 +69,16 @@ export default function StaffAttendancePage() {
   }, []);
 
   useEffect(() => {
-    // Only request camera if attendance is not yet marked
-    if (todaysAttendance && todaysAttendance.length > 0) return;
-
+    let stream: MediaStream | null = null;
+    
     const getCameraPermission = async () => {
+      if (todaysAttendance && todaysAttendance.length > 0) return;
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         setHasCameraPermission(false);
         return;
       }
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
         setHasCameraPermission(true);
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
@@ -88,8 +88,21 @@ export default function StaffAttendancePage() {
         setHasCameraPermission(false);
       }
     };
+    
     getCameraPermission();
+
+    // Cleanup function to stop the camera stream
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+      if(videoRef.current && videoRef.current.srcObject) {
+         (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
+         videoRef.current.srcObject = null;
+      }
+    };
   }, [todaysAttendance]);
+
 
   const handleMarkAttendance = async () => {
     if (!videoRef.current || !canvasRef.current || !user || !staffMember || !shift) {
