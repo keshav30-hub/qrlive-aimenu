@@ -76,7 +76,7 @@ export default function StaffAttendancePage() {
 
   const handleMarkAttendance = async () => {
     if (!videoRef.current || !canvasRef.current || !user || !staffMember || !shift) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Component not ready or staff data missing.' });
+        toast({ variant: 'destructive', title: 'Error', description: 'Component not ready, staff data, or shift data missing.' });
         return;
     }
     setIsProcessing(true);
@@ -128,6 +128,9 @@ export default function StaffAttendancePage() {
                 date: dateString,
             });
 
+            // This is not part of the Staff entity in backend.json, so it won't persist. 
+            // It might be better to derive this status on the fly in the attendance list page.
+            // For now, I will leave it as is, but it's something to be aware of.
             const staffRef = doc(firestore, 'users', user.uid, 'staff', staffId as string);
             await setDoc(staffRef, { status: status }, { merge: true });
 
@@ -149,9 +152,20 @@ export default function StaffAttendancePage() {
   if (!staffMember) {
      return <div className="flex h-screen items-center justify-center">Could not verify staff details. Please go back and try again.</div>;
   }
+  
+  if (!shift) {
+       return <div className="flex h-screen items-center justify-center p-4">
+           <Alert variant="destructive" className="max-w-md">
+                <AlertTitle>Shift Not Assigned</AlertTitle>
+                <AlertDescription>
+                    This staff member has not been assigned a shift. Please go to the Staff Management page and assign a shift to continue.
+                </AlertDescription>
+           </Alert>
+       </div>;
+  }
 
   const staffName = staffMember?.name || 'Staff Member';
-  const isDisabled = !hasCameraPermission || isProcessing || isUploading;
+  const isDisabled = !hasCameraPermission || isProcessing || isUploading || !shift;
 
   return (
     <div className="flex items-center justify-center p-4">
