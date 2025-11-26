@@ -109,8 +109,8 @@ service cloud.firestore {
     
     // Public attendance marking rules
     match /users/{userId}/staff/{staffId} {
-      // Allow unauthenticated query for access code validation
-      allow list: if request.auth == null; 
+      // Allow unauthenticated query for access code validation, but ONLY on the accessCode field.
+      allow list: if request.auth == null && request.query.where.accessCode != null;
       // Allow unauthenticated get to read non-sensitive fields
       allow get: if request.auth == null && resource.data.keys().hasAny(['name', 'shiftId']);
       // Allow owner to manage staff fully
