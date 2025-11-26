@@ -21,7 +21,7 @@ service cloud.firestore {
     }
     
     match /users/{userId} {
-      allow get: if isOwner(userId) || request.auth == null; // Allow public read for businessId lookup
+      allow get: if isOwner(userId);
       allow list: if isAdmin();
       allow update, delete: if isOwner(userId);
       allow create: if isSignedIn();
@@ -65,11 +65,8 @@ service cloud.firestore {
       allow write: if isOwner(userId);
     }
     
-    // This rule allows anyone to add a task to the pendingCalls array.
-    // It prevents them from modifying other parts of the document.
     match /users/{userId}/tasks/live {
       allow read: if isOwner(userId);
-      // Allow adding a new pending call, or allow owner to clear attended calls
       allow write: if isOwner(userId) || request.resource.data.pendingCalls.size() > resource.data.pendingCalls.size();
     }
     
@@ -79,8 +76,8 @@ service cloud.firestore {
     }
     
     match /users/{userId}/urgent_feedback/{feedbackId} {
-      allow create: if true; // Anyone can create an urgent feedback
-      allow read, delete: if isOwner(userId); // Only owner can read/delete
+      allow create: if true;
+      allow read, delete: if isOwner(userId);
     }
 
     match /aifa_feedback/{feedbackId} {
@@ -106,27 +103,20 @@ service cloud.firestore {
       allow read: if isOwner(request.resource.data.userId) || isAdmin();
       allow update, delete: if false;
     }
-    
-    // Public attendance marking rules
+
     match /users/{userId}/staff/{staffId} {
-      // Allow unauthenticated query for access code validation, but ONLY on the accessCode field.
-      allow list: if request.auth == null && request.query.where.accessCode != null;
-      // Allow unauthenticated get to read non-sensitive fields
-      allow get: if request.auth == null && resource.data.keys().hasAny(['name', 'shiftId']);
-      // Allow owner to manage staff fully
       allow read, write: if isOwner(userId);
-      // Allow public update only for live status from attendance page
-      allow update: if request.auth == null && request.resource.data.keys().hasOnly(['status']);
     }
 
     match /users/{userId}/attendance/{attendanceId} {
-        allow create: if true; // Allow anyone to create an attendance record
-        allow read, update, delete: if isOwner(userId);
+      // Allow the owner to do anything
+      allow read, update, delete: if isOwner(userId);
+      // Allow an authenticated user (the staff member) to create their own attendance record
+      allow create: if isSignedIn();
     }
     
     match /users/{userId}/shifts/{shiftId} {
-      allow get: if true; // Allow public read for shift details
-      allow list, write: if isOwner(userId);
+      allow read, write: if isOwner(userId);
     }
 
     match /users/{userId}/{collection}/{docId=**} {
@@ -144,3 +134,5 @@ service cloud.firestore {
     }
   }
 }
+
+    
