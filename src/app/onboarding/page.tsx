@@ -11,10 +11,10 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Building, User, Phone, MapPin, FileText, Briefcase, LogOut } from 'lucide-react';
+import { Building, User, Phone, MapPin, FileText, Briefcase, LogOut, Upload, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { PlacesAutocomplete } from '@/components/places-autocomplete';
-import { useFirebase } from '@/firebase';
+import { useFirebase, useFirebaseStorage } from '@/firebase';
 import { doc, updateDoc, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -23,6 +23,8 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import React, { useState } from 'react';
 
 const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
 
@@ -33,6 +35,8 @@ const onboardingSchema = z.object({
   businessType: z.string().min(1, { message: 'Please select a business type' }),
   address: z.string().min(1, { message: 'Full Address is required' }),
   gst: z.string().regex(gstRegex, { message: 'Invalid GST number format' }),
+  logo: z.string().optional(),
+  logoStoragePath: z.string().optional(),
   latitude: z.number().nullable(),
   longitude: z.number().nullable(),
 });
@@ -53,6 +57,8 @@ export default function OnboardingPage() {
   const router = useRouter();
   const { user, firestore, auth } = useFirebase();
   const { toast } = useToast();
+  const { uploadFile, isLoading: isUploading } = useFirebaseStorage();
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const form = useForm<OnboardingFormData>({
     resolver: zodResolver(onboardingSchema),
@@ -63,6 +69,8 @@ export default function OnboardingPage() {
       businessType: '',
       address: '',
       gst: '',
+      logo: '',
+      logoStoragePath: '',
       latitude: null,
       longitude: null,
     },
@@ -74,6 +82,25 @@ export default function OnboardingPage() {
     await signOut(auth);
     router.push('/login');
   };
+
+  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0] && user) {
+        const file = e.target.files[0];
+        const newPath = `users/${user.uid}/images/logo/${Date.now()}_${file.name}`;
+        
+        const uploadResult = await uploadFile(newPath, file);
+
+        if (uploadResult) {
+            form.setValue('logo', uploadResult.downloadURL);
+            form.setValue('logoStoragePath', uploadResult.storagePath);
+            setImagePreview(uploadResult.downloadURL);
+            toast({ title: 'Logo Uploaded', description: 'Your business logo is ready.' });
+        } else {
+            toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload logo.' });
+        }
+    }
+  };
+
 
   const onSubmit = async (data: OnboardingFormData) => {
     if (!user || !firestore) {
@@ -89,7 +116,6 @@ export default function OnboardingPage() {
       const userRef = doc(firestore, 'users', user.uid);
       const businessId = generateBusinessId();
 
-      // Step 1: Update the private user document
       await updateDoc(userRef, {
         businessName: data.businessName,
         ownerName: data.ownerName,
@@ -97,13 +123,14 @@ export default function OnboardingPage() {
         address: data.address,
         gst: data.gst,
         businessType: data.businessType,
+        logo: data.logo || `https://ui-avatars.com/api/?name=${data.businessName.charAt(0)}&color=7F9CF5&background=EBF4FF`,
+        logoStoragePath: data.logoStoragePath,
         latitude: data.latitude,
         longitude: data.longitude,
         businessId: businessId,
         onboarding: true,
       });
 
-      // Step 2: Create the public business mapping document
       const businessRef = doc(firestore, 'businesses', businessId);
       await setDoc(businessRef, {
         ownerUid: user.uid,
@@ -127,7 +154,6 @@ export default function OnboardingPage() {
   
   const handlePlaceSelect = (place: google.maps.places.PlaceResult | null) => {
     if (place) {
-      // Construct a more detailed address string
       let detailedAddress = place.name;
       if (place.formatted_address && !place.formatted_address.startsWith(place.name || '')) {
           detailedAddress = `${place.name}, ${place.formatted_address}`;
@@ -162,6 +188,19 @@ export default function OnboardingPage() {
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
             <CardContent className="space-y-4">
+              <div className="flex items-center gap-4">
+                <Avatar className="h-20 w-20">
+                  <AvatarImage src={imagePreview || undefined} alt="Business Logo" />
+                  <AvatarFallback>
+                    {form.getValues('businessName')?.charAt(0) || <Building />}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="grid w-full max-w-sm items-center gap-1.5">
+                  <Label htmlFor="logo">Business Logo</Label>
+                  <Input id="logo" type="file" accept="image/*" onChange={handleLogoChange} disabled={isUploading || isSubmitting}/>
+                  {isUploading && <p className="text-sm text-muted-foreground">Uploading...</p>}
+                </div>
+              </div>
               <FormField
                 control={form.control}
                 name="businessName"
@@ -289,7 +328,8 @@ export default function OnboardingPage() {
               />
             </CardContent>
             <CardFooter>
-              <Button type="submit" className="w-full bg-gray-800 text-white hover:bg-gray-700" disabled={isSubmitting}>
+              <Button type="submit" className="w-full bg-gray-800 text-white hover:bg-gray-700" disabled={isSubmitting || isUploading}>
+                {isSubmitting || isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
                 {isSubmitting ? 'Completing...' : 'Complete Onboarding'}
               </Button>
             </CardFooter>
@@ -299,3 +339,5 @@ export default function OnboardingPage() {
     </div>
   );
 }
+
+    

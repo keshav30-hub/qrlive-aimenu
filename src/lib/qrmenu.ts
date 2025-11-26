@@ -15,6 +15,7 @@ import {
   getDoc,
   collectionGroup,
   FirestoreError,
+  deleteDoc,
 } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -55,7 +56,7 @@ export type Event = {
   active: boolean;
   organizers?: string[];
   terms?: string;
-  userId?: string; // Add userId to associate event with a user
+  userId?: string; 
 };
 
 export type RsvpData = {
@@ -126,7 +127,7 @@ export async function getBusinessDataBySlug(slug: string): Promise<{ businessDat
             businessData: {
                 id: userDoc.id,
                 name: userData.businessName || 'Unnamed Business',
-                logo: userData.logo || 'https://picsum.photos/seed/logo/100/100',
+                logo: userData.logo || `https://ui-avatars.com/api/?name=${(userData.businessName || 'B').charAt(0)}&color=7F9CF5&background=EBF4FF`,
                 businessId: userData.businessId,
                 googleReviewLink: userData.googleReviewLink,
             },
@@ -224,7 +225,6 @@ export async function submitRsvp(userId: string, eventId: string, rsvpData: Rsvp
               requestResourceData: dataToSave,
             });
             errorEmitter.emit('permission-error', permissionError);
-            // Re-throw the original error to allow the calling component to handle UI state
             throw serverError;
         });
 }
@@ -245,7 +245,6 @@ export async function submitFeedback(userId: string, feedback: { target: string;
         feedbackRef = collection(firestore, 'users', userId, 'feedback');
         await addDoc(feedbackRef, feedbackData);
 
-        // If rating is 1 or 2 stars, also add to urgent_feedback
         if (feedback.rating <= 2) {
             const urgentFeedbackRef = collection(firestore, 'users', userId, 'urgent_feedback');
             await addDoc(urgentFeedbackRef, {
@@ -256,7 +255,7 @@ export async function submitFeedback(userId: string, feedback: { target: string;
             });
         }
 
-    } else { // AIFA Feedback
+    } else {
         feedbackRef = collection(firestore, 'aifa_feedback');
         await addDoc(feedbackRef, { ...feedbackData });
     }
@@ -277,3 +276,5 @@ export async function submitServiceRequest(userId: string, table: string, reques
       pendingCalls: arrayUnion(newCall)
   }, { merge: true });
 }
+
+    
