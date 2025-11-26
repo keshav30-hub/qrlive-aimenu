@@ -3,15 +3,15 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Camera, Loader2 } from 'lucide-react';
+import { Camera, Loader2, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useFirebaseStorage } from '@/firebase/storage/use-firebase-storage';
-import { doc, addDoc, collection, serverTimestamp, setDoc } from 'firebase/firestore';
-import { addMinutes, parse, isAfter } from 'date-fns';
-import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
+import { doc, addDoc, collection, serverTimestamp, setDoc, query, where, Timestamp } from 'firebase/firestore';
+import { addMinutes, parse, isAfter, format } from 'date-fns';
+import { useFirebase, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 
 type StaffMember = {
   id: string;
@@ -24,6 +24,12 @@ type Shift = {
     name: string;
     from: string;
     to: string;
+};
+
+type AttendanceRecord = {
+    id: string;
+    status: 'Present' | 'Half Day' | 'Absent' | 'Paid Leave';
+    captureTime: Timestamp;
 };
 
 
@@ -44,7 +50,15 @@ export default function StaffAttendancePage() {
   const shiftDocRef = useMemoFirebase(() => (user && staffMember?.shiftId) ? doc(firestore, 'users', user.uid, 'shifts', staffMember.shiftId) : null, [firestore, user, staffMember]);
   const { data: shift, isLoading: shiftLoading } = useDoc<Shift>(shiftDocRef);
 
-  const isLoadingData = staffLoading || shiftLoading;
+  const todayDateString = format(new Date(), 'yyyy-MM-dd');
+  const attendanceRef = useMemoFirebase(() => (user && staffId) ? collection(firestore, 'users', user.uid, 'attendance') : null, [firestore, user, staffId]);
+  const todaysAttendanceQuery = useMemoFirebase(
+    () => attendanceRef ? query(attendanceRef, where('staffId', '==', staffId), where('date', '==', todayDateString)) : null,
+    [attendanceRef, staffId, todayDateString]
+  );
+  const { data: todaysAttendance, isLoading: attendanceLoading } = useCollection<AttendanceRecord>(todaysAttendanceQuery);
+
+  const isLoadingData = staffLoading || shiftLoading || attendanceLoading;
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -55,6 +69,9 @@ export default function StaffAttendancePage() {
   }, []);
 
   useEffect(() => {
+    // Only request camera if attendance is not yet marked
+    if (todaysAttendance && todaysAttendance.length > 0) return;
+
     const getCameraPermission = async () => {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         setHasCameraPermission(false);
@@ -72,7 +89,7 @@ export default function StaffAttendancePage() {
       }
     };
     getCameraPermission();
-  }, []);
+  }, [todaysAttendance]);
 
   const handleMarkAttendance = async () => {
     if (!videoRef.current || !canvasRef.current || !user || !staffMember || !shift) {
@@ -117,8 +134,8 @@ export default function StaffAttendancePage() {
             const graceTime = addMinutes(shiftStartTime, 15);
             let status = isAfter(currentDate, graceTime) ? 'Half Day' : 'Present';
 
-            const attendanceRef = collection(firestore, 'users', user.uid, 'attendance');
-            await addDoc(attendanceRef, {
+            const attendanceCollectionRef = collection(firestore, 'users', user.uid, 'attendance');
+            await addDoc(attendanceCollectionRef, {
                 staffId: staffId,
                 staffName: staffMember.name,
                 shiftName: shift.name,
@@ -127,12 +144,6 @@ export default function StaffAttendancePage() {
                 status: status,
                 date: dateString,
             });
-
-            // This is not part of the Staff entity in backend.json, so it won't persist. 
-            // It might be better to derive this status on the fly in the attendance list page.
-            // For now, I will leave it as is, but it's something to be aware of.
-            const staffRef = doc(firestore, 'users', user.uid, 'staff', staffId as string);
-            await setDoc(staffRef, { status: status }, { merge: true });
 
             toast({ title: 'Success!', description: `You have been marked as ${status}.`});
 
@@ -146,7 +157,7 @@ export default function StaffAttendancePage() {
   };
 
   if (isLoadingData) {
-    return <div className="flex h-screen items-center justify-center">Loading staff details...</div>;
+    return <div className="flex h-screen items-center justify-center">Verifying attendance status...</div>;
   }
 
   if (!staffMember) {
@@ -166,12 +177,15 @@ export default function StaffAttendancePage() {
 
   const staffName = staffMember?.name || 'Staff Member';
   const isDisabled = !hasCameraPermission || isProcessing || isUploading || !shift;
+  
+  const existingAttendance = todaysAttendance?.[0];
 
   return (
     <div className="flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="text-center text-2xl">Welcome, {staffName}</CardTitle>
+           {existingAttendance && <CardDescription className="text-center pt-2">Here is your attendance status for today.</CardDescription>}
         </CardHeader>
         <CardContent className="text-center space-y-4">
           <div className="text-4xl font-bold font-mono">
@@ -186,24 +200,42 @@ export default function StaffAttendancePage() {
             })}
           </div>
 
-          <div className="relative w-full aspect-video bg-black rounded-md overflow-hidden">
-            <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
-            <canvas ref={canvasRef} className="hidden" />
-          </div>
+        {existingAttendance ? (
+            <Card className="bg-green-50 dark:bg-green-900/20 text-green-900 dark:text-green-200 border-green-200 dark:border-green-800">
+                <CardContent className="pt-6 text-center space-y-3">
+                    <CheckCircle className="mx-auto h-16 w-16 text-green-500" />
+                    <h3 className="text-2xl font-semibold">Attendance Marked!</h3>
+                    <p>
+                        Your attendance for today has been marked as{' '}
+                        <span className="font-bold">{existingAttendance.status}</span>.
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                        Captured at: {existingAttendance.captureTime.toDate().toLocaleTimeString()}
+                    </p>
+                </CardContent>
+            </Card>
+        ) : (
+          <>
+            <div className="relative w-full aspect-video bg-black rounded-md overflow-hidden">
+                <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
+                <canvas ref={canvasRef} className="hidden" />
+            </div>
           
-          {!hasCameraPermission && (
-              <Alert variant="destructive">
-                  <AlertTitle>Camera Access Required</AlertTitle>
-                  <AlertDescription>
-                    Please allow camera access in your browser to use this feature.
-                  </AlertDescription>
-              </Alert>
-          )}
+            {!hasCameraPermission && (
+                <Alert variant="destructive">
+                    <AlertTitle>Camera Access Required</AlertTitle>
+                    <AlertDescription>
+                        Please allow camera access in your browser to use this feature.
+                    </AlertDescription>
+                </Alert>
+            )}
 
-          <Button size="lg" className="w-full h-12 text-lg" disabled={isDisabled} onClick={handleMarkAttendance}>
-            {isProcessing || isUploading ? <Loader2 className="mr-2 h-6 w-6 animate-spin" /> : <Camera className="mr-2 h-6 w-6" />}
-            {isProcessing ? 'Processing...' : isUploading ? 'Uploading...' : 'Capture Image'}
-          </Button>
+            <Button size="lg" className="w-full h-12 text-lg" disabled={isDisabled} onClick={handleMarkAttendance}>
+                {isProcessing || isUploading ? <Loader2 className="mr-2 h-6 w-6 animate-spin" /> : <Camera className="mr-2 h-6 w-6" />}
+                {isProcessing ? 'Processing...' : isUploading ? 'Uploading...' : 'Capture Image'}
+            </Button>
+          </>
+        )}
         </CardContent>
       </Card>
     </div>
