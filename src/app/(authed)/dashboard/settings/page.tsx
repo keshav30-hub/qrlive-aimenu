@@ -149,7 +149,11 @@ export default function SettingsPage() {
   };
 
   const handleDownloadAttendanceQr = () => {
-    const attendanceUrl = `${window.location.origin}/attendance`;
+    if (!businessInfo?.businessId) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Business ID not found.' });
+      return;
+    }
+    const attendanceUrl = `${window.location.origin}/attendance?businessId=${businessInfo.businessId}`;
     const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(
       attendanceUrl
     )}`;

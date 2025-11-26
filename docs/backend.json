@@ -103,10 +103,6 @@
         "shiftId": {
           "type": "string",
           "description": "The ID of the shift assigned to the staff member."
-        },
-        "status": {
-            "type": "string",
-            "description": "Live attendance status of the staff member."
         }
       },
       "required": ["id", "name"]

@@ -1,7 +1,8 @@
+
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Card,
   CardContent,
@@ -20,7 +21,15 @@ export default function AccessCodePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [businessId, setBusinessId] = useState('');
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
+
+  useEffect(() => {
+    const idFromQuery = searchParams.get('businessId');
+    if (idFromQuery) {
+      setBusinessId(idFromQuery);
+    }
+  }, [searchParams]);
 
   const handleNumpadClick = (value: string) => {
     if (accessCode.length < 6) {
@@ -76,19 +85,21 @@ export default function AccessCodePage() {
          <CardHeader className="text-center">
             <Fingerprint className="mx-auto h-12 w-12 text-primary" />
            <CardTitle className="text-2xl mt-4">Staff Attendance Login</CardTitle>
-           <CardDescription>Enter your Business ID and 6-digit access code.</CardDescription>
+           <CardDescription>Enter your 6-digit access code to continue.</CardDescription>
          </CardHeader>
          <CardContent className="space-y-4">
-           <div className="space-y-2">
-             <label htmlFor="business-id" className="text-sm font-medium">Business ID</label>
-             <Input 
-                id="business-id"
-                placeholder="Enter your Business ID"
-                value={businessId}
-                onChange={(e) => setBusinessId(e.target.value)}
-                disabled={isLoading}
-             />
+           { !searchParams.get('businessId') &&
+             <div className="space-y-2">
+                <label htmlFor="business-id" className="text-sm font-medium">Business ID</label>
+                <Input 
+                    id="business-id"
+                    placeholder="Enter your Business ID"
+                    value={businessId}
+                    onChange={(e) => setBusinessId(e.target.value)}
+                    disabled={isLoading}
+                />
            </div>
+           }
            <div className="space-y-2">
              <label htmlFor="access-code" className="text-sm font-medium">Access Code</label>
              <Input
