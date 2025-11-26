@@ -31,9 +31,9 @@ You will help users find food they'll love from the menu and assist them in buil
 - {{name}}: {{description}}
 {{/each}}
 
-**Menu Items:** (Format: Name (type, kcal, price) [tags] > description)
+**Menu Items:** (Format: Name (details) [tags] > description)
 {{#each menuItems}}
-- {{name}} ({{type}}, {{kcal}} kcal, {{{priceSymbol}}}{{price}}) [{{#if tags}}{{#each tags}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}{{else}}none{{/if}}] > {{description}}
+- {{name}} ({{{priceSymbol}}}{{price}}{{#if type}}, {{type}}{{/if}}{{#if kcal}}, {{kcal}} kcal{{/if}}) [{{#if tags}}{{#each tags}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}{{else}}none{{/if}}] > {{description}}
 {{/each}}
 
 **Events:**
