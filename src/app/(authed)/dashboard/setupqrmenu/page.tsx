@@ -32,11 +32,12 @@ import { Label } from '@/components/ui/label';
 import {
   Users,
   Smartphone,
-  BarChart,
+  BookCopy,
   PlusCircle,
   Download,
   ExternalLink,
   Trash2,
+  Table as TableIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useFirebase, useCollection, useDoc, useMemoFirebase } from '@/firebase';
@@ -52,18 +53,20 @@ type UserProfile = {
     businessId?: string;
 }
 
-const topPages = [
-  { name: 'N/A', visits: 0 },
-];
+type CategoryData = {
+  id: string;
+}
 
 export default function SetupQrMenuPage() {
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
   
   const tablesRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'tables') : null, [firestore, user]);
+  const categoriesRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'menuCategories') : null, [firestore, user]);
   const userRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
 
   const { data: tablesData, isLoading: tablesLoading } = useCollection<TableData>(tablesRef);
+  const { data: categoriesData, isLoading: categoriesLoading } = useCollection<CategoryData>(categoriesRef);
   const { data: userProfile } = useDoc<UserProfile>(userRef);
 
   const tables = tablesData || [];
@@ -110,14 +113,11 @@ export default function SetupQrMenuPage() {
       menuUrl
     )}`;
     
-    // To download the QR code, we can create a temporary link and click it.
-    const link = document.createElement('a');
-    link.href = qrApiUrl;
-    // We fetch the image and create a blob URL to enable cross-origin download.
     fetch(qrApiUrl)
       .then(response => response.blob())
       .then(blob => {
         const blobUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
         link.href = blobUrl;
         link.download = `${tableName.replace(/ /g, '_')}-qr-code.png`;
         document.body.appendChild(link);
@@ -126,8 +126,6 @@ export default function SetupQrMenuPage() {
         window.URL.revokeObjectURL(blobUrl);
       })
       .catch(() => {
-        // Fallback for if fetching fails (e.g., CORS issues in some environments)
-        // This will open the QR code in a new tab instead of downloading directly.
         window.open(qrApiUrl, '_blank');
       });
   };
@@ -140,40 +138,42 @@ export default function SetupQrMenuPage() {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Live Visitors</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Total Tables Created</CardTitle>
+            <TableIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
-            <p className="text-xs text-muted-foreground">Analytics data not available</p>
+            {tablesLoading ? (
+              <div className="h-8 w-12 bg-gray-200 animate-pulse rounded-md" />
+            ) : (
+              <div className="text-2xl font-bold">{tables.length}</div>
+            )}
+            <p className="text-xs text-muted-foreground">Number of unique QR codes generated.</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Unique Visitors (Today)
+              Total Menu Categories
             </CardTitle>
-            <Smartphone className="h-4 w-4 text-muted-foreground" />
+            <BookCopy className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
-            <p className="text-xs text-muted-foreground">Analytics data not available</p>
+             {categoriesLoading ? (
+              <div className="h-8 w-12 bg-gray-200 animate-pulse rounded-md" />
+            ) : (
+              <div className="text-2xl font-bold">{categoriesData?.length || 0}</div>
+            )}
+            <p className="text-xs text-muted-foreground">Number of categories in your menu.</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Top Visited Pages</CardTitle>
-            <BarChart className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Live Visitors</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-                {topPages.map(page => (
-                    <div key={page.name} className="flex justify-between items-center text-sm">
-                        <span className="font-medium text-muted-foreground truncate">{page.name}</span>
-                        <span className="font-bold">{page.visits}</span>
-                    </div>
-                ))}
-            </div>
+            <div className="text-2xl font-bold">0</div>
+            <p className="text-xs text-muted-foreground">Live analytics data not available</p>
           </CardContent>
         </Card>
       </div>

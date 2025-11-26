@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { useFirebase, useCollection, useDoc, useMemoFirebase } from '@/firebase';
 import { collection, doc, query, where } from 'firebase/firestore';
 import Link from 'next/link';
-import { ListTodo, Calendar, MessageSquare, ArrowRight } from 'lucide-react';
+import { ListTodo, Calendar, MessageSquare, ArrowRight, Utensils, Users } from 'lucide-react';
 import { useTaskNotification } from '@/context/TaskNotificationContext';
 
 type Event = {
@@ -24,6 +24,15 @@ type Event = {
 type Feedback = {
   id: string;
 };
+
+type MenuItem = {
+  id: string;
+};
+
+type StaffMember = {
+  id: string;
+};
+
 
 export default function DashboardPage() {
   const { firestore, user } = useFirebase();
@@ -39,6 +48,15 @@ export default function DashboardPage() {
   // Fetch feedback
   const feedbackRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'feedback') : null, [firestore, user]);
   const { data: feedback, isLoading: feedbackLoading } = useCollection<Feedback>(feedbackRef);
+
+  // Fetch menu items
+  const menuItemsRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'menuItems') : null, [firestore, user]);
+  const { data: menuItems, isLoading: menuItemsLoading } = useCollection<MenuItem>(menuItemsRef);
+
+  // Fetch staff
+  const staffRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'staff') : null, [firestore, user]);
+  const { data: staff, isLoading: staffLoading } = useCollection<StaffMember>(staffRef);
+
 
   const stats = [
     {
@@ -64,6 +82,22 @@ export default function DashboardPage() {
       href: '/dashboard/feedback',
       cta: 'View Feedback',
       loading: feedbackLoading,
+    },
+    {
+      title: 'Total Menu Items',
+      count: menuItems?.length || 0,
+      icon: <Utensils className="h-6 w-6 text-orange-500" />,
+      href: '/dashboard/menu',
+      cta: 'Manage Menu',
+      loading: menuItemsLoading,
+    },
+    {
+      title: 'Total Staff',
+      count: staff?.length || 0,
+      icon: <Users className="h-6 w-6 text-indigo-500" />,
+      href: '/dashboard/staff',
+      cta: 'Manage Staff',
+      loading: staffLoading,
     },
   ];
 
