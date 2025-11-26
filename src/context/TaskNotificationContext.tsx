@@ -14,7 +14,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { useFirebase, useCollection, useDoc, useMemoFirebase } from '@/firebase';
-import { collection, deleteDoc, doc } from 'firebase/firestore';
+import { collection, deleteDoc, doc, updateDoc, arrayRemove, arrayUnion } from 'firebase/firestore';
 
 
 type UrgentFeedback = {
@@ -115,7 +115,7 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
 
   // Effect to show notifications for new tasks
   useEffect(() => {
-    if (unattendedTasks && unattendedTasks.length > 0) {
+    if (tasksLiveRef && unattendedTasks && unattendedTasks.length > 0) {
       const latestTask = unattendedTasks[unattendedTasks.length - 1];
       if (!acknowledgedTaskTimes.has(latestTask.time)) {
         setNotification({
@@ -126,12 +126,23 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
             Request: latestTask.request,
             Time: new Date(latestTask.time).toLocaleTimeString(),
           },
-          onAcknowledge: () => router.push('/dashboard/tasks'),
+          onAcknowledge: async () => {
+             const updatedTask = { ...latestTask, status: 'attended', time: new Date().toISOString() };
+             try {
+                await updateDoc(tasksLiveRef, { 
+                    pendingCalls: arrayRemove(latestTask),
+                    attendedCalls: arrayUnion(updatedTask)
+                });
+                router.push('/dashboard/tasks');
+             } catch(e) {
+                console.error("Failed to acknowledge task", e);
+             }
+          },
         });
         setIsDialogOpen(true);
       }
     }
-  }, [unattendedTasks, router, acknowledgedTaskTimes]);
+  }, [tasksLiveRef, unattendedTasks, router, acknowledgedTaskTimes]);
   
   // Effect to show notifications for new urgent feedback
   useEffect(() => {
