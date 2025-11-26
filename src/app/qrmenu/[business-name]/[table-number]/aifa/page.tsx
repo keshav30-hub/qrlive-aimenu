@@ -123,19 +123,19 @@ const FeedbackForm = ({ target, onSubmit }: { target: string, onSubmit: (feedbac
                 ))}
             </div>
             <Textarea placeholder="Tell us more about your experience..." value={comment} onChange={(e) => setComment(e.target.value)} disabled={isSubmitting} />
-            <div className="space-y-2">
-                 <Label htmlFor="feedback-image" className={`cursor-pointer flex items-center justify-center gap-2 rounded-md border-2 border-dashed border-muted-foreground/50 p-4 text-muted-foreground ${!isSubmitting && 'hover:bg-accent'}`}>
-                    {imagePreview ? (
-                        <Image src={imagePreview} alt="Image preview" width={80} height={80} className="h-20 w-20 object-cover rounded-md" />
-                    ) : (
-                        <>
-                            <ImagePlus className="h-6 w-6" />
-                            <span>Upload Image (Optional)</span>
-                        </>
-                    )}
-                </Label>
-                <Input id="feedback-image" type="file" className="sr-only" accept="image/*" onChange={handleImageChange} disabled={isSubmitting} />
-            </div>
+            
+            <Label htmlFor="feedback-image" className={`cursor-pointer flex items-center justify-center gap-2 rounded-md border-2 border-dashed border-muted-foreground/50 p-4 text-muted-foreground ${!isSubmitting && 'hover:bg-accent'}`}>
+                {imagePreview ? (
+                    <Image src={imagePreview} alt="Image preview" width={80} height={80} className="h-20 w-20 object-cover rounded-md" />
+                ) : (
+                    <>
+                        <ImagePlus className="h-6 w-6" />
+                        <span>Upload Image (Optional)</span>
+                    </>
+                )}
+            </Label>
+            <Input id="feedback-image" type="file" className="sr-only" accept="image/*" onChange={handleImageChange} disabled={isSubmitting} />
+            
             <Button className="w-full" onClick={handleSubmit} disabled={isSubmitDisabled}>
                 {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Send className="mr-2 h-4 w-4" />}
                 {isSubmitting ? 'Submitting...' : 'Submit Feedback'}
@@ -477,5 +477,3 @@ export default function AIFAPage() {
         </div>
     );
 }
-
-    
