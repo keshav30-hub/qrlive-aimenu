@@ -21,17 +21,10 @@ import {
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { LockScreen } from '@/components/layout/lock-screen';
 
 type UserProfile = {
     onboarding: boolean;
     adminAccessCode?: string;
-};
-
-type StaffMember = {
-    id: string;
-    name: string;
-    accessCode?: string;
 };
 
 type Notification = {
@@ -46,29 +39,16 @@ function AuthRedirect({ children }: { children: React.ReactNode }) {
     const { user, isUserLoading } = useUser();
     const { firestore } = useFirebase();
     const router = useRouter();
-    const { toast } = useToast();
 
     const userDocRef = useMemoFirebase(() => {
         if (!user || !firestore) return null;
         return doc(firestore, 'users', user.uid);
     }, [user, firestore]);
     
-    const staffRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'staff') : null, [firestore, user]);
-    
     const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userDocRef);
-    const { data: staffList, isLoading: isStaffLoading } = useCollection<StaffMember>(staffRef);
 
-    const isDataLoading = isUserLoading || isProfileLoading || isStaffLoading;
+    const isDataLoading = isUserLoading || isProfileLoading;
     
-    const [isUnlocked, setIsUnlocked] = useState(() => {
-        if (typeof window !== 'undefined') {
-            return sessionStorage.getItem('dashboardUnlocked') === 'true';
-        }
-        return false;
-    });
-    
-    const anyAccessCodeExists = !!userProfile?.adminAccessCode || (staffList || []).some(s => s.accessCode);
-
     useEffect(() => {
         if (!isDataLoading) {
             if (!user) {
@@ -79,15 +59,7 @@ function AuthRedirect({ children }: { children: React.ReactNode }) {
         }
     }, [user, userProfile, isDataLoading, router]);
 
-    const handleUnlock = (role: string, name: string) => {
-        if (typeof window !== 'undefined') {
-            sessionStorage.setItem('dashboardUnlocked', 'true');
-        }
-        setIsUnlocked(true);
-        toast({ title: 'Dashboard Unlocked', description: `Welcome, ${name}!`});
-    };
-
-    const isLoading = isUserLoading || (user && (isProfileLoading || isStaffLoading));
+    const isLoading = isUserLoading || (user && isProfileLoading);
 
     if (isLoading) {
         return (
@@ -98,13 +70,6 @@ function AuthRedirect({ children }: { children: React.ReactNode }) {
     }
     
     if (user && userProfile?.onboarding) {
-        if (anyAccessCodeExists && !isUnlocked) {
-            return <LockScreen 
-                onUnlock={handleUnlock}
-                adminCode={userProfile.adminAccessCode}
-                staff={staffList || []}
-            />;
-        }
         return (
             <TaskNotificationProvider>
                 {children}
