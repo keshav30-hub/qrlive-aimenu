@@ -82,6 +82,64 @@
         "businessType"
       ]
     },
+    "Staff": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Staff",
+      "type": "object",
+      "description": "Represents a staff member of a business.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the staff member."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the staff member."
+        },
+        "accessCode": {
+          "type": "string",
+          "description": "A 6-digit PIN for the staff member to log in for attendance."
+        },
+        "shiftId": {
+          "type": "string",
+          "description": "The ID of the shift assigned to the staff member."
+        },
+        "status": {
+            "type": "string",
+            "description": "Live attendance status of the staff member."
+        }
+      },
+      "required": ["id", "name"]
+    },
+    "Shift": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Shift",
+        "type": "object",
+        "description": "Represents a work shift for staff.",
+        "properties": {
+            "id": { "type": "string" },
+            "name": { "type": "string" },
+            "from": { "type": "string", "format": "time" },
+            "to": { "type": "string", "format": "time" }
+        },
+        "required": ["id", "name", "from", "to"]
+    },
+     "Attendance": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Attendance",
+      "type": "object",
+      "description": "Represents a single attendance record for a staff member.",
+      "properties": {
+        "id": { "type": "string" },
+        "staffId": { "type": "string" },
+        "shiftName": { "type": "string" },
+        "captureTime": { "type": "string", "format": "date-time" },
+        "imageUrl": { "type": "string", "format": "uri" },
+        "status": { "type": "string", "enum": ["Present", "Half Day", "Absent", "Paid Leave"] },
+        "date": { "type": "string", "format": "date" }
+      },
+      "required": ["id", "staffId", "captureTime", "status", "date"]
+    },
     "Device": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Device",
@@ -583,6 +641,24 @@
         "$ref": "#/entities/User"
       },
       "description": "Stores user profile data."
+    },
+     "/users/{userId}/staff/{staffId}": {
+      "schema": {
+        "$ref": "#/entities/Staff"
+      },
+      "description": "Stores staff information for a business owner."
+    },
+    "/users/{userId}/shifts/{shiftId}": {
+      "schema": {
+        "$ref": "#/entities/Shift"
+      },
+      "description": "Stores shift schedules for a business."
+    },
+    "/users/{userId}/attendance/{attendanceId}": {
+      "schema": {
+        "$ref": "#/entities/Attendance"
+      },
+      "description": "Stores attendance records for staff members."
     },
     "/users/{userId}/devices/{deviceId}": {
       "schema": {

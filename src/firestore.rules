@@ -104,15 +104,24 @@ service cloud.firestore {
       allow update, delete: if false;
     }
     
+    // Public attendance marking rules
+    match /users/{userId}/staff/{staffId} {
+      // Allow public read only for accessCode validation. Deny all other fields.
+      allow get: if request.auth == null && resource.data.keys().hasOnly(['accessCode', 'name', 'shiftId']);
+      // Allow owner to manage staff fully
+      allow read, write: if isOwner(userId);
+      // Allow public update only for live status from attendance page
+      allow update: if request.auth == null && request.resource.data.keys().hasOnly(['status']);
+    }
+
     match /users/{userId}/attendance/{attendanceId} {
-        allow read: if isOwner(userId);
-        allow create: if true;
-        allow update, delete: if isOwner(userId);
+        allow create: if true; // Allow anyone to create an attendance record
+        allow read, update, delete: if isOwner(userId);
     }
     
     match /users/{userId}/shifts/{shiftId} {
-      allow read: if true;
-      allow write: if isOwner(userId);
+      allow get: if true; // Allow public read for shift details
+      allow list, write: if isOwner(userId);
     }
     
     match /users/{userId}/{collection}/{docId=**} {

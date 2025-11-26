@@ -69,6 +69,19 @@ export type BusinessData = {
     googleReviewLink?: string;
 };
 
+export type Shift = {
+    id: string;
+    name: string;
+    from: string;
+    to: string;
+};
+
+export type StaffMemberPublic = {
+    id: string;
+    name: string;
+    shiftId?: string;
+};
+
 // This function ensures we always get a valid Firestore instance.
 async function getFirestoreInstance() {
     const { firestore } = initializeFirebase();
@@ -254,4 +267,69 @@ export async function submitServiceRequest(userId: string, table: string, reques
   await setDoc(tasksLiveRef, {
       pendingCalls: arrayUnion(newCall)
   }, { merge: true });
+}
+
+export async function getStaffByAccessCode(businessId: string, accessCode: string): Promise<{ staffMember: StaffMemberPublic | null, userId: string | null }> {
+    const firestore = await getFirestoreInstance();
+    // First, find the user (business owner) by their businessId
+    const usersRef = collection(firestore, 'users');
+    const userQuery = query(usersRef, where('businessId', '==', businessId), limit(1));
+    const userSnapshot = await getDocs(userQuery);
+
+    if (userSnapshot.empty) {
+        // As a fallback, check if the businessId is the actual userId
+        const userDoc = await getDoc(doc(usersRef, businessId));
+        if (!userDoc.exists()) {
+           return { staffMember: null, userId: null };
+        }
+        const userId = userDoc.id;
+        const staffRef = collection(firestore, 'users', userId, 'staff');
+        const staffQuery = query(staffRef, where('accessCode', '==', accessCode), limit(1));
+        const staffSnapshot = await getDocs(staffQuery);
+
+        if (staffSnapshot.empty) {
+            return { staffMember: null, userId: null };
+        }
+        const staffDoc = staffSnapshot.docs[0];
+        return {
+            staffMember: { id: staffDoc.id, ...staffDoc.data() } as StaffMemberPublic,
+            userId: userId,
+        };
+    }
+    
+    const userId = userSnapshot.docs[0].id;
+    const staffRef = collection(firestore, 'users', userId, 'staff');
+    const staffQuery = query(staffRef, where('accessCode', '==', accessCode), limit(1));
+    const staffSnapshot = await getDocs(staffQuery);
+
+    if (staffSnapshot.empty) {
+        return { staffMember: null, userId: null };
+    }
+
+    const staffDoc = staffSnapshot.docs[0];
+    return {
+        staffMember: { id: staffDoc.id, ...staffDoc.data() } as StaffMemberPublic,
+        userId: userId,
+    };
+}
+
+
+export async function getStaffMember(userId: string, staffId: string): Promise<StaffMemberPublic | null> {
+    const firestore = await getFirestoreInstance();
+    const staffDocRef = doc(firestore, 'users', userId, 'staff', staffId);
+    const docSnap = await getDoc(staffDocRef);
+    if (docSnap.exists()) {
+        return { id: docSnap.id, ...docSnap.data() } as StaffMemberPublic;
+    }
+    return null;
+}
+
+export async function getShift(userId: string, shiftId: string): Promise<Shift | null> {
+    const firestore = await getFirestoreInstance();
+    const shiftDocRef = doc(firestore, 'users', userId, 'shifts', shiftId);
+    const docSnap = await getDoc(shiftDocRef);
+    if (docSnap.exists()) {
+        return { id: docSnap.id, ...docSnap.data() } as Shift;
+    }
+    return null;
 }

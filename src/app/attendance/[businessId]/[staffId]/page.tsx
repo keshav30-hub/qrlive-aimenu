@@ -1,76 +1,106 @@
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Camera, Loader2 } from 'lucide-react';
-import { useFirebase, useMemoFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useFirebaseStorage } from '@/firebase/storage/use-firebase-storage';
-import { doc, getDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, addDoc, collection, serverTimestamp, setDoc } from 'firebase/firestore';
 import { addMinutes, parse, isAfter } from 'date-fns';
+import { getStaffMember, getShift, type Shift, type StaffMemberPublic } from '@/lib/qrmenu';
+import { initializeFirebase } from '@/firebase';
 
-type Shift = {
-    id: string;
-    name: string;
-    from: string;
-    to: string;
-};
 
-type StaffMember = {
-    id: string;
-    shiftId: string;
-};
-
-export default function AttendancePage() {
-  const { firestore, user } = useFirebase();
+export default function StaffAttendancePage() {
+  const params = useParams();
+  const { staffId, businessId } = params;
   const { toast } = useToast();
   const { uploadFile, isLoading: isUploading } = useFirebaseStorage();
+  
   const [currentTime, setCurrentTime] = useState(new Date());
   const [hasCameraPermission, setHasCameraPermission] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [staffMember, setStaffMember] = useState<StaffMemberPublic | null>(null);
+  const [shift, setShift] = useState<Shift | null>(null);
+  const [isLoadingData, setIsLoadingData] = useState(true);
+  const [userId, setUserId] = useState<string | null>(null);
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
+  useEffect(() => {
     const getCameraPermission = async () => {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        console.error('Camera API is not supported by this browser.');
         setHasCameraPermission(false);
         return;
       }
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
         setHasCameraPermission(true);
-
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
         }
       } catch (error) {
         console.error('Error accessing camera:', error);
         setHasCameraPermission(false);
-        toast({
-          variant: 'destructive',
-          title: 'Camera Access Denied',
-          description: 'Please enable camera permissions in your browser settings to use this app.',
-        });
       }
     };
-
     getCameraPermission();
+  }, []);
 
-    return () => clearInterval(timer);
-  }, [toast]);
+  useEffect(() => {
+    async function fetchData() {
+        // Basic validation
+        if (typeof staffId !== 'string' || typeof businessId !== 'string') {
+            toast({ variant: 'destructive', title: 'Error', description: 'Invalid URL.' });
+            setIsLoadingData(false);
+            return;
+        }
+
+        // Security check: ensure session data matches URL params
+        const sessionStaffId = sessionStorage.getItem('attendanceStaffId');
+        const sessionUserId = sessionStorage.getItem('attendanceUserId');
+
+        if (staffId !== sessionStaffId || !sessionUserId) {
+            toast({ variant: 'destructive', title: 'Unauthorized', description: 'Access denied.' });
+            setIsLoadingData(false);
+            // Optionally redirect to login
+            // router.push('/attendance');
+            return;
+        }
+        setUserId(sessionUserId);
+
+        setIsLoadingData(true);
+        try {
+            const staffData = await getStaffMember(sessionUserId, staffId);
+            setStaffMember(staffData);
+
+            if (staffData?.shiftId) {
+                const shiftData = await getShift(sessionUserId, staffData.shiftId);
+                setShift(shiftData);
+            }
+        } catch (error) {
+            console.error(error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not load staff details.' });
+        } finally {
+            setIsLoadingData(false);
+        }
+    }
+    fetchData();
+  }, [staffId, businessId, toast]);
+
 
   const handleMarkAttendance = async () => {
-    if (!videoRef.current || !canvasRef.current || !user || !firestore) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Component not ready or user not logged in.' });
+    if (!videoRef.current || !canvasRef.current || !userId || !staffMember || !shift) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Component not ready or staff data missing.' });
         return;
     }
     setIsProcessing(true);
@@ -96,9 +126,10 @@ export default function AttendancePage() {
         }
 
         try {
+            const { firestore } = initializeFirebase();
             const currentDate = new Date();
             const dateString = currentDate.toISOString().split('T')[0];
-            const storagePath = `users/${user.uid}/attendance/${user.uid}/${dateString}.jpg`;
+            const storagePath = `users/${userId}/attendance/${staffId}/${dateString}.jpg`;
             
             const uploadResult = await uploadFile(storagePath, blob as File);
             if (!uploadResult) {
@@ -107,51 +138,32 @@ export default function AttendancePage() {
                 return;
             }
 
-            // Fetch staff and shift details
-            const staffRef = doc(firestore, 'users', user.uid, 'staff', user.uid);
-            const staffSnap = await getDoc(staffRef);
-
-            if (!staffSnap.exists()) {
-                throw new Error("Staff details not found.");
-            }
-            const staffData = staffSnap.data() as StaffMember;
-            const shiftId = staffData.shiftId;
-            if (!shiftId) {
-                throw new Error("No shift assigned to this staff member.");
-            }
-
-            const shiftRef = doc(firestore, 'users', user.uid, 'shifts', shiftId);
-            const shiftSnap = await getDoc(shiftRef);
-
-            if (!shiftSnap.exists()) {
-                throw new Error("Shift details not found.");
-            }
-            const shiftData = shiftSnap.data() as Shift;
-
             // Calculate attendance status
-            const shiftStartTime = parse(shiftData.from, 'HH:mm', new Date());
+            const shiftStartTime = parse(shift.from, 'HH:mm', new Date());
             const graceTime = addMinutes(shiftStartTime, 15);
             
-            let status = 'Absent';
-            if (isAfter(currentDate, graceTime)) {
-                status = 'Half Day';
-            } else {
-                status = 'Present';
-            }
+            let status = isAfter(currentDate, graceTime) ? 'Half Day' : 'Present';
 
             // Save attendance record
-            const attendanceRef = collection(firestore, 'users', user.uid, 'attendance');
+            const attendanceRef = collection(firestore, 'users', userId, 'attendance');
             await addDoc(attendanceRef, {
-                staffId: user.uid,
-                staffName: user.displayName,
-                shiftName: shiftData.name,
+                staffId: staffId,
+                staffName: staffMember.name,
+                shiftName: shift.name,
                 captureTime: serverTimestamp(),
                 imageUrl: uploadResult.downloadURL,
                 status: status,
                 date: dateString,
             });
 
+            // Update staff member status (optional, but good for live dashboards)
+            const staffRef = doc(firestore, 'users', userId, 'staff', staffId as string);
+            await setDoc(staffRef, { status: status }, { merge: true });
+
             toast({ title: 'Success!', description: `You have been marked as ${status}.`});
+            // Clear session storage after successful attendance
+            sessionStorage.removeItem('attendanceStaffId');
+            sessionStorage.removeItem('attendanceUserId');
 
         } catch (e: any) {
             console.error('Error marking attendance:', e);
@@ -162,11 +174,19 @@ export default function AttendancePage() {
     }, 'image/jpeg', 0.9);
   };
 
-  const staffName = user?.displayName || 'Staff Member';
+  if (isLoadingData) {
+    return <div className="flex h-screen items-center justify-center">Loading staff details...</div>;
+  }
+
+  if (!staffMember) {
+     return <div className="flex h-screen items-center justify-center">Could not verify staff details. Please go back and try again.</div>;
+  }
+
+  const staffName = staffMember?.name || 'Staff Member';
   const isDisabled = !hasCameraPermission || isProcessing || isUploading;
 
   return (
-    <div className="flex items-center justify-center min-h-full">
+    <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="text-center text-2xl">Welcome, {staffName}</CardTitle>
