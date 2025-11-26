@@ -20,7 +20,7 @@ export function PlacesAutocomplete({
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
 
   useEffect(() => {
-    const apiKey = process.env.NEXT_PUBLIC_PLACES_API_KEY;
+    const apiKey = process.env.GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_PLACES_API_KEY;
     if (!apiKey) {
       console.error('Google Places API key is missing.');
       return;
