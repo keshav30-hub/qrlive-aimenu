@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -13,6 +14,7 @@ import {
   Carousel,
   CarouselContent,
   CarouselItem,
+  type CarouselApi,
 } from '@/components/ui/carousel';
 import {
   Sheet,
@@ -47,10 +49,12 @@ import {
   SprayCan,
   Loader2,
 } from 'lucide-react';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { getBusinessDataBySlug, getEvents, getMenuData, type BusinessData, type Event, type Category, submitServiceRequest } from '@/lib/qrmenu';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import Autoplay from "embla-carousel-autoplay";
+import { cn } from '@/lib/utils';
 
 
 const serviceRequests = [
@@ -77,6 +81,25 @@ export default function QrMenuPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRequestingService, setIsRequestingService] = useState(false);
   const [isServiceRequestDialogOpen, setIsServiceRequestDialogOpen] = useState(false);
+
+  const [carouselApi, setCarouselApi] = useState<CarouselApi>()
+  const [currentSlide, setCurrentSlide] = useState(0)
+  
+  const autoplayPlugin = useRef(
+    Autoplay({ delay: 3000, stopOnInteraction: true })
+  );
+
+  useEffect(() => {
+    if (!carouselApi) {
+      return
+    }
+ 
+    setCurrentSlide(carouselApi.selectedScrollSnap())
+ 
+    carouselApi.on("select", () => {
+      setCurrentSlide(carouselApi.selectedScrollSnap())
+    })
+  }, [carouselApi])
 
   useEffect(() => {
     async function fetchData() {
@@ -234,11 +257,15 @@ export default function QrMenuPage() {
         <ScrollArea className="flex-1 min-h-0">
           {(events || []).length > 0 && <section className="px-4 pb-4">
             <Carousel
+              setApi={setCarouselApi}
+              plugins={[autoplayPlugin.current]}
               opts={{
                 align: 'start',
                 loop: true,
               }}
               className="w-full"
+              onMouseEnter={autoplayPlugin.current.stop}
+              onMouseLeave={autoplayPlugin.current.reset}
             >
               <CarouselContent>
                 {events.map((event) => (
@@ -262,6 +289,18 @@ export default function QrMenuPage() {
                 ))}
               </CarouselContent>
             </Carousel>
+             <div className="flex justify-center gap-2 mt-2">
+                {events.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => carouselApi?.scrollTo(index)}
+                    className={cn(
+                      'h-2 w-2 rounded-full transition-all',
+                      currentSlide === index ? 'w-4 bg-primary' : 'bg-primary/50'
+                    )}
+                  />
+                ))}
+            </div>
           </section>}
 
           <main className="p-4">
@@ -397,5 +436,3 @@ export default function QrMenuPage() {
     </div>
   );
 }
-
-    
