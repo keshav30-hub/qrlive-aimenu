@@ -247,6 +247,10 @@ export default function StaffPage() {
 
   const handleSaveStaff = async () => {
     if (!staffRef) return;
+    if (!newStaff.name) {
+        toast({ variant: 'destructive', title: 'Validation Error', description: 'Staff name is required.' });
+        return;
+    }
 
     if (newStaff.accessCode) {
         if (!/^\d{6}$/.test(newStaff.accessCode)) {
@@ -262,13 +266,23 @@ export default function StaffPage() {
     setAccessCodeError(null);
     
     setIsSavingStaff(true);
+
+    // Prepare data by removing the 'id' field for saving.
+    const dataToSave: Omit<Partial<StaffMember>, 'id'> = {
+        name: newStaff.name,
+        accessCode: newStaff.accessCode || '',
+        shiftId: newStaff.shiftId || '',
+        active: newStaff.id ? newStaff.active : true, // Default to active for new staff
+        avatar: newStaff.avatar || `https://i.pravatar.cc/150?u=${Date.now()}`
+    };
+
     try {
       if (newStaff.id) { // Editing existing staff
         const staffDoc = doc(staffRef, newStaff.id);
-        await updateDoc(staffDoc, { ...newStaff, id: newStaff.id });
+        await updateDoc(staffDoc, dataToSave);
         toast({ title: 'Success', description: 'Staff member updated.'});
       } else { // Adding new staff
-        await addDoc(staffRef, { ...newStaff, active: true, avatar: `https://i.pravatar.cc/150?u=${Date.now()}` });
+        await addDoc(staffRef, dataToSave);
         toast({ title: 'Success', description: 'Staff member added.'});
       }
       setIsSheetOpen(false);
