@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useRef } from 'react';
@@ -43,9 +44,20 @@ export function PlacesAutocomplete({
       });
     };
     
-    if (document.getElementById(scriptId) && window.google?.maps?.places) {
+    if (window.google && window.google.maps && window.google.maps.places) {
       initializeAutocomplete();
       return;
+    }
+    
+    if (document.getElementById(scriptId)) {
+        // Script is already in the DOM, wait for it to load.
+        const existingScript = document.getElementById(scriptId) as HTMLScriptElement;
+        const handleLoad = () => {
+          initializeAutocomplete();
+          existingScript.removeEventListener('load', handleLoad);
+        };
+        existingScript.addEventListener('load', handleLoad);
+        return;
     }
 
     const script = document.createElement('script');
