@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar } from "@/components/ui/avatar";
 import { useRouter, useParams } from "next/navigation";
-import { ChevronLeft, Send, Sparkles, ImagePlus, Loader2, Trash2, ExternalLink } from "lucide-react";
+import { ChevronLeft, Send, Sparkles, ImagePlus, Loader2, Trash2, ExternalLink, Instagram } from "lucide-react";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import Image from "next/image";
@@ -150,6 +150,17 @@ const GoogleReviewButton = ({ href }: { href: string }) => (
             <Button variant="outline" className="w-full">
                 <ExternalLink className="mr-2 h-4 w-4" />
                 Leave a Google Review
+            </Button>
+        </Link>
+    </div>
+);
+
+const InstagramButton = ({ href }: { href: string }) => (
+    <div className="py-2">
+        <Link href={href} target="_blank" rel="noopener noreferrer">
+            <Button variant="outline" className="w-full bg-[#E1306C] text-white hover:bg-[#c12a5c] hover:text-white">
+                <Instagram className="mr-2 h-4 w-4" />
+                Follow us on Instagram
             </Button>
         </Link>
     </div>
@@ -330,6 +341,12 @@ export default function AIFAPage() {
             addMessage('aifa', cleanResponse);
             if (businessData?.googleReviewLink) {
                  addMessage('aifa', <GoogleReviewButton href={businessData.googleReviewLink} />);
+            }
+        } else if (response.includes('[INSTAGRAM_LINK]')) {
+            const cleanResponse = response.replace('[INSTAGRAM_LINK]', '').trim();
+            addMessage('aifa', cleanResponse);
+            if (businessData?.instagramLink) {
+                addMessage('aifa', <InstagramButton href={businessData.instagramLink} />);
             }
         }
         else {
