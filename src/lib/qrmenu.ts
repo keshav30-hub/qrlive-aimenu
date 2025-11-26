@@ -96,7 +96,7 @@ export async function getBusinessDataBySlug(slug: string): Promise<{ businessDat
     const firestore = await getFirestoreInstance();
     const usersRef = collection(firestore, 'users');
     
-    // Create queries to check against businessName, businessId, and finally userId
+    // Create queries to check against businessName, and businessId
     const queries = [
       query(usersRef, where('businessName', '==', slug.replace(/-/g, ' ')), limit(1)),
       query(usersRef, where('businessId', '==', slug), limit(1)),
@@ -121,25 +121,9 @@ export async function getBusinessDataBySlug(slug: string): Promise<{ businessDat
                 };
             }
         }
-
-        // If no match, try treating the slug as a user ID as a fallback
-        const userDocById = await getDoc(doc(firestore, 'users', slug));
-        if (userDocById.exists()) {
-            const userData = userDocById.data();
-            return {
-                businessData: {
-                    id: userDocById.id,
-                    name: userData.businessName || 'Unnamed Business',
-                    logo: userData.logo || 'https://picsum.photos/seed/logo/100/100',
-                    businessId: userData.businessId,
-                    googleReviewLink: userData.googleReviewLink,
-                },
-                userId: userDocById.id,
-            };
-        }
-
+        
         // If nothing worked, no business found
-        console.warn(`No business found for slug, business ID, or user ID: ${slug}`);
+        console.warn(`No business found for slug or business ID: ${slug}`);
         return { businessData: null, userId: null };
 
     } catch (error) {
@@ -277,24 +261,7 @@ export async function getStaffByAccessCode(businessId: string, accessCode: strin
     const userSnapshot = await getDocs(userQuery);
 
     if (userSnapshot.empty) {
-        // As a fallback, check if the businessId is the actual userId
-        const userDoc = await getDoc(doc(usersRef, businessId));
-        if (!userDoc.exists()) {
-           return { staffMember: null, userId: null };
-        }
-        const userId = userDoc.id;
-        const staffRef = collection(firestore, 'users', userId, 'staff');
-        const staffQuery = query(staffRef, where('accessCode', '==', accessCode), limit(1));
-        const staffSnapshot = await getDocs(staffQuery);
-
-        if (staffSnapshot.empty) {
-            return { staffMember: null, userId: null };
-        }
-        const staffDoc = staffSnapshot.docs[0];
-        return {
-            staffMember: { id: staffDoc.id, ...staffDoc.data() } as StaffMemberPublic,
-            userId: userId,
-        };
+       return { staffMember: null, userId: null };
     }
     
     const userId = userSnapshot.docs[0].id;
