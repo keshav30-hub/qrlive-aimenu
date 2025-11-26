@@ -13,7 +13,6 @@ import {
   Users,
   Volume2,
   VolumeX,
-  Fingerprint,
 } from 'lucide-react';
 import Link from 'next/link';
 import {
@@ -100,14 +99,6 @@ export function AppSidebar() {
               <SidebarMenuButton>
                 <Users />
                 <span>Staff</span>
-              </SidebarMenuButton>
-            </Link>
-          </SidebarMenuItem>
-           <SidebarMenuItem>
-            <Link href="/dashboard/attendance">
-              <SidebarMenuButton>
-                <Fingerprint />
-                <span>Attendance</span>
               </SidebarMenuButton>
             </Link>
           </SidebarMenuItem>
