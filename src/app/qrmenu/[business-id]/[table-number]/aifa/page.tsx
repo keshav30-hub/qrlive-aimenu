@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from "@/components/ui/button";
@@ -360,13 +361,19 @@ export default function AIFAPage() {
                 addMessage('aifa', <div><p>I appreciate you taking the time! Who is this feedback for?</p><FeedbackTargetSelection onSelect={handleFeedbackTarget} /></div>);
             }
             else {
+                 const eventsForAI = activeEvents.map(e => ({
+                    ...e,
+                    datetime: new Date(e.datetime).toLocaleString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                 }));
+
                  const flowInput: AIFALowInput = {
                     businessName: businessData.name,
                     priceSymbol: format(0).replace(/[\d.,\s]/g, ''),
                     googleReviewLink: businessData.googleReviewLink,
+                    instagramLink: businessData.instagramLink,
                     menuCategories: processDataForServerAction(menuCategories).map((c: any) => ({name: c.name, description: c.description})),
                     menuItems: processDataForServerAction(menuItems).map((i: any) => ({...i, price: (i.mrp || i.price || '0').toString(), tags: i.tags || [] })),
-                    events: processDataForServerAction(events),
+                    events: processDataForServerAction(eventsForAI),
                     history: historyForAI,
                     prompt,
                 };
@@ -476,5 +483,3 @@ export default function AIFAPage() {
         </div>
     );
 }
-
-    

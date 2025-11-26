@@ -26,6 +26,9 @@ export const EventSchema = z.object({
   id: z.string(),
   name: z.string(),
   description: z.string(),
+  datetime: z.string(),
+  organizers: z.array(z.string()).optional(),
+  terms: z.string().optional(),
   active: z.boolean(),
 });
 
@@ -33,6 +36,7 @@ export const AIFALowInputSchema = z.object({
   businessName: z.string(),
   priceSymbol: z.string().default('$'),
   googleReviewLink: z.string().optional().nullable(),
+  instagramLink: z.string().optional().nullable(),
   menuCategories: z.array(MenuCategorySchema),
   menuItems: z.array(MenuItemSchema),
   events: z.array(EventSchema),
