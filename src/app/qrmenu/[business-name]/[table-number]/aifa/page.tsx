@@ -52,7 +52,7 @@ const EventCard = ({ event }: { event: Event }) => (
             <h4 className="font-semibold">{event.name}</h4>
             <p className="text-sm text-muted-foreground line-clamp-2">{event.description}</p>
             <div className="flex gap-2 mt-3">
-                <Link href={`/events/${event.id}`} className="flex-1">
+                <Link href={`/qrmenu/events/${event.id}`} className="flex-1">
                     <Button className="w-full">
                          View Details
                     </Button>
