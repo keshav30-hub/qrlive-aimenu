@@ -160,7 +160,7 @@ const processDataForServerAction = (data: any) => {
 export default function AIFAPage() {
     const router = useRouter();
     const params = useParams();
-    const businessSlug = params['business-name'];
+    const businessId = params['business-name'];
     const tableNumber = params['table-number'] as string;
     const { format } = useCurrency();
     const { toast } = useToast();
@@ -197,10 +197,10 @@ export default function AIFAPage() {
 
     useEffect(() => {
       async function fetchData() {
-        if (typeof businessSlug !== 'string') return;
+        if (typeof businessId !== 'string') return;
         
         setIsLoading(true);
-        const { businessData: bd, userId } = await getBusinessDataBySlug(businessSlug);
+        const { businessData: bd, userId } = await getBusinessDataBySlug(businessId);
         
         if (bd && userId) {
           setBusinessData(bd);
@@ -216,7 +216,7 @@ export default function AIFAPage() {
       }
   
       fetchData();
-    }, [businessSlug]);
+    }, [businessId]);
 
     useEffect(() => {
         if (isLoading) return;
@@ -347,7 +347,7 @@ export default function AIFAPage() {
                     priceSymbol: format(0).replace(/[\d.,\s]/g, ''),
                     googleReviewLink: businessData.googleReviewLink,
                     menuCategories: processDataForServerAction(menuCategories).map((c: any) => ({name: c.name, description: c.description})),
-                    menuItems: processDataForServerAction(menuItems).map((i: any) => ({...i, price: (i.mrp || '0').toString(), tags: i.tags || [] })),
+                    menuItems: processDataForServerAction(menuItems).map((i: any) => ({...i, price: (i.mrp || i.price || '0').toString(), tags: i.tags || [] })),
                     events: processDataForServerAction(events),
                     history: historyForAI,
                     prompt,

@@ -64,7 +64,7 @@ export default function CategoryMenuPage() {
   const router = useRouter();
   const params = useParams();
   const { toast } = useToast();
-  const { 'business-name': businessSlug, 'table-number': tableNumber, category: categorySlug } = params;
+  const { 'business-name': businessId, 'table-number': tableNumber, category: categorySlug } = params;
   const categoryName = typeof categorySlug === 'string' ? categorySlug.replace(/-/g, ' ') : '';
   
   const { format } = useCurrency();
@@ -80,8 +80,8 @@ export default function CategoryMenuPage() {
 
   useEffect(() => {
     async function fetchData() {
-      if (typeof businessSlug !== 'string') return;
-      const { userId: fetchedUserId } = await getBusinessDataBySlug(businessSlug as string);
+      if (typeof businessId !== 'string') return;
+      const { userId: fetchedUserId } = await getBusinessDataBySlug(businessId as string);
       if (fetchedUserId) {
         setUserId(fetchedUserId);
         const { items } = await getMenuData(fetchedUserId);
@@ -90,7 +90,7 @@ export default function CategoryMenuPage() {
       setIsLoading(false);
     }
     fetchData();
-  }, [businessSlug]);
+  }, [businessId]);
 
   const handleServiceRequest = async (requestType: string) => {
     if (!userId || typeof tableNumber !== 'string') return;
@@ -131,7 +131,7 @@ export default function CategoryMenuPage() {
     console.log(`Added ${item.name} to cart.`);
   };
 
-  const aifaUrl = `/qrmenu/${businessSlug}/${tableNumber}/aifa`;
+  const aifaUrl = `/qrmenu/${businessId}/${tableNumber}/aifa`;
 
   if (isLoading) {
     return <div className="flex h-screen items-center justify-center">Loading dishes...</div>
@@ -234,7 +234,7 @@ export default function CategoryMenuPage() {
                     </div>
                     <div className="flex justify-between items-end mt-2">
                       <span className="font-bold text-lg">
-                        {format(Number(item.price))}
+                        {format(Number(item.mrp || item.price))}
                       </span>
                       <Button
                         size="sm"

@@ -64,7 +64,7 @@ const serviceRequests = [
 
 export default function QrMenuPage() {
   const params = useParams();
-  const { 'business-name': businessSlug, 'table-number': tableNumber } = params;
+  const { 'business-name': businessId, 'table-number': tableNumber } = params;
   const { format } = useCurrency();
   const { toast } = useToast();
   const router = useRouter();
@@ -81,13 +81,13 @@ export default function QrMenuPage() {
 
   useEffect(() => {
     async function fetchData() {
-      if (typeof businessSlug !== 'string') {
+      if (typeof businessId !== 'string') {
         setIsLoading(false);
         return;
       }
       
       setIsLoading(true);
-      const { businessData: bd, userId: fetchedUserId } = await getBusinessDataBySlug(businessSlug as string);
+      const { businessData: bd, userId: fetchedUserId } = await getBusinessDataBySlug(businessId as string);
       
       if (bd && fetchedUserId) {
         setBusinessData(bd);
@@ -103,13 +103,13 @@ export default function QrMenuPage() {
     }
 
     fetchData();
-  }, [businessSlug]);
+  }, [businessId]);
 
   const handleServiceRequest = async (requestType: string) => {
-    if (!userId || typeof tableNumber !== 'string' || typeof businessSlug !== 'string') return;
+    if (!userId || typeof tableNumber !== 'string' || typeof businessId !== 'string') return;
 
     const cooldownMinutes = 5;
-    const cooldownKey = `serviceRequestCooldown_${businessSlug}_${tableNumber}`;
+    const cooldownKey = `serviceRequestCooldown_${businessId}_${tableNumber}`;
     const lastRequestTime = localStorage.getItem(cooldownKey);
     const now = new Date().getTime();
 
@@ -177,7 +177,7 @@ export default function QrMenuPage() {
     0
   );
   
-  const aifaUrl = `/qrmenu/${businessData?.businessId || businessSlug}/${tableNumber}/aifa`;
+  const aifaUrl = `/qrmenu/${businessId}/${tableNumber}/aifa`;
 
   if (isLoading) {
     return <div className="flex h-screen items-center justify-center">Loading Menu...</div>
@@ -268,7 +268,7 @@ export default function QrMenuPage() {
           <main className="p-4">
             <div className="grid grid-cols-2 gap-4">
               {(categories || []).map((category) => (
-                  <Link key={category.name} href={`/qrmenu/${businessData?.businessId || businessSlug}/${tableNumber}/${category.name.toLowerCase().replace(/ /g, '-')}`}>
+                  <Link key={category.name} href={`/qrmenu/${businessId}/${tableNumber}/${category.name.toLowerCase().replace(/ /g, '-')}`}>
                       <Card className="overflow-hidden">
                           <div className="relative h-24 w-full">
                               <Image
