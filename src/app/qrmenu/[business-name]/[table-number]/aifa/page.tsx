@@ -19,6 +19,8 @@ import { useCurrency } from "@/hooks/use-currency";
 import { getBusinessDataBySlug, getEvents, getMenuData, type BusinessData, type Event, type Category as MenuCategory, type MenuItem, submitFeedback } from '@/lib/qrmenu';
 import { Star } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
+import { useFirebaseStorage } from "@/firebase/storage/use-firebase-storage";
+import { useFirebase } from "@/firebase";
 
 
 type Message = {
@@ -72,12 +74,14 @@ const FeedbackTargetSelection = ({ onSelect }: { onSelect: (target: string) => v
 const FeedbackForm = ({ target, onSubmit }: { target: string, onSubmit: (feedback: any) => Promise<void> }) => {
     const [rating, setRating] = useState(0);
     const [comment, setComment] = useState('');
+    const [imageFile, setImageFile] = useState<File | null>(null);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
+            setImageFile(file);
             const reader = new FileReader();
             reader.onloadend = () => {
                 setImagePreview(reader.result as string);
@@ -95,7 +99,7 @@ const FeedbackForm = ({ target, onSubmit }: { target: string, onSubmit: (feedbac
             target,
             rating,
             comment,
-            imageUrl: imagePreview,
+            imageFile,
         });
         setIsSubmitting(false);
     }
@@ -160,10 +164,12 @@ const processDataForServerAction = (data: any) => {
 export default function AIFAPage() {
     const router = useRouter();
     const params = useParams();
+    const { user } = useFirebase();
     const businessId = params['business-name'];
     const tableNumber = params['table-number'] as string;
     const { format } = useCurrency();
     const { toast } = useToast();
+    const { uploadFile } = useFirebaseStorage();
     
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputValue, setInputValue] = useState('');
@@ -267,10 +273,23 @@ export default function AIFAPage() {
         });
     };
     
-    const handleFeedbackSubmit = async (feedback: any) => {
-        if (!businessData) return;
+    const handleFeedbackSubmit = async (feedback: { target: string; rating: number; comment: string; imageFile: File | null; }) => {
+        if (!businessData || !businessData.id) return;
+    
+        let imageUrl = '';
+        if (feedback.imageFile && user) {
+            const path = `users/${businessData.id}/feedback_images/${Date.now()}_${feedback.imageFile.name}`;
+            const result = await uploadFile(path, feedback.imageFile);
+            if (result) {
+                imageUrl = result.downloadURL;
+            } else {
+                toast({ variant: 'destructive', title: 'Image Upload Failed', description: 'Could not upload your image. Please try submitting without one.' });
+                return;
+            }
+        }
+    
         try {
-            await submitFeedback(businessData.id, feedback, tableNumber);
+            await submitFeedback(businessData.id, { ...feedback, imageUrl }, tableNumber);
             
             const feedbackMessage = `submitted-${feedback.rating} star rating and ${feedback.comment || 'no description'}`;
 
@@ -458,3 +477,5 @@ export default function AIFAPage() {
         </div>
     );
 }
+
+    
