@@ -15,7 +15,7 @@ import { Building, User, Phone, MapPin, FileText, Briefcase, LogOut } from 'luci
 import { useRouter } from 'next/navigation';
 import { PlacesAutocomplete } from '@/components/places-autocomplete';
 import { useFirebase } from '@/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { signOut } from 'firebase/auth';
@@ -89,6 +89,7 @@ export default function OnboardingPage() {
       const userRef = doc(firestore, 'users', user.uid);
       const businessId = generateBusinessId();
 
+      // Step 1: Update the private user document
       await updateDoc(userRef, {
         businessName: data.businessName,
         ownerName: data.ownerName,
@@ -100,6 +101,12 @@ export default function OnboardingPage() {
         longitude: data.longitude,
         businessId: businessId,
         onboarding: true,
+      });
+
+      // Step 2: Create the public business mapping document
+      const businessRef = doc(firestore, 'businesses', businessId);
+      await setDoc(businessRef, {
+        ownerUid: user.uid,
       });
       
       toast({
