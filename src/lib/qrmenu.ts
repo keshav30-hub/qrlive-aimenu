@@ -210,7 +210,19 @@ export async function getEventById(eventId: string): Promise<Event | null> {
 
 export async function submitRsvp(userId: string, eventId: string, rsvpData: RsvpData) {
     const firestore = await getFirestoreInstance();
-    const rsvpsRef = collection(firestore, 'users', userId, 'events', eventId, 'rsvps');
+    // The eventId is now the globally unique ID. The rsvps collection is nested under the user and the event doc.
+    // The eventDoc in the database does not have the globally unique ID as its document ID.
+    // We need to find the event document reference first.
+    const eventCollectionRef = collection(firestore, 'users', userId, 'events');
+    const q = query(eventCollectionRef, where("id", "==", eventId), limit(1));
+    const querySnapshot = await getDocs(q);
+
+    if (querySnapshot.empty) {
+        throw new Error("Event document not found to submit RSVP.");
+    }
+    const eventDocRef = querySnapshot.docs[0].ref;
+
+    const rsvpsRef = collection(eventDocRef, 'rsvps');
     await addDoc(rsvpsRef, {
         ...rsvpData,
         status: 'Interested',
@@ -267,4 +279,3 @@ export async function submitServiceRequest(userId: string, table: string, reques
   }, { merge: true });
 }
 
-    
