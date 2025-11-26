@@ -1,4 +1,3 @@
-
 'use client';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
@@ -8,8 +7,8 @@ export default function DeprecatedCategoryPage() {
     const params = useParams();
 
     useEffect(() => {
-        if (params['business-name'] && params['table-number'] && params.category) {
-            router.replace(`/qrmenu/${params['business-name']}/${params['table-number']}/${params.category}`);
+        if (params['business-id'] && params['table-number'] && params.category) {
+            router.replace(`/qrmenu/${params['business-id']}/${params['table-number']}/${params.category}`);
         } else {
             router.replace('/dashboard');
         }
