@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Card,
@@ -24,7 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { CalendarIcon, ChevronLeft, ChevronRight, PlusCircle, Clock, FilePenLine, Trash2, MoreVertical, AlarmClock, Loader2 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, subDays } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
@@ -64,15 +64,21 @@ import { useFirebase, useCollection, useDoc, useMemoFirebase } from '@/firebase'
 import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 
-type AttendanceStatus = 'Present' | 'Absent' | 'Paid Leave' | 'Half Day';
+type AttendanceRecord = {
+    id: string;
+    staffId: string;
+    staffName: string;
+    status: 'Present' | 'Absent' | 'Half Day' | 'Paid Leave';
+    date: string;
+};
 
 type StaffMember = {
   id: string;
   name: string;
   avatar: string;
-  status: AttendanceStatus;
   active: boolean;
   accessCode?: string;
+  shiftId?: string;
 };
 
 type Shift = {
@@ -93,18 +99,15 @@ const pageAccessOptions = [
     { id: 'settings', label: 'Settings' },
 ];
 
-const attendanceOptions: AttendanceStatus[] = ['Present', 'Absent', 'Paid Leave', 'Half Day'];
-
-const getStatusVariant = (status: AttendanceStatus) => {
+const getStatusVariant = (status: AttendanceRecord['status']) => {
   switch (status) {
     case 'Present':
       return 'default';
     case 'Absent':
       return 'destructive';
+    case 'Half Day':
     case 'Paid Leave':
       return 'secondary';
-    case 'Half Day':
-      return 'outline';
     default:
       return 'outline';
   }
@@ -117,15 +120,20 @@ export default function StaffPage() {
   const userRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const staffRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'staff') : null, [firestore, user]);
   const shiftsRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'shifts') : null, [firestore, user]);
-
+  
+  const [date, setDate] = useState<Date>(new Date());
+  
+  const attendanceRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'attendance') : null, [firestore, user]);
+  const attendanceQuery = useMemoFirebase(() => attendanceRef ? query(attendanceRef, where('date', '==', format(date, 'yyyy-MM-dd'))) : null, [attendanceRef, date]);
+  
   const { data: adminUser } = useDoc<{ adminAccessCode?: string }>(userRef);
   const { data: staffListData, isLoading: staffLoading } = useCollection<StaffMember>(staffRef);
   const { data: shiftsData, isLoading: shiftsLoading } = useCollection<Shift>(shiftsRef);
+  const { data: attendanceData, isLoading: attendanceLoading } = useCollection<AttendanceRecord>(attendanceQuery);
   
   const staffList = staffListData || [];
   const shifts = shiftsData || [];
 
-  const [date, setDate] = useState<Date>(new Date());
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [dob, setDob] = useState<Date>();
   const [reminderTime, setReminderTime] = useState<string | null>('10:00');
@@ -142,11 +150,37 @@ export default function StaffPage() {
   const [isSavingStaff, setIsSavingStaff] = useState(false);
   const [accessCodeError, setAccessCodeError] = useState<string | null>(null);
 
-  const handleStatusChange = async (staffId: string, newStatus: AttendanceStatus) => {
-    if (!staffRef) return;
+  const dailyAttendance = staffList
+    .filter(staff => staff.active)
+    .map(staff => {
+        const record = attendanceData?.find(att => att.staffId === staff.id);
+        return {
+            ...staff,
+            status: record?.status || 'Absent',
+        };
+    });
+
+
+  const handleStatusChange = async (staffId: string, newStatus: AttendanceRecord['status']) => {
+    if (!attendanceRef) return;
+    const dateString = format(date, 'yyyy-MM-dd');
+    const existingRecord = attendanceData?.find(att => att.staffId === staffId && att.date === dateString);
+
     try {
-      const staffDoc = doc(staffRef, staffId);
-      await updateDoc(staffDoc, { status: newStatus });
+        if (existingRecord) {
+             const recordRef = doc(attendanceRef, existingRecord.id);
+             await updateDoc(recordRef, { status: newStatus });
+        } else {
+            const staffMember = staffList.find(s => s.id === staffId);
+            await addDoc(attendanceRef, {
+                staffId,
+                staffName: staffMember?.name || 'N/A',
+                date: dateString,
+                status: newStatus,
+                captureTime: serverTimestamp(),
+            });
+        }
+        toast({ title: 'Status Updated', description: `Marked as ${newStatus}.`});
     } catch(e) {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not update status.' });
       console.error(e);
@@ -154,15 +188,11 @@ export default function StaffPage() {
   };
   
   const handlePrevDay = () => {
-    const prevDay = new Date(date);
-    prevDay.setDate(prevDay.getDate() - 1);
-    setDate(prevDay);
+    setDate(prev => subDays(prev, 1));
   };
 
   const handleNextDay = () => {
-    const nextDay = new Date(date);
-    nextDay.setDate(nextDay.getDate() + 1);
-    setDate(nextDay);
+    setDate(prev => subDays(prev, -1));
   };
 
   const handleSaveReminder = () => {
@@ -202,15 +232,12 @@ export default function StaffPage() {
   const isAccessCodeUnique = async (code: string, currentStaffId?: string) => {
       if (!staffRef) return false;
       
-      // Check against admin
       if (adminUser?.adminAccessCode === code) return false;
 
-      // Check against other staff members
       const q = query(staffRef, where("accessCode", "==", code));
       const querySnapshot = await getDocs(q);
       if (querySnapshot.empty) return true;
 
-      // If we are editing, allow the same code for the same user
       if (currentStaffId && querySnapshot.docs.length === 1 && querySnapshot.docs[0].id === currentStaffId) {
           return true;
       }
@@ -238,10 +265,10 @@ export default function StaffPage() {
     try {
       if (newStaff.id) { // Editing existing staff
         const staffDoc = doc(staffRef, newStaff.id);
-        await updateDoc(staffDoc, newStaff);
+        await updateDoc(staffDoc, { ...newStaff, id: newStaff.id });
         toast({ title: 'Success', description: 'Staff member updated.'});
       } else { // Adding new staff
-        await addDoc(staffRef, { ...newStaff, active: true, status: 'Present', avatar: `https://i.pravatar.cc/150?u=${Date.now()}` });
+        await addDoc(staffRef, { ...newStaff, active: true, avatar: `https://i.pravatar.cc/150?u=${Date.now()}` });
         toast({ title: 'Success', description: 'Staff member added.'});
       }
       setIsSheetOpen(false);
@@ -422,7 +449,7 @@ export default function StaffPage() {
               </div>
             </CardHeader>
             <CardContent>
-              {staffLoading ? <p>Loading staff...</p> : (
+              {staffLoading || attendanceLoading ? <p>Loading staff...</p> : (
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -431,7 +458,7 @@ export default function StaffPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {activeStaffList.map((staff) => (
+                  {dailyAttendance.map((staff) => (
                     <TableRow key={staff.id}>
                       <TableCell>
                         <div className="flex items-center gap-4">
@@ -450,7 +477,7 @@ export default function StaffPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex gap-2 justify-end">
-                            {attendanceOptions.map((status) => (
+                            {(['Present', 'Absent', 'Half Day', 'Paid Leave'] as const).map((status) => (
                                 <Badge
                                 key={status}
                                 variant={staff.status === status ? getStatusVariant(status) : 'outline'}
@@ -552,13 +579,13 @@ export default function StaffPage() {
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="shift-selection">Shift Selection</Label>
-                             <Select>
+                             <Select value={newStaff.shiftId} onValueChange={value => setNewStaff(p => ({ ...p, shiftId: value }))}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select a shift" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {shifts.map(shift => (
-                                      <SelectItem key={shift.id} value={shift.name.toLowerCase().replace(' ', '-')}>{shift.name}</SelectItem>
+                                      <SelectItem key={shift.id} value={shift.id}>{shift.name} ({shift.from} - {shift.to})</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
@@ -631,5 +658,3 @@ export default function StaffPage() {
     </div>
   );
 }
-
-    
