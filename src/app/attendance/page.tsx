@@ -25,7 +25,7 @@ export default function AccessCodePage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    const idFromQuery = searchParams.get('businessId');
+    const idFromQuery = searchParams.get('businessid');
     if (idFromQuery) {
       setBusinessId(idFromQuery);
     }
@@ -88,7 +88,7 @@ export default function AccessCodePage() {
            <CardDescription>Enter your 6-digit access code to continue.</CardDescription>
          </CardHeader>
          <CardContent className="space-y-4">
-           { !searchParams.get('businessId') &&
+           { !searchParams.get('businessid') &&
              <div className="space-y-2">
                 <label htmlFor="business-id" className="text-sm font-medium">Business ID</label>
                 <Input 
