@@ -43,7 +43,7 @@ const InitialActions = ({ onSelect, showEventsButton }: { onSelect: (action: str
     </div>
 );
 
-const EventCard = ({ event }: { event: Event }) => (
+const EventCard = ({ event, businessId }: { event: Event, businessId: string }) => (
     <Card className="w-full overflow-hidden my-2">
         <div className="relative h-32 w-full">
             <Image src={event.imageUrl} alt={event.name} layout="fill" objectFit="cover" data-ai-hint={event.imageHint} />
@@ -52,7 +52,7 @@ const EventCard = ({ event }: { event: Event }) => (
             <h4 className="font-semibold">{event.name}</h4>
             <p className="text-sm text-muted-foreground line-clamp-2">{event.description}</p>
             <div className="flex gap-2 mt-3">
-                <Link href={`/qrmenu/events/${event.id}`} className="flex-1">
+                <Link href={`/qrmenu/${businessId}/events/${event.id}`} className="flex-1">
                     <Button className="w-full">
                          View Details
                     </Button>
@@ -165,7 +165,7 @@ export default function AIFAPage() {
     const router = useRouter();
     const params = useParams();
     const { user } = useFirebase();
-    const businessId = params['business-name'];
+    const businessId = params['business-name'] as string;
     const tableNumber = params['table-number'] as string;
     const { format } = useCurrency();
     const { toast } = useToast();
@@ -355,7 +355,7 @@ export default function AIFAPage() {
             if ((prompt === "Events" || isAskingForEvents) && activeEvents.length > 0) {
                  addMessage('aifa', "You're in for a treat! Here are our upcoming events. Let me know if you'd like to RSVP.");
                 activeEvents.forEach(event => {
-                    addMessage('aifa', <EventCard event={event} />);
+                    addMessage('aifa', <EventCard event={event} businessId={businessId} />);
                 })
             } else if (prompt === "Give Feedback") {
                 addMessage('aifa', <div><p>I appreciate you taking the time! Who is this feedback for?</p><FeedbackTargetSelection onSelect={handleFeedbackTarget} /></div>);

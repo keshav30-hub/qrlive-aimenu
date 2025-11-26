@@ -172,36 +172,36 @@ export async function getEvents(userId: string): Promise<Event[]> {
     }
 }
 
-export async function getEventById(eventId: string): Promise<Event | null> {
+export async function getEventById(businessId: string, eventId: string): Promise<Event | null> {
     const firestore = await getFirestoreInstance();
-    // Use a collection group query to find the event where the 'id' field matches.
-    const eventsQuery = query(collectionGroup(firestore, 'events'), where('id', '==', eventId), limit(1));
     
     try {
-        const snapshot = await getDocs(eventsQuery);
-        if (snapshot.empty) {
-            console.warn(`Event with ID "${eventId}" not found.`);
-            return null;
-        }
-
-        const eventDoc = snapshot.docs[0];
-        const data = eventDoc.data();
-        
-        // The parent of the event document is the 'events' collection, its parent is the user document.
-        const userId = eventDoc.ref.parent.parent?.id;
-
+        const { userId } = await getBusinessDataBySlug(businessId);
         if (!userId) {
-            console.error("Could not determine userId for the event.");
+            console.error(`No owner found for business ID: ${businessId}`);
             return null;
         }
 
-        return { ...data, id: eventDoc.id, userId } as Event;
+        const eventCollectionRef = collection(firestore, 'users', userId, 'events');
+        const q = query(eventCollectionRef, where("id", "==", eventId), limit(1));
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+            console.warn(`Event with ID "${eventId}" not found for business "${businessId}".`);
+            return null;
+        }
+        
+        const eventDoc = querySnapshot.docs[0];
+        return { ...eventDoc.data(), id: eventDoc.id, userId } as Event;
 
     } catch (error) {
         console.error("Error fetching event by ID:", error);
-        // Here you might want to handle permission errors specifically if needed
         if (error instanceof FirestoreError && error.code === 'permission-denied') {
-             // You can create and emit a custom error for better debugging if you have a system for it
+             const permissionError = new FirestorePermissionError({
+                operation: 'get',
+                path: `businesses/${businessId}/events/${eventId}`,
+             });
+             errorEmitter.emit('permission-error', permissionError);
         }
         return null;
     }
