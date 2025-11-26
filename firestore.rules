@@ -66,6 +66,7 @@ service cloud.firestore {
     
     // New rule to allow public querying of a single event by its unique ID
     match /{path=**}/events/{eventId} {
+      allow get: if true;
       allow list: if request.query.keys.hasOnly(['id']) && request.query.id == resource.data.id;
     }
 
