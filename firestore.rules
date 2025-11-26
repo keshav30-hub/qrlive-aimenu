@@ -63,6 +63,11 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isOwner(userId);
     }
+    
+    // New rule to allow public querying of a single event by its unique ID
+    match /{path=**}/events/{eventId} {
+      allow list: if request.query.keys.hasOnly(['id']) && request.query.id == resource.data.id;
+    }
 
     match /users/{userId}/events/{eventId}/rsvps/{rsvpId} {
       allow read: if isOwner(userId);
