@@ -182,16 +182,14 @@ export async function getEventById(businessId: string, eventId: string): Promise
             return null;
         }
 
-        const eventCollectionRef = collection(firestore, 'users', userId, 'events');
-        const q = query(eventCollectionRef, where("id", "==", eventId), limit(1));
-        const querySnapshot = await getDocs(q);
+        const eventDocRef = doc(firestore, 'users', userId, 'events', eventId);
+        const eventDoc = await getDoc(eventDocRef);
 
-        if (querySnapshot.empty) {
+        if (!eventDoc.exists()) {
             console.warn(`Event with ID "${eventId}" not found for business "${businessId}".`);
             return null;
         }
         
-        const eventDoc = querySnapshot.docs[0];
         return { ...eventDoc.data(), id: eventDoc.id, userId } as Event;
 
     } catch (error) {
@@ -210,15 +208,8 @@ export async function getEventById(businessId: string, eventId: string): Promise
 
 export async function submitRsvp(userId: string, eventId: string, rsvpData: RsvpData) {
     const firestore = await getFirestoreInstance();
-    const eventCollectionRef = collection(firestore, 'users', userId, 'events');
-    const q = query(eventCollectionRef, where("id", "==", eventId), limit(1));
-    const querySnapshot = await getDocs(q);
-
-    if (querySnapshot.empty) {
-        throw new Error("Event document not found to submit RSVP.");
-    }
-    const eventDocRef = querySnapshot.docs[0].ref;
-    const rsvpsRef = collection(eventDocRef, 'rsvps');
+    const rsvpsRef = collection(firestore, 'users', userId, 'events', eventId, 'rsvps');
+    
     const dataToSave = {
         ...rsvpData,
         status: 'Interested',
