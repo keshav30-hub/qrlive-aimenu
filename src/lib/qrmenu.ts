@@ -98,40 +98,43 @@ async function getFirestoreInstance() {
 
 export async function getBusinessDataBySlug(slug: string): Promise<{ businessData: BusinessData | null, userId: string | null }> {
     const firestore = await getFirestoreInstance();
-    const usersRef = collection(firestore, 'users');
-    
-    // Create queries to check against businessName, and businessId
-    const queries = [
-      query(usersRef, where('businessId', '==', slug)),
-      query(usersRef, where('businessName', '==', slug.replace(/-/g, ' ')), limit(1)),
-    ];
+    const businessMappingRef = doc(firestore, 'businesses', slug);
 
     try {
-        // Try querying by business name and businessId first
-        for (const q of queries) {
-            const querySnapshot = await getDocs(q);
-            if (!querySnapshot.empty) {
-                const userDoc = querySnapshot.docs[0];
-                const userData = userDoc.data();
-                return {
-                    businessData: {
-                        id: userDoc.id,
-                        name: userData.businessName || 'Unnamed Business',
-                        logo: userData.logo || 'https://picsum.photos/seed/logo/100/100',
-                        businessId: userData.businessId,
-                        googleReviewLink: userData.googleReviewLink,
-                    },
-                    userId: userDoc.id,
-                };
-            }
+        const businessMappingSnap = await getDoc(businessMappingRef);
+        if (!businessMappingSnap.exists()) {
+            console.warn(`No business mapping found for slug: ${slug}`);
+            return { businessData: null, userId: null };
+        }
+
+        const ownerUid = businessMappingSnap.data().ownerUid;
+        if (!ownerUid) {
+            console.warn(`Owner UID missing in business mapping for slug: ${slug}`);
+            return { businessData: null, userId: null };
+        }
+
+        const userRef = doc(firestore, 'users', ownerUid);
+        const userDoc = await getDoc(userRef);
+
+        if (!userDoc.exists()) {
+            console.warn(`User document not found for owner UID: ${ownerUid}`);
+            return { businessData: null, userId: null };
         }
         
-        // If nothing worked, no business found
-        console.warn(`No business found for slug or business ID: ${slug}`);
-        return { businessData: null, userId: null };
+        const userData = userDoc.data();
+        return {
+            businessData: {
+                id: userDoc.id,
+                name: userData.businessName || 'Unnamed Business',
+                logo: userData.logo || 'https://picsum.photos/seed/logo/100/100',
+                businessId: userData.businessId,
+                googleReviewLink: userData.googleReviewLink,
+            },
+            userId: userDoc.id,
+        };
 
     } catch (error) {
-        console.error("Error fetching business data:", error);
+        console.error("Error fetching business data by slug:", error);
         return { businessData: null, userId: null };
     }
 }
@@ -256,3 +259,5 @@ export async function submitServiceRequest(userId: string, table: string, reques
       pendingCalls: arrayUnion(newCall)
   }, { merge: true });
 }
+
+    

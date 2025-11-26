@@ -82,6 +82,19 @@
         "businessType"
       ]
     },
+    "Business": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Business",
+      "type": "object",
+      "description": "Maps a public businessId to a private owner UID.",
+      "properties": {
+        "ownerUid": {
+          "type": "string",
+          "description": "The UID of the user who owns this business."
+        }
+      },
+      "required": ["ownerUid"]
+    },
     "Staff": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Staff",
@@ -638,6 +651,12 @@
       },
       "description": "Stores user profile data."
     },
+    "/businesses/{businessId}": {
+      "schema": {
+        "$ref": "#/entities/Business"
+      },
+      "description": "Maps a public businessId to a private owner UID."
+    },
      "/users/{userId}/staff/{staffId}": {
       "schema": {
         "$ref": "#/entities/Staff"
@@ -742,3 +761,5 @@
     }
   }
 }
+
+    
