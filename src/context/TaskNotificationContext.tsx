@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { useFirebase, useCollection, useDoc, useMemoFirebase } from '@/firebase';
 import { collection, deleteDoc, doc, updateDoc, arrayRemove, arrayUnion } from 'firebase/firestore';
+import { Loader2 } from 'lucide-react';
 
 
 type UrgentFeedback = {
@@ -65,6 +66,7 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
 
   const [notification, setNotification] = useState<{title: string, description: string, data: any, onAcknowledge: () => void} | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isAcknowledging, setIsAcknowledging] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [unattendedTaskCount, setUnattendedTaskCount] = useState(0);
   const [acknowledgedTaskTimes, setAcknowledgedTaskTimes] = useState<Set<string>>(new Set());
@@ -117,7 +119,7 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
   useEffect(() => {
     if (tasksLiveRef && unattendedTasks && unattendedTasks.length > 0) {
       const latestTask = unattendedTasks[unattendedTasks.length - 1];
-      if (!acknowledgedTaskTimes.has(latestTask.time)) {
+      if (!acknowledgedTaskTimes.has(latestTask.time) && !isDialogOpen) {
         setNotification({
           title: "New Task Received!",
           description: "A new service request has been received.",
@@ -127,6 +129,7 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
             Time: new Date(latestTask.time).toLocaleTimeString(),
           },
           onAcknowledge: async () => {
+             setIsAcknowledging(true);
              const updatedTask = { ...latestTask, status: 'attended', time: new Date().toISOString() };
              try {
                 await updateDoc(tasksLiveRef, { 
@@ -136,19 +139,21 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
                 router.push('/dashboard/tasks');
              } catch(e) {
                 console.error("Failed to acknowledge task", e);
+             } finally {
+                setIsAcknowledging(false);
              }
           },
         });
         setIsDialogOpen(true);
       }
     }
-  }, [tasksLiveRef, unattendedTasks, router, acknowledgedTaskTimes]);
+  }, [tasksLiveRef, unattendedTasks, router, acknowledgedTaskTimes, isDialogOpen]);
   
   // Effect to show notifications for new urgent feedback
   useEffect(() => {
     if (urgentFeedbacks && urgentFeedbacks.length > 0) {
         const latestFeedback = urgentFeedbacks[0];
-        if (!acknowledgedTaskTimes.has(latestFeedback.time)) {
+        if (!acknowledgedTaskTimes.has(latestFeedback.time) && !isDialogOpen) {
             setNotification({
                 title: "Urgent Feedback Received!",
                 description: `A ${latestFeedback.type} was submitted.`,
@@ -158,16 +163,23 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
                     Time: new Date(latestFeedback.time).toLocaleTimeString(),
                 },
                 onAcknowledge: async () => {
+                    setIsAcknowledging(true);
                     if (urgentFeedbackRef) {
-                        await deleteDoc(doc(urgentFeedbackRef, latestFeedback.id));
+                        try {
+                           await deleteDoc(doc(urgentFeedbackRef, latestFeedback.id));
+                           router.push('/dashboard/feedback');
+                        } catch(e) {
+                           console.error("Failed to acknowledge feedback", e);
+                        } finally {
+                            setIsAcknowledging(false);
+                        }
                     }
-                    router.push('/dashboard/feedback');
                 },
             });
             setIsDialogOpen(true);
         }
     }
-  }, [urgentFeedbacks, router, urgentFeedbackRef, acknowledgedTaskTimes]);
+  }, [urgentFeedbacks, router, urgentFeedbackRef, acknowledgedTaskTimes, isDialogOpen]);
 
   const toggleMute = () => {
     setIsMuted(prev => !prev);
@@ -186,8 +198,10 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
     setNotification(null);
   };
 
-  const handleAcknowledge = () => {
-      notification?.onAcknowledge();
+  const handleAcknowledge = async () => {
+      if(notification?.onAcknowledge) {
+        await notification.onAcknowledge();
+      }
       closeDialog();
   }
 
@@ -216,9 +230,12 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
             ))}
           </div>
           <AlertDialogFooter>
-            <Button variant="outline" onClick={closeDialog}>Dismiss</Button>
+            <Button variant="outline" onClick={closeDialog} disabled={isAcknowledging}>Dismiss</Button>
             <AlertDialogAction asChild>
-                <Button onClick={handleAcknowledge}>Acknowledge</Button>
+                <Button onClick={handleAcknowledge} disabled={isAcknowledging}>
+                    {isAcknowledging ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
+                    {isAcknowledging ? 'Accepting...' : 'Accept'}
+                </Button>
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
