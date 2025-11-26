@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   Card,
   CardContent,
@@ -23,7 +24,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { CalendarIcon, ChevronLeft, ChevronRight, PlusCircle, Clock, FilePenLine, Trash2, MoreVertical, AlarmClock, Loader2 } from 'lucide-react';
+import { CalendarIcon, ChevronLeft, ChevronRight, PlusCircle, Clock, FilePenLine, Trash2, MoreVertical, AlarmClock, Loader2, Image as ImageIcon } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -61,7 +62,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useFirebase, useCollection, useDoc, useMemoFirebase } from '@/firebase';
-import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 
 type AttendanceRecord = {
@@ -70,6 +71,8 @@ type AttendanceRecord = {
     staffName: string;
     status: 'Present' | 'Absent' | 'Half Day' | 'Paid Leave';
     date: string;
+    imageUrl?: string;
+    captureTime?: Timestamp;
 };
 
 type StaffMember = {
@@ -157,6 +160,7 @@ export default function StaffPage() {
         return {
             ...staff,
             status: record?.status || 'Absent',
+            record: record || null,
         };
     });
 
@@ -267,7 +271,6 @@ export default function StaffPage() {
     
     setIsSavingStaff(true);
 
-    // Prepare data by removing the 'id' field for saving.
     const dataToSave: Omit<Partial<StaffMember>, 'id'> = {
         name: newStaff.name,
         accessCode: newStaff.accessCode || '',
@@ -473,40 +476,70 @@ export default function StaffPage() {
                 </TableHeader>
                 <TableBody>
                   {dailyAttendance.map((staff) => (
-                    <TableRow key={staff.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-4">
-                          <Avatar>
-                            <AvatarImage src={staff.avatar} alt={staff.name} />
-                            <AvatarFallback>
-                              {staff.name
-                                .split(' ')
-                                .map((n) => n[0])
-                                .join('')}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="font-medium">{staff.name}</span>
-                        </div>
+                    <React.Fragment key={staff.id}>
+                        <TableRow>
+                        <TableCell>
+                            <div className="flex items-center gap-4">
+                            <Avatar>
+                                <AvatarImage src={staff.avatar} alt={staff.name} />
+                                <AvatarFallback>
+                                {staff.name
+                                    .split(' ')
+                                    .map((n) => n[0])
+                                    .join('')}
+                                </AvatarFallback>
+                            </Avatar>
+                            <span className="font-medium">{staff.name}</span>
+                            </div>
 
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex gap-2 justify-end">
-                            {(['Present', 'Absent', 'Half Day', 'Paid Leave'] as const).map((status) => (
-                                <Badge
-                                key={status}
-                                variant={staff.status === status ? getStatusVariant(status) : 'outline'}
-                                onClick={() => handleStatusChange(staff.id, status)}
-                                className={cn(
-                                    "cursor-pointer capitalize w-24 justify-center",
-                                    staff.status !== status && "bg-transparent text-foreground"
-                                )}
-                                >
-                                {status}
-                                </Badge>
-                            ))}
-                        </div>
-                      </TableCell>
-                    </TableRow>
+                        </TableCell>
+                        <TableCell className="text-right">
+                            <div className="flex gap-2 justify-end">
+                                {(['Present', 'Absent', 'Half Day', 'Paid Leave'] as const).map((status) => (
+                                    <Badge
+                                    key={status}
+                                    variant={staff.status === status ? getStatusVariant(status) : 'outline'}
+                                    onClick={() => handleStatusChange(staff.id, status)}
+                                    className={cn(
+                                        "cursor-pointer capitalize w-24 justify-center",
+                                        staff.status !== status && "bg-transparent text-foreground"
+                                    )}
+                                    >
+                                    {status}
+                                    </Badge>
+                                ))}
+                            </div>
+                        </TableCell>
+                        </TableRow>
+                        {staff.record?.imageUrl && (
+                            <TableRow>
+                                <TableCell colSpan={2} className="py-2 px-4 bg-gray-50 dark:bg-gray-800/50">
+                                    <div className="flex items-center gap-4">
+                                        <Dialog>
+                                            <DialogTrigger asChild>
+                                                <div className="relative h-12 w-12 rounded-md overflow-hidden cursor-pointer">
+                                                    <Image src={staff.record.imageUrl} alt={`Attendance for ${staff.name}`} layout="fill" objectFit="cover" />
+                                                </div>
+                                            </DialogTrigger>
+                                            <DialogContent className="max-w-lg">
+                                                <DialogHeader>
+                                                    <DialogTitle>Attendance for {staff.name}</DialogTitle>
+                                                    <DialogDescription>{staff.record.captureTime?.toDate().toLocaleString()}</DialogDescription>
+                                                </DialogHeader>
+                                                 <div className="relative mt-4 h-96 w-full">
+                                                    <Image src={staff.record.imageUrl} alt={`Attendance for ${staff.name}`} layout="fill" objectFit="contain" />
+                                                </div>
+                                            </DialogContent>
+                                        </Dialog>
+                                        <div>
+                                            <p className="text-xs text-muted-foreground">Captured at:</p>
+                                            <p className="text-sm font-medium">{staff.record.captureTime?.toDate().toLocaleTimeString()}</p>
+                                        </div>
+                                    </div>
+                                </TableCell>
+                            </TableRow>
+                        )}
+                    </React.Fragment>
                   ))}
                 </TableBody>
               </Table>
@@ -672,3 +705,5 @@ export default function StaffPage() {
     </div>
   );
 }
+
+    
