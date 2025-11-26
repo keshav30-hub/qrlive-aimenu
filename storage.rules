@@ -13,12 +13,9 @@ service firebase.storage {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // Allow anyone to write to the attendance path for a specific user.
-    // This is required for the public attendance marking feature.
-    // We are matching the specific file name format.
+    // Allow the authenticated business owner to upload attendance images for their own staff.
     match /users/{userId}/attendance/{staffId}/{date}.jpg {
-      allow create: if true;
-      allow read: if isOwner(userId);
+      allow read, write: if isOwner(userId);
     }
     
     // Allow authenticated users to read and write to their own images folders.
