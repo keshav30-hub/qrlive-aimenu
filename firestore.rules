@@ -109,10 +109,7 @@ service cloud.firestore {
     }
 
     match /users/{userId}/attendance/{attendanceId} {
-      // Allow the owner to do anything
-      allow read, update, delete: if isOwner(userId);
-      // Allow an authenticated user (the staff member) to create their own attendance record
-      allow create: if isSignedIn();
+      allow read, write: if isOwner(userId);
     }
     
     match /users/{userId}/shifts/{shiftId} {
@@ -134,5 +131,3 @@ service cloud.firestore {
     }
   }
 }
-
-    

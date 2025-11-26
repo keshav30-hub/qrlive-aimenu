@@ -9,9 +9,9 @@ import { Camera, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useFirebaseStorage } from '@/firebase/storage/use-firebase-storage';
-import { doc, getDoc, addDoc, collection, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, addDoc, collection, serverTimestamp, setDoc } from 'firebase/firestore';
 import { addMinutes, parse, isAfter } from 'date-fns';
-import { useFirebase, useDoc, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
 
 type StaffMember = {
   id: string;
@@ -195,5 +195,3 @@ export default function StaffAttendancePage() {
     </div>
   );
 }
-
-    
