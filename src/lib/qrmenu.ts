@@ -14,8 +14,12 @@ import {
   serverTimestamp,
   getDoc,
   collectionGroup,
+  FirestoreError,
 } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
+
 
 export type Category = {
   id: string;
@@ -98,8 +102,8 @@ export async function getBusinessDataBySlug(slug: string): Promise<{ businessDat
     
     // Create queries to check against businessName, and businessId
     const queries = [
+      query(usersRef, where('businessId', '==', slug)),
       query(usersRef, where('businessName', '==', slug.replace(/-/g, ' ')), limit(1)),
-      query(usersRef, where('businessId', '==', slug), limit(1)),
     ];
 
     try {
@@ -255,29 +259,43 @@ export async function submitServiceRequest(userId: string, table: string, reques
 
 export async function getStaffByAccessCode(businessId: string, accessCode: string): Promise<{ staffMember: StaffMemberPublic | null, userId: string | null }> {
     const firestore = await getFirestoreInstance();
-    // First, find the user (business owner) by their businessId
     const usersRef = collection(firestore, 'users');
     const userQuery = query(usersRef, where('businessId', '==', businessId), limit(1));
-    const userSnapshot = await getDocs(userQuery);
-
-    if (userSnapshot.empty) {
-       return { staffMember: null, userId: null };
-    }
     
-    const userId = userSnapshot.docs[0].id;
-    const staffRef = collection(firestore, 'users', userId, 'staff');
-    const staffQuery = query(staffRef, where('accessCode', '==', accessCode), limit(1));
-    const staffSnapshot = await getDocs(staffQuery);
+    try {
+        const userSnapshot = await getDocs(userQuery);
 
-    if (staffSnapshot.empty) {
-        return { staffMember: null, userId: null };
+        if (userSnapshot.empty) {
+            return { staffMember: null, userId: null };
+        }
+        
+        const userId = userSnapshot.docs[0].id;
+        const staffRef = collection(firestore, 'users', userId, 'staff');
+        const staffQuery = query(staffRef, where('accessCode', '==', accessCode), limit(1));
+        
+        const staffSnapshot = await getDocs(staffQuery);
+
+        if (staffSnapshot.empty) {
+            return { staffMember: null, userId: null };
+        }
+
+        const staffDoc = staffSnapshot.docs[0];
+        return {
+            staffMember: { id: staffDoc.id, ...staffDoc.data() } as StaffMemberPublic,
+            userId: userId,
+        };
+
+    } catch (e) {
+        if (e instanceof FirestoreError && e.code === 'permission-denied') {
+            const contextualError = new FirestorePermissionError({
+                operation: 'list',
+                path: `users/{userId}/staff`, // This is a best-guess path for the user to understand
+            });
+            errorEmitter.emit('permission-error', contextualError);
+        }
+        // Re-throw other errors or handle them as needed
+        throw e;
     }
-
-    const staffDoc = staffSnapshot.docs[0];
-    return {
-        staffMember: { id: staffDoc.id, ...staffDoc.data() } as StaffMemberPublic,
-        userId: userId,
-    };
 }
 
 
