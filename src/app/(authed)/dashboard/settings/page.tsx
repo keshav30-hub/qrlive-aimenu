@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Edit, Save, X, Upload, Fingerprint, RefreshCw, Crown, ExternalLink, Instagram, Globe, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Edit, Save, X, Upload, Fingerprint, RefreshCw, Crown, ExternalLink, Instagram, Globe, Eye, EyeOff, Loader2, Download, QrCode } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -146,6 +146,31 @@ export default function SettingsPage() {
         toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload new logo.' });
       }
     }
+  };
+
+  const handleDownloadAttendanceQr = () => {
+    const attendanceUrl = `${window.location.origin}/attendance`;
+    const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(
+      attendanceUrl
+    )}`;
+    
+    fetch(qrApiUrl)
+      .then(response => response.blob())
+      .then(blob => {
+        const blobUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = `attendance-qr-code.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(blobUrl);
+        toast({ title: 'QR Code Downloading', description: 'Your attendance QR code has started downloading.' });
+      })
+      .catch(() => {
+        window.open(qrApiUrl, '_blank');
+        toast({ title: 'QR Code Ready', description: 'Your QR code has been opened in a new tab.' });
+      });
   };
 
   if (isInfoLoading) {
@@ -339,6 +364,21 @@ export default function SettingsPage() {
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                    <QrCode className="h-5 w-5" />
+                    Attendance QR Code
+                </CardTitle>
+                <CardDescription>Download a high-quality QR code for your staff attendance page.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Button className="w-full" onClick={handleDownloadAttendanceQr}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Download QR Code (PNG)
+                </Button>
+            </CardContent>
+        </Card>
+        <Card>
           <CardHeader>
             <CardTitle>Raise a Ticket</CardTitle>
             <CardDescription>Get help with any issues you're facing.</CardDescription>
@@ -399,5 +439,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-
-    
