@@ -21,7 +21,7 @@ service cloud.firestore {
     }
     
     match /users/{userId} {
-      allow get: if isOwner(userId);
+      allow get: if true; // Allow public read for QR Menu business data lookup
       allow list: if isAdmin();
       allow update, delete: if isOwner(userId);
       allow create: if isSignedIn();
