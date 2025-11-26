@@ -2,7 +2,7 @@
 'use client';
 
 import { useUser, useDoc, useMemoFirebase, useCollection } from '@/firebase';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { collection, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { AppSidebar } from '@/components/layout/sidebar';
@@ -192,23 +192,28 @@ export default function AuthedLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
+  const isAttendancePage = pathname.startsWith('/dashboard/attendance');
+
   return (
     <AuthRedirect>
-        <div className="h-screen overflow-hidden">
-            <div className="flex h-full">
-            <SidebarProvider>
-                <AppSidebar />
-                <main className="flex-1 flex flex-col bg-gray-100 dark:bg-black">
-                   <header className="flex h-16 items-center justify-end border-b bg-background px-4">
-                        <NotificationPanel />
-                    </header>
-                    <div className="flex-1 overflow-y-auto p-4">
-                      {children}
-                    </div>
-                </main>
-            </SidebarProvider>
-            </div>
+      <div className="h-screen overflow-hidden">
+        <div className="flex h-full">
+          <SidebarProvider>
+            {!isAttendancePage && <AppSidebar />}
+            <main className="flex-1 flex flex-col bg-gray-100 dark:bg-black">
+              {!isAttendancePage && (
+                <header className="flex h-16 items-center justify-end border-b bg-background px-4">
+                  <NotificationPanel />
+                </header>
+              )}
+              <div className={cn("flex-1 overflow-y-auto", !isAttendancePage && "p-4")}>
+                {children}
+              </div>
+            </main>
+          </SidebarProvider>
         </div>
+      </div>
     </AuthRedirect>
   );
 }
