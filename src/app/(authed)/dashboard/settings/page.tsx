@@ -32,6 +32,7 @@ type BusinessInfo = {
   logo: string;
   logoStoragePath?: string;
   googleReviewLink?: string;
+  instagramLink?: string;
   adminAccessCode?: string;
   businessId?: string;
 };
@@ -335,6 +336,14 @@ export default function SettingsPage() {
               )}
             </div>
              <div className="space-y-1">
+              <Label htmlFor="instagramLink">Instagram Link</Label>
+               {isEditing ? (
+                <Input id="instagramLink" name="instagramLink" value={editedInfo.instagramLink || ''} onChange={handleInputChange} />
+              ) : (
+                <p className="font-medium">{businessInfo.instagramLink || '-'}</p>
+              )}
+            </div>
+             <div className="space-y-1">
               <Label htmlFor="adminAccessCode">Admin Access Code</Label>
               {isEditing ? (
                 <div>
@@ -422,7 +431,7 @@ export default function SettingsPage() {
             </div>
             <div className="flex gap-2 pt-2">
                 <Button variant="outline" size="icon" asChild>
-                    <Link href="#" target="_blank">
+                    <Link href={businessInfo?.instagramLink || '#'} target="_blank">
                         <Instagram className="h-5 w-5" />
                     </Link>
                 </Button>
@@ -439,3 +448,5 @@ export default function SettingsPage() {
     </div>
   );
 }
+
+    

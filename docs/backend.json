@@ -71,6 +71,10 @@
         "longitude": {
           "type": "number",
           "description": "Longitude of the user's business location."
+        },
+        "instagramLink": {
+            "type": "string",
+            "description": "A link to the business's Instagram profile."
         }
       },
       "required": [
