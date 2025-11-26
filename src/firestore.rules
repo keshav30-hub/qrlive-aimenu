@@ -26,6 +26,11 @@ service cloud.firestore {
       allow update, delete: if isOwner(userId);
       allow create: if isSignedIn();
     }
+
+     match /businesses/{businessId} {
+      allow get: if true;
+      allow create: if isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
+    }
     
     match /plans/{planId} {
       allow read, write: if isAdmin();
@@ -58,7 +63,7 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isOwner(userId);
     }
-
+    
     match /users/{userId}/events/{eventId}/rsvps/{rsvpId} {
       allow read: if isOwner(userId);
       allow create: if true;
