@@ -105,12 +105,17 @@ export default function EventsPage() {
           await updateDoc(eventDoc, { ...currentEvent, updatedAt: serverTimestamp() });
           toast({ title: "Success", description: "Event updated." });
       } else {
-          await addDoc(eventsRef, { 
+          // Generate a new unique ID for the event
+          const newEventRef = doc(collection(firestore, 'id_holder')); // temporary ref to get an ID
+          const newEventData = { 
               ...currentEvent,
+              id: newEventRef.id, // Use the generated unique ID
               imageUrl: currentEvent.imageUrl || `https://picsum.photos/seed/event${events.length + 1}/600/400`,
               imageHint: currentEvent.imageHint || 'new event',
               createdAt: serverTimestamp() 
-          });
+          };
+          // Save the new event under the user's events collection
+          await addDoc(eventsRef, newEventData);
           toast({ title: "Success", description: "Event added." });
       }
       setIsSheetOpen(false);
