@@ -700,7 +700,8 @@ export default function StaffPage() {
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {staffLoading ? <p>Loading...</p> : staffList.map((staff) => (
-                    <Card key={staff.id} className="overflow-hidden h-full flex flex-col hover:shadow-md transition-shadow">
+                  <AlertDialog key={staff.id}>
+                    <Card className="overflow-hidden h-full flex flex-col hover:shadow-md transition-shadow">
                         <Link href={`/dashboard/staff/${staff.id}`} className="block flex-grow">
                             <CardContent className="pt-6 flex flex-col items-center justify-center text-center gap-3">
                                 <Avatar className="h-24 w-24">
@@ -734,6 +735,19 @@ export default function StaffPage() {
                             </DropdownMenu>
                         </CardFooter>
                     </Card>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This action cannot be undone. This will permanently delete {staff.name} and all their associated data.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleDeleteStaff()} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 ))}
                 {staffList.length === 0 && !staffLoading && (
                   <div className="col-span-full text-center py-10 text-muted-foreground">
@@ -741,20 +755,6 @@ export default function StaffPage() {
                   </div>
                 )}
             </CardContent>
-            <AlertDialog open={!!staffToDelete} onOpenChange={(open) => !open && setStaffToDelete(null)}>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This action cannot be undone. This will permanently delete {staffToDelete?.name} and all their associated data.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDeleteStaff} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
            </Card>
         </TabsContent>
       </Tabs>
