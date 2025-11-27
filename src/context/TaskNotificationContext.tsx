@@ -66,14 +66,14 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
   const { user, firestore } = useFirebase();
   const router = useRouter();
 
-  const [notification, setNotification] = useState<{title: string, description: string, data: any, onAcknowledge: () => void} | null>(null);
+  const [notification, setNotification] = useState<{title: string, description: string, data: any, onAcknowledge: (status: 'attended' | 'ignored') => void} | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isAcknowledging, setIsAcknowledging] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const [unattendedTaskCount, setUnattendedTaskCount] = useState(0);
   const [dialogsDisabled, setDialogsDisabled] = useState(false);
   
-  const [notifiedTask, setNotifiedTask] = useState<Task | null>(null);
+  const [notifiedTask, setNotifiedTask] = useState<Task | UrgentFeedback | null>(null);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const isAudioUnlocked = useRef(false);
@@ -135,14 +135,22 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
 
   useEffect(() => {
     if (isDialogOpen && notifiedTask) {
-        const taskIsStillPending = unattendedTasks.some(
-            task => task.time === notifiedTask.time && task.table === notifiedTask.table && task.request === notifiedTask.request
-        );
+        const isUrgentFeedback = 'type' in notifiedTask;
+        
+        let taskIsStillPending;
+        if (isUrgentFeedback) {
+            taskIsStillPending = (urgentFeedbacks || []).some(fb => fb.id === (notifiedTask as UrgentFeedback).id);
+        } else {
+            taskIsStillPending = unattendedTasks.some(
+                task => task.time === (notifiedTask as Task).time && task.table === (notifiedTask as Task).table && task.request === (notifiedTask as Task).request
+            );
+        }
+
         if (!taskIsStillPending) {
             closeDialog();
         }
     }
-  }, [unattendedTasks, isDialogOpen, notifiedTask]);
+  }, [unattendedTasks, urgentFeedbacks, isDialogOpen, notifiedTask]);
 
 
   useEffect(() => {
@@ -159,9 +167,9 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
             Request: latestTask.request,
             Time: new Date(latestTask.time).toLocaleTimeString(),
           },
-          onAcknowledge: async () => {
+          onAcknowledge: async (status: 'attended' | 'ignored') => {
              setIsAcknowledging(true);
-             const updatedTask = { ...latestTask, status: 'attended' as const, time: new Date().toISOString(), handledBy: 'Admin' };
+             const updatedTask = { ...latestTask, status: status, time: new Date().toISOString(), handledBy: 'Admin' };
              try {
                 await updateDoc(tasksLiveRef, { 
                     pendingCalls: arrayRemove(latestTask),
@@ -183,6 +191,7 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
     if (urgentFeedbacks && urgentFeedbacks.length > 0 && !dialogsDisabled) {
         const latestFeedback = urgentFeedbacks[0];
         if (!isDialogOpen) {
+            setNotifiedTask(latestFeedback);
             setNotification({
                 title: "Urgent Feedback Received!",
                 description: `A ${latestFeedback.type} was submitted.`,
@@ -222,9 +231,9 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
     setNotifiedTask(null); 
   };
 
-  const handleAcknowledge = async () => {
+  const handleAcknowledge = async (status: 'attended' | 'ignored') => {
       if(notification?.onAcknowledge) {
-        await notification.onAcknowledge();
+        await notification.onAcknowledge(status);
       }
       closeDialog();
   }
@@ -256,9 +265,9 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
             ))}
           </div>
           <AlertDialogFooter>
-            <Button variant="outline" onClick={closeDialog} disabled={isAcknowledging}>Dismiss</Button>
+            <Button variant="destructive" onClick={() => handleAcknowledge('ignored')} disabled={isAcknowledging}>Ignore</Button>
             <AlertDialogAction asChild>
-                <Button onClick={handleAcknowledge} disabled={isAcknowledging}>
+                <Button onClick={() => handleAcknowledge('attended')} disabled={isAcknowledging}>
                     {isAcknowledging ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
                     {isAcknowledging ? 'Accepting...' : 'Accept'}
                 </Button>
