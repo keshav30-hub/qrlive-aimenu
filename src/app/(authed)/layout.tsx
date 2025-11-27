@@ -193,21 +193,21 @@ export default function AuthedLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const isAttendancePage = pathname.startsWith('/dashboard/attendance');
+  const isSpecialLayout = pathname.startsWith('/dashboard/attendance') || pathname.startsWith('/dashboard/captain');
 
   return (
     <AuthRedirect>
       <div className="h-screen overflow-hidden">
         <div className="flex h-full">
           <SidebarProvider>
-            {!isAttendancePage && <AppSidebar />}
+            {!isSpecialLayout && <AppSidebar />}
             <main className="flex-1 flex flex-col bg-gray-100 dark:bg-black">
-              {!isAttendancePage && (
+              {!isSpecialLayout && (
                 <header className="flex h-16 items-center justify-end border-b bg-background px-4">
                   <NotificationPanel />
                 </header>
               )}
-              <div className={cn("flex-1 overflow-y-auto", !isAttendancePage && "p-4")}>
+              <div className={cn("flex-1 overflow-y-auto", !isSpecialLayout && "p-4")}>
                 {children}
               </div>
             </main>

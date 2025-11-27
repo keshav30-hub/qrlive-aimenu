@@ -13,6 +13,7 @@ import {
   Users,
   Volume2,
   VolumeX,
+  UserCheck,
 } from 'lucide-react';
 import Link from 'next/link';
 import {
@@ -103,6 +104,14 @@ export function AppSidebar() {
             </Link>
           </SidebarMenuItem>
           <SidebarMenuItem>
+            <Link href="/dashboard/captain">
+              <SidebarMenuButton>
+                <UserCheck />
+                <span>Captain</span>
+              </SidebarMenuButton>
+            </Link>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
             <Link href="/dashboard/settings">
               <SidebarMenuButton>
                 <Settings />
@@ -131,5 +140,3 @@ export function AppSidebar() {
     </Sidebar>
   );
 }
-
-    
