@@ -95,24 +95,32 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
     }
   }, []);
 
-  // Control audio playback
+  // Control audio playback and vibration
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio) return;
+    
+    const stopNotifications = () => {
+      if (audio) {
+        audio.pause();
+        audio.currentTime = 0;
+      }
+      if (navigator.vibrate) {
+        navigator.vibrate(0); // Stop any ongoing vibration
+      }
+    };
 
     if (unattendedTaskCount > 0 && !isMuted) {
-      audio.play().catch(error => console.error("Audio playback failed:", error));
+      audio?.play().catch(error => console.error("Audio playback failed:", error));
+      if (navigator.vibrate) {
+        // A pattern of vibration: 200ms vibration, 100ms pause, 200ms vibration.
+        // It will repeat because the audio loops.
+        navigator.vibrate([200, 100, 200]);
+      }
     } else {
-      audio.pause();
-      audio.currentTime = 0;
+      stopNotifications();
     }
     
-    return () => {
-        if(audio) {
-            audio.pause();
-            audio.currentTime = 0;
-        }
-    }
+    return stopNotifications;
   }, [unattendedTaskCount, isMuted]);
 
   // Effect to show notifications for new tasks
