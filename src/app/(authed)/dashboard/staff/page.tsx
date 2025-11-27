@@ -664,8 +664,9 @@ export default function StaffPage() {
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {staffLoading ? <p>Loading...</p> : staffList.map((staff) => (
-                    <Card key={staff.id} className="overflow-hidden">
-                        <CardContent className="pt-6 flex flex-col items-center justify-center text-center gap-3">
+                  <Link key={staff.id} href={`/dashboard/staff/${staff.id}`} className="block">
+                    <Card className="overflow-hidden h-full flex flex-col hover:shadow-md transition-shadow">
+                        <CardContent className="pt-6 flex flex-col items-center justify-center text-center gap-3 flex-grow">
                             <Avatar className="h-24 w-24">
                                 <AvatarImage src={staff.avatar} alt={staff.name} />
                                 <AvatarFallback>
@@ -677,21 +678,22 @@ export default function StaffPage() {
                                 {staff.accessCode && <p className="text-xs text-muted-foreground font-mono">Code: {staff.accessCode}</p>}
                             </div>
                         </CardContent>
-                         <CardFooter className="flex justify-end p-2 bg-gray-50 dark:bg-gray-800/50">
+                         <CardFooter className="flex justify-end p-2 bg-gray-50 dark:bg-gray-800/50 mt-auto">
                              <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
+                                <Button variant="ghost" size="icon" onClick={(e) => e.preventDefault()}>
                                     <MoreVertical className="h-5 w-5" />
                                     <span className="sr-only">More options</span>
                                 </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={() => { setNewStaff(staff); setIsSheetOpen(true); }}>Edit</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setNewStaff(staff); setIsSheetOpen(true); }}>Edit</DropdownMenuItem>
                                     <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
                         </CardFooter>
                     </Card>
+                  </Link>
                 ))}
                 {staffList.length === 0 && !staffLoading && (
                   <div className="col-span-full text-center py-10 text-muted-foreground">
