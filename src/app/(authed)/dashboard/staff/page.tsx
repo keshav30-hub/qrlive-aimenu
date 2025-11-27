@@ -78,7 +78,7 @@ type AttendanceRecord = {
 type StaffMember = {
   id: string;
   name: string;
-  avatar: string;
+  avatar?: string;
   active: boolean;
   accessCode?: string;
   shiftId?: string;
@@ -351,7 +351,7 @@ export default function StaffPage() {
         shiftId: newStaff.shiftId || '',
         monthlySalary: newStaff.monthlySalary,
         active: newStaff.id ? newStaff.active : true, // Default to active for new staff
-        avatar: newStaff.avatar || `https://i.pravatar.cc/150?u=${Date.now()}`
+        avatar: newStaff.avatar || ''
     };
 
     try {

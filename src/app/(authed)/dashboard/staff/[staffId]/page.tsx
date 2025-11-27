@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo, useState, useEffect } from 'react';
@@ -42,6 +43,7 @@ import {
   ChevronLeft,
   ImageIcon,
   Wallet,
+  FilePenLine,
 } from 'lucide-react';
 import {
   Dialog,
@@ -58,7 +60,7 @@ import { useCurrency } from '@/hooks/use-currency';
 type StaffMember = {
   id: string;
   name: string;
-  avatar: string;
+  avatar?: string;
   accessCode?: string;
   shiftId?: string;
   monthlySalary?: number;
@@ -280,7 +282,7 @@ export default function StaffDetailPage() {
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-start justify-between">
           <div className="flex items-center gap-6">
             <Avatar className="h-24 w-24">
               <AvatarImage src={staff.avatar} alt={staff.name} />
@@ -290,6 +292,10 @@ export default function StaffDetailPage() {
               <CardTitle className="text-3xl">{staff.name}</CardTitle>
             </div>
           </div>
+          <Button variant="outline">
+            <FilePenLine className="mr-2 h-4 w-4" />
+            Edit
+          </Button>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
