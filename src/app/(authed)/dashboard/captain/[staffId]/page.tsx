@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -82,7 +81,7 @@ export default function CaptainTasksPage() {
   }, [tasksDoc, staffMember]);
 
   
-  const { setUnattendedTaskCount, setDialogsDisabled, isMuted, toggleMute, unlockAudio, isAudioUnlocked } = useTaskNotification();
+  const { setUnattendedTaskCount, setDialogsDisabled, isMuted, toggleMute } = useTaskNotification();
 
   useEffect(() => {
     setDialogsDisabled(true); // Disable global popups on this page
@@ -123,32 +122,19 @@ export default function CaptainTasksPage() {
     router.push('/dashboard/captain');
   }
 
-  const handleSoundToggle = () => {
-    unlockAudio();
-    toggleMute();
-  }
-
   if (tasksLoading || staffLoading) {
     return <div className="flex h-screen items-center justify-center">Loading tasks...</div>;
   }
   
   return (
     <div className="space-y-6 max-w-lg mx-auto py-6 px-4">
-       {!isAudioUnlocked && (
-        <Card className="mb-4 bg-blue-50 border-blue-200">
-            <CardContent className="pt-6 flex items-center justify-between">
-                <p className="text-blue-900 font-medium">Enable sound for new task alerts?</p>
-                <Button onClick={unlockAudio}>Enable Sound</Button>
-            </CardContent>
-        </Card>
-      )}
       <div className="flex justify-between items-center">
         <div>
             <h1 className="text-3xl font-bold">Captain's Dashboard</h1>
             <p className="text-lg text-muted-foreground">Welcome, {staffMember?.name || 'Captain'}</p>
         </div>
         <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={handleSoundToggle}>
+            <Button variant="outline" size="icon" onClick={toggleMute}>
                 {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
                 <span className="sr-only">{isMuted ? 'Unmute' : 'Mute'}</span>
             </Button>

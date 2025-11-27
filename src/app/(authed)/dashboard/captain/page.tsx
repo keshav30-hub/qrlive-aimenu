@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -16,6 +15,7 @@ import { Loader2, Fingerprint } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useFirebase, useMemoFirebase } from '@/firebase';
 import { collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { useTaskNotification } from '@/context/TaskNotificationContext';
 
 export default function CaptainAccessCodePage() {
   const [accessCode, setAccessCode] = useState('');
@@ -23,6 +23,7 @@ export default function CaptainAccessCodePage() {
   const router = useRouter();
   const { toast } = useToast();
   const { firestore, user } = useFirebase();
+  const { unlockAudio } = useTaskNotification();
 
   const staffRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'staff') : null, [firestore, user]);
 
@@ -45,6 +46,9 @@ export default function CaptainAccessCodePage() {
       });
       return;
     }
+    
+    // Unlock audio on login click
+    unlockAudio();
     setIsLoading(true);
 
     try {
