@@ -148,12 +148,9 @@ export default function SettingsPage() {
       }
     }
   };
-
-  const handleDownloadAttendanceQr = () => {
-    const attendanceUrl = `${window.location.origin}/dashboard/attendance`;
-    const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(
-      attendanceUrl
-    )}`;
+  
+  const generateAndDownloadQr = (url: string, filename: string) => {
+    const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(url)}`;
     
     fetch(qrApiUrl)
       .then(response => response.blob())
@@ -161,18 +158,29 @@ export default function SettingsPage() {
         const blobUrl = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = blobUrl;
-        link.download = `attendance-qr-code.png`;
+        link.download = filename;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         window.URL.revokeObjectURL(blobUrl);
-        toast({ title: 'QR Code Downloading', description: 'Your attendance QR code has started downloading.' });
+        toast({ title: 'QR Code Downloading', description: `Your ${filename} has started downloading.` });
       })
       .catch(() => {
         window.open(qrApiUrl, '_blank');
         toast({ title: 'QR Code Ready', description: 'Your QR code has been opened in a new tab.' });
       });
   };
+
+  const handleDownloadAttendanceQr = () => {
+    const attendanceUrl = `${window.location.origin}/dashboard/attendance`;
+    generateAndDownloadQr(attendanceUrl, 'attendance-qr-code.png');
+  };
+
+  const handleDownloadCaptainQr = () => {
+    const captainUrl = `${window.location.origin}/dashboard/captain`;
+    generateAndDownloadQr(captainUrl, 'captain-login-qr-code.png');
+  };
+
 
   if (isInfoLoading) {
     return <div className="flex h-screen items-center justify-center">Loading settings...</div>;
@@ -378,16 +386,31 @@ export default function SettingsPage() {
                     <QrCode className="h-5 w-5" />
                     Attendance QR Code
                 </CardTitle>
-                <CardDescription>Download a high-quality QR code for your staff attendance page.</CardDescription>
+                <CardDescription>Download a QR code for your staff attendance login page.</CardDescription>
             </CardHeader>
             <CardContent>
                 <Button className="w-full" onClick={handleDownloadAttendanceQr}>
                     <Download className="mr-2 h-4 w-4" />
-                    Download QR Code (PNG)
+                    Download QR (PNG)
                 </Button>
             </CardContent>
         </Card>
         <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                    <QrCode className="h-5 w-5" />
+                    Captain Login QR Code
+                </CardTitle>
+                <CardDescription>Download a QR code for your captain task management page.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Button className="w-full" onClick={handleDownloadCaptainQr}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Download QR (PNG)
+                </Button>
+            </CardContent>
+        </Card>
+        <Card className="md:col-span-2">
           <CardHeader>
             <CardTitle>Raise a Ticket</CardTitle>
             <CardDescription>Get help with any issues you're facing.</CardDescription>
