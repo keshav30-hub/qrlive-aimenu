@@ -31,7 +31,7 @@ import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 
 export function AppSidebar() {
-  const { isMuted, toggleMute } = useTaskNotification();
+  const { isMuted, toggleMute, unlockAudio } = useTaskNotification();
   const { auth } = useFirebase();
   const router = useRouter();
 
@@ -39,6 +39,11 @@ export function AppSidebar() {
     await signOut(auth);
     router.push('/login');
   };
+
+  const handleMuteToggle = () => {
+    unlockAudio(); // Ensure audio is unlocked on first click
+    toggleMute();
+  }
 
   return (
     <Sidebar className="w-[10%]" collapsible="none">
@@ -124,7 +129,7 @@ export function AppSidebar() {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton onClick={toggleMute}>
+            <SidebarMenuButton onClick={handleMuteToggle}>
               {isMuted ? <VolumeX /> : <Volume2 />}
               <span>{isMuted ? 'Sound Off' : 'Sound On'}</span>
             </SidebarMenuButton>

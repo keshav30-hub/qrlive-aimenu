@@ -49,6 +49,7 @@ type TaskNotificationContextType = {
   setUnattendedTaskCount: (count: number) => void;
   showNewTask: (payload: NewTaskPayload) => void;
   setDialogsDisabled: (disabled: boolean) => void;
+  unlockAudio: () => void;
 };
 
 const TaskNotificationContext = createContext<TaskNotificationContextType | undefined>(undefined);
@@ -68,13 +69,14 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
   const [notification, setNotification] = useState<{title: string, description: string, data: any, onAcknowledge: () => void} | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isAcknowledging, setIsAcknowledging] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
   const [unattendedTaskCount, setUnattendedTaskCount] = useState(0);
   const [dialogsDisabled, setDialogsDisabled] = useState(false);
   
   const [notifiedTask, setNotifiedTask] = useState<Task | null>(null);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const isAudioUnlocked = useRef(false);
 
   const tasksLiveRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid, 'tasks', 'live') : null, [user, firestore]);
   const { data: taskDoc } = useDoc<TaskDoc>(tasksLiveRef);
@@ -97,6 +99,15 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
     }
   }, []);
 
+  const unlockAudio = useCallback(() => {
+    if (audioRef.current && !isAudioUnlocked.current) {
+        audioRef.current.play().then(() => {
+            audioRef.current?.pause();
+        }).catch(err => console.error("Audio unlock failed:", err));
+        isAudioUnlocked.current = true;
+    }
+  }, []);
+
   useEffect(() => {
     const audio = audioRef.current;
     
@@ -110,7 +121,7 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
       }
     };
 
-    if (unattendedTaskCount > 0 && !isMuted && !dialogsDisabled) {
+    if (unattendedTaskCount > 0 && !isMuted && !dialogsDisabled && isAudioUnlocked.current) {
       audio?.play().catch(error => console.error("Audio playback failed:", error));
       if (navigator.vibrate) {
         navigator.vibrate([200, 100, 200, 100, 200, 100, 200]);
@@ -224,7 +235,8 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
     unattendedTaskCount,
     setUnattendedTaskCount,
     showNewTask,
-    setDialogsDisabled
+    setDialogsDisabled,
+    unlockAudio,
   };
 
   return (
