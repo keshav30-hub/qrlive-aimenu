@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo, useState, useEffect } from 'react';
@@ -224,43 +223,22 @@ export default function StaffDetailPage() {
   
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
-  const [availableYears, setAvailableYears] = useState<number[]>([]);
-
+  
   const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [user, firestore]);
-  const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
 
-  useEffect(() => {
-    if (!user || !staffId || !firestore || !userProfile) return;
+  const availableYears = useMemo(() => {
+    if (!userProfile?.createdAt) {
+      return [currentYear];
+    }
+    const startYear = getYear(userProfile.createdAt.toDate());
+    const years = [];
+    for (let i = currentYear; i >= startYear; i--) {
+      years.push(i);
+    }
+    return years;
+  }, [userProfile, currentYear]);
 
-    const fetchAvailableYears = async () => {
-        const staffAttendanceRef = collection(firestore, 'users', user.uid, 'staff', staffId, 'attendance');
-        const querySnapshot = await getDocs(query(staffAttendanceRef, orderBy('date', 'desc')));
-        
-        const yearsWithData = new Set<number>();
-        
-        // Add account creation year
-        if (userProfile.createdAt) {
-            yearsWithData.add(getYear(userProfile.createdAt.toDate()));
-        } else {
-            yearsWithData.add(currentYear); // Fallback
-        }
-
-        querySnapshot.forEach(doc => {
-            const date = new Date(doc.data().date);
-            yearsWithData.add(getYear(date));
-        });
-
-        const sortedYears = Array.from(yearsWithData).sort((a, b) => b - a);
-        setAvailableYears(sortedYears);
-        
-        // Ensure selected year is valid
-        if (!sortedYears.includes(selectedYear)) {
-            setSelectedYear(sortedYears[0] || currentYear);
-        }
-    };
-
-    fetchAvailableYears();
-  }, [user, staffId, firestore, userProfile, currentYear, selectedYear]);
 
   const staffDocRef = useMemoFirebase(
     () => (user && staffId ? doc(firestore, 'users', user.uid, 'staff', staffId) : null),
@@ -282,7 +260,7 @@ export default function StaffDetailPage() {
   }, [selectedYear]);
 
 
-  if (staffLoading || shiftLoading) {
+  if (staffLoading || shiftLoading || isProfileLoading) {
     return <div className="flex h-screen items-center justify-center">Loading staff details...</div>;
   }
 
@@ -392,4 +370,3 @@ export default function StaffDetailPage() {
     </div>
   );
 }
-
