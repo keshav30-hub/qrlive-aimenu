@@ -35,6 +35,7 @@ import {
   Briefcase,
   ChevronLeft,
   ImageIcon,
+  Wallet,
 } from 'lucide-react';
 import {
   Dialog,
@@ -45,7 +46,8 @@ import {
 } from '@/components/ui/dialog';
 import { useFirebase, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, Timestamp, doc } from 'firebase/firestore';
-import { format, getMonth, startOfYear, endOfYear, eachMonthOfInterval } from 'date-fns';
+import { format, getMonth, startOfYear, endOfYear, eachMonthOfInterval, getDaysInMonth } from 'date-fns';
+import { useCurrency } from '@/hooks/use-currency';
 
 type StaffMember = {
   id: string;
@@ -53,7 +55,9 @@ type StaffMember = {
   avatar: string;
   accessCode?: string;
   shiftId?: string;
-  // Add other fields as necessary, e.g., dob, address, salary
+  monthlySalary?: number;
+  lateFine?: number;
+  monthlyBonus?: number;
 };
 
 type Shift = {
@@ -86,6 +90,7 @@ export default function StaffDetailPage() {
   const { user, firestore } = useFirebase();
   const params = useParams();
   const staffId = params.staffId as string;
+  const { format: formatCurrency } = useCurrency();
 
   const staffDocRef = useMemoFirebase(
     () => (user && staffId ? doc(firestore, 'users', user.uid, 'staff', staffId) : null),
@@ -194,6 +199,13 @@ export default function StaffDetailPage() {
                 <p className="font-medium">{shift ? `${shift.name} (${shift.from} - ${shift.to})` : 'Not Assigned'}</p>
               </div>
             </div>
+            <div className="flex items-center gap-3">
+              <Wallet className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <p className="text-sm text-muted-foreground">Monthly Salary</p>
+                <p className="font-medium">{staff.monthlySalary ? formatCurrency(staff.monthlySalary) : 'Not Set'}</p>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -201,7 +213,7 @@ export default function StaffDetailPage() {
       <Card>
         <CardHeader>
           <CardTitle>Attendance History - {currentYear}</CardTitle>
-          <CardDescription>Monthly breakdown of attendance for the current year.</CardDescription>
+          <CardDescription>Monthly breakdown of attendance and salary for the current year.</CardDescription>
         </CardHeader>
         <CardContent>
           <Accordion type="single" collapsible className="w-full">
@@ -209,9 +221,21 @@ export default function StaffDetailPage() {
               const monthIndex = getMonth(monthDate);
               const monthName = format(monthDate, 'MMMM');
               const recordsForMonth = attendanceByMonth[monthIndex] || [];
+              
+              const totalDaysInMonth = getDaysInMonth(monthDate);
               const presentCount = recordsForMonth.filter(r => r.status === 'Present').length;
               const absentCount = recordsForMonth.filter(r => r.status === 'Absent').length;
               const halfDayCount = recordsForMonth.filter(r => r.status === 'Half Day').length;
+              const paidLeaveCount = recordsForMonth.filter(r => r.status === 'Paid Leave').length;
+
+              const monthlySalary = staff.monthlySalary || 0;
+              const lateFine = staff.lateFine || 0;
+              const bonus = staff.monthlyBonus || 0;
+              const perDaySalary = monthlySalary / totalDaysInMonth;
+              const salaryForDays = perDaySalary * (presentCount + paidLeaveCount);
+              const totalDeductions = lateFine * halfDayCount;
+              const finalSalary = salaryForDays - totalDeductions + bonus;
+
 
               return (
                 <AccordionItem key={monthName} value={monthName}>
@@ -226,6 +250,38 @@ export default function StaffDetailPage() {
                     </div>
                   </AccordionTrigger>
                   <AccordionContent>
+                    <div className="p-4 border-t">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 text-center">
+                        <div className='p-2 rounded-md bg-gray-100 dark:bg-gray-800'>
+                          <p className="text-sm text-muted-foreground">Total Days</p>
+                          <p className="font-bold text-lg">{totalDaysInMonth}</p>
+                        </div>
+                        <div className='p-2 rounded-md bg-green-100 dark:bg-green-900/30'>
+                          <p className="text-sm text-green-800 dark:text-green-300">Present</p>
+                          <p className="font-bold text-lg text-green-900 dark:text-green-200">{presentCount}</p>
+                        </div>
+                        <div className='p-2 rounded-md bg-red-100 dark:bg-red-900/30'>
+                           <p className="text-sm text-red-800 dark:text-red-300">Absent</p>
+                          <p className="font-bold text-lg text-red-900 dark:text-red-200">{absentCount}</p>
+                        </div>
+                        <div className='p-2 rounded-md bg-yellow-100 dark:bg-yellow-900/30'>
+                           <p className="text-sm text-yellow-800 dark:text-yellow-300">Half Day / Leave</p>
+                          <p className="font-bold text-lg text-yellow-900 dark:text-yellow-200">{halfDayCount} / {paidLeaveCount}</p>
+                        </div>
+                      </div>
+
+                      <Card className='mb-4'>
+                          <CardHeader className='p-4'>
+                              <CardTitle className='text-base'>Salary Calculation</CardTitle>
+                          </CardHeader>
+                          <CardContent className='p-4 text-sm space-y-2'>
+                              <div className='flex justify-between'><span>Base Salary for working days:</span> <span className='font-medium'>{formatCurrency(salaryForDays)}</span></div>
+                              <div className='flex justify-between'><span>Late Fine Deduction:</span> <span className='font-medium text-destructive'>- {formatCurrency(totalDeductions)}</span></div>
+                              <div className='flex justify-between'><span>Monthly Bonus:</span> <span className='font-medium text-green-600'>+ {formatCurrency(bonus)}</span></div>
+                              <div className='flex justify-between font-bold text-base border-t pt-2 mt-2'><span>Final Salary:</span> <span>{formatCurrency(finalSalary)}</span></div>
+                          </CardContent>
+                      </Card>
+
                     {recordsForMonth.length > 0 ? (
                       <Table>
                         <TableHeader>
@@ -270,6 +326,7 @@ export default function StaffDetailPage() {
                     ) : (
                       <p className="text-center text-muted-foreground p-4">No attendance records for {monthName}.</p>
                     )}
+                    </div>
                   </AccordionContent>
                 </AccordionItem>
               );

@@ -82,6 +82,7 @@ type StaffMember = {
   active: boolean;
   accessCode?: string;
   shiftId?: string;
+  monthlySalary?: number;
 };
 
 type Shift = {
@@ -255,6 +256,10 @@ export default function StaffPage() {
         toast({ variant: 'destructive', title: 'Validation Error', description: 'Staff name is required.' });
         return;
     }
+    if (!newStaff.monthlySalary) {
+        toast({ variant: 'destructive', title: 'Validation Error', description: 'Monthly salary is required.' });
+        return;
+    }
 
     if (newStaff.accessCode) {
         if (!/^\d{6}$/.test(newStaff.accessCode)) {
@@ -275,6 +280,7 @@ export default function StaffPage() {
         name: newStaff.name,
         accessCode: newStaff.accessCode || '',
         shiftId: newStaff.shiftId || '',
+        monthlySalary: newStaff.monthlySalary,
         active: newStaff.id ? newStaff.active : true, // Default to active for new staff
         avatar: newStaff.avatar || `https://i.pravatar.cc/150?u=${Date.now()}`
     };
@@ -528,7 +534,7 @@ export default function StaffPage() {
                                                 </DialogHeader>
                                                  <div className="relative mt-4 h-96 w-full">
                                                     <Image src={staff.record.imageUrl} alt={`Attendance for ${staff.name}`} layout="fill" objectFit="contain" />
-                                                </div>
+                                                 </div>
                                             </DialogContent>
                                         </Dialog>
                                         <div>
@@ -621,8 +627,8 @@ export default function StaffPage() {
                             <Textarea id="full-address" placeholder="Enter full address" />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="staff-salary">Staff Salary</Label>
-                          <Input id="staff-salary" type="number" placeholder="e.g. 30000" />
+                            <Label htmlFor="staff-salary">Monthly Salary</Label>
+                            <Input id="staff-salary" type="number" placeholder="e.g. 30000" value={newStaff.monthlySalary || ''} onChange={(e) => setNewStaff(p => ({...p, monthlySalary: Number(e.target.value)}))} />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="shift-selection">Shift Selection</Label>
