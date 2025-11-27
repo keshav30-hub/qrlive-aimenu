@@ -64,6 +64,11 @@ service cloud.firestore {
       allow write: if isOwner(userId);
     }
     
+    // New rule to allow public querying of a single event by its unique ID
+    match /{path=**}/events/{eventId} {
+      allow list: if request.query.keys.hasOnly(['id']) && request.query.id == resource.data.id;
+    }
+
     match /users/{userId}/events/{eventId}/rsvps/{rsvpId} {
       allow read: if isOwner(userId);
       allow create: if true;
@@ -113,12 +118,12 @@ service cloud.firestore {
       allow read, write: if isOwner(userId);
     }
 
-    // New rule for the attendance subcollection
+    // Rule for the attendance subcollection
     match /users/{userId}/staff/{staffId}/attendance/{attendanceId} {
       allow read, write: if isOwner(userId);
     }
     
-    // Rule for public attendance creation
+    // Rule for public attendance creation via QR scan
     match /users/{userId}/staff/{staffId}/attendance/{attendanceId} {
         allow create: if true;
     }
