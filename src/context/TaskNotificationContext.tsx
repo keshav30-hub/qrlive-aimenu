@@ -138,13 +138,13 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
           },
           onAcknowledge: async () => {
              setIsAcknowledging(true);
-             const updatedTask = { ...latestTask, status: 'attended', time: new Date().toISOString() };
+             const updatedTask = { ...latestTask, status: 'attended' as const, time: new Date().toISOString(), handledBy: 'Admin' };
              try {
                 await updateDoc(tasksLiveRef, { 
                     pendingCalls: arrayRemove(latestTask),
                     attendedCalls: arrayUnion(updatedTask)
                 });
-                router.push('/dashboard/tasks');
+                // No redirect here. User stays on the current page.
              } catch(e) {
                 console.error("Failed to acknowledge task", e);
              } finally {
@@ -175,7 +175,7 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
                     if (urgentFeedbackRef) {
                         try {
                            await deleteDoc(doc(urgentFeedbackRef, latestFeedback.id));
-                           router.push('/dashboard/feedback');
+                           // No redirect here
                         } catch(e) {
                            console.error("Failed to acknowledge feedback", e);
                         } finally {

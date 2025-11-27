@@ -359,6 +359,10 @@
         "completed": {
           "type": "boolean",
           "description": "Indicates whether the task is completed or not."
+        },
+        "handledBy": {
+          "type": "string",
+          "description": "The name of the staff member who handled the task."
         }
       },
       "required": [
@@ -765,5 +769,3 @@
     }
   }
 }
-
-    

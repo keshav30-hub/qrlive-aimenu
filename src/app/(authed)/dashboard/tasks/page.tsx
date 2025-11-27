@@ -32,6 +32,7 @@ type Task = {
   request: string;
   time: string;
   status: 'attended' | 'ignored' | 'unattended';
+  handledBy?: string;
 };
 
 type TaskDoc = {
@@ -123,9 +124,6 @@ export default function TasksPage() {
   const handleUpdateTask = async (taskToUpdate: Task, newStatus: 'attended' | 'ignored') => {
     if (!tasksLiveRef) return;
     
-    // The task object in pendingCalls doesn't have the status field, which is critical.
-    // The security rule is likely failing because the object being removed is not identical
-    // to the one in the database. Let's send the exact object from the database.
     const originalTaskInDb = (tasksDoc?.pendingCalls || []).find(
       t => t.time === taskToUpdate.time && t.table === taskToUpdate.table && t.request === taskToUpdate.request
     );
@@ -135,7 +133,7 @@ export default function TasksPage() {
       return;
     }
 
-    const updatedTask = { ...originalTaskInDb, status: newStatus, time: new Date().toISOString() };
+    const updatedTask = { ...originalTaskInDb, status: newStatus, time: new Date().toISOString(), handledBy: 'Admin' };
 
     try {
       // Atomically remove from pending and add to attended
@@ -234,6 +232,7 @@ export default function TasksPage() {
                   <TableHead>Table</TableHead>
                   <TableHead>Request</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Handled By</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -250,6 +249,7 @@ export default function TasksPage() {
                         {task.status}
                       </Badge>
                     </TableCell>
+                    <TableCell>{task.handledBy || '-'}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

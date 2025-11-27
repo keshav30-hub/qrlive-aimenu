@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -57,7 +58,7 @@ export default function CaptainTasksPage() {
   }, [unattendedTasks, setUnattendedTaskCount]);
 
   const handleUpdateTask = async (taskToUpdate: Task, newStatus: 'attended' | 'ignored') => {
-    if (!tasksLiveRef) return;
+    if (!tasksLiveRef || !staffMember) return;
     
     const originalTaskInDb = (tasksDoc?.pendingCalls || []).find(
       t => t.time === taskToUpdate.time && t.table === taskToUpdate.table && t.request === taskToUpdate.request
@@ -68,7 +69,7 @@ export default function CaptainTasksPage() {
       return;
     }
 
-    const updatedTask = { ...originalTaskInDb, status: newStatus, time: new Date().toISOString() };
+    const updatedTask = { ...originalTaskInDb, status: newStatus, time: new Date().toISOString(), handledBy: staffMember.name };
 
     try {
       await updateDoc(tasksLiveRef, { 
