@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -93,14 +93,14 @@ const MonthAttendance = ({ monthDate, staffId }: { monthDate: Date, staffId: str
     const staffDocRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid, 'staff', staffId) : null, [firestore, user, staffId]);
     const { data: staff } = useDoc<StaffMember>(staffDocRef);
 
-    const attendanceRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'attendance') : null, [firestore, user]);
+    const attendanceRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'staff', staffId, 'attendance') : null, [firestore, user, staffId]);
     
     const monthQuery = useMemoFirebase(() => {
         if (!attendanceRef) return null;
         const start = format(startOfMonth(monthDate), 'yyyy-MM-dd');
         const end = format(endOfMonth(monthDate), 'yyyy-MM-dd');
-        return query(attendanceRef, where('staffId', '==', staffId), where('date', '>=', start), where('date', '<=', end));
-    }, [attendanceRef, monthDate, staffId]);
+        return query(attendanceRef, where('date', '>=', start), where('date', '<=', end));
+    }, [attendanceRef, monthDate]);
 
     const { data: recordsForMonth, isLoading } = useCollection<AttendanceRecord>(monthQuery);
     

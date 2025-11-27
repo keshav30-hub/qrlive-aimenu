@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -61,7 +62,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useFirebase, useCollection, useDoc, useMemoFirebase } from '@/firebase';
-import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query, where, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query, where, getDocs, Timestamp, limit } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 
 type AttendanceRecord = {
@@ -122,10 +123,11 @@ const StaffAttendanceRow = ({ staff, date }: { staff: StaffMember, date: Date })
 
     const dateString = format(date, 'yyyy-MM-dd');
 
-    const attendanceRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'attendance') : null, [user, firestore]);
+    const attendanceRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'staff', staff.id, 'attendance') : null, [user, firestore, staff.id]);
+    
     const attendanceQuery = useMemoFirebase(
-      () => attendanceRef ? query(attendanceRef, where('staffId', '==', staff.id), where('date', '==', dateString), limit(1)) : null,
-      [attendanceRef, staff.id, dateString]
+      () => attendanceRef ? query(attendanceRef, where('date', '==', dateString), limit(1)) : null,
+      [attendanceRef, dateString]
     );
     const { data: attendanceData, isLoading } = useCollection<AttendanceRecord>(attendanceQuery);
 

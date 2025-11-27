@@ -113,8 +113,14 @@ service cloud.firestore {
       allow read, write: if isOwner(userId);
     }
 
-    match /users/{userId}/attendance/{attendanceId} {
+    // New rule for the attendance subcollection
+    match /users/{userId}/staff/{staffId}/attendance/{attendanceId} {
       allow read, write: if isOwner(userId);
+    }
+    
+    // Rule for public attendance creation
+    match /users/{userId}/staff/{staffId}/attendance/{attendanceId} {
+        allow create: if true;
     }
     
     match /users/{userId}/shifts/{shiftId} {

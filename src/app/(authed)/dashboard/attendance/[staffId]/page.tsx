@@ -9,7 +9,7 @@ import { Camera, Loader2, CheckCircle, LogOut } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useFirebaseStorage } from '@/firebase/storage/use-firebase-storage';
-import { doc, addDoc, collection, serverTimestamp, setDoc, query, where, Timestamp } from 'firebase/firestore';
+import { doc, addDoc, collection, serverTimestamp, query, where, Timestamp } from 'firebase/firestore';
 import { addMinutes, parse, isAfter, format } from 'date-fns';
 import { useFirebase, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 
@@ -52,10 +52,11 @@ export default function StaffAttendancePage() {
   const { data: shift, isLoading: shiftLoading } = useDoc<Shift>(shiftDocRef);
 
   const todayDateString = format(new Date(), 'yyyy-MM-dd');
-  const attendanceRef = useMemoFirebase(() => (user && staffId) ? collection(firestore, 'users', user.uid, 'attendance') : null, [firestore, user, staffId]);
+  const attendanceRef = useMemoFirebase(() => (user && staffId) ? collection(firestore, 'users', user.uid, 'staff', staffId as string, 'attendance') : null, [firestore, user, staffId]);
+  
   const todaysAttendanceQuery = useMemoFirebase(
-    () => attendanceRef ? query(attendanceRef, where('staffId', '==', staffId), where('date', '==', todayDateString)) : null,
-    [attendanceRef, staffId, todayDateString]
+    () => attendanceRef ? query(attendanceRef, where('date', '==', todayDateString)) : null,
+    [attendanceRef, todayDateString]
   );
   const { data: todaysAttendance, isLoading: attendanceLoading } = useCollection<AttendanceRecord>(todaysAttendanceQuery);
 
@@ -106,7 +107,7 @@ export default function StaffAttendancePage() {
 
 
   const handleMarkAttendance = async () => {
-    if (!videoRef.current || !canvasRef.current || !user || !staffMember || !shift) {
+    if (!videoRef.current || !canvasRef.current || !user || !staffMember || !shift || !attendanceRef) {
         toast({ variant: 'destructive', title: 'Error', description: 'Component not ready, staff data, or shift data missing.' });
         return;
     }
@@ -148,8 +149,7 @@ export default function StaffAttendancePage() {
             const graceTime = addMinutes(shiftStartTime, 15);
             let status = isAfter(currentDate, graceTime) ? 'Half Day' : 'Present';
 
-            const attendanceCollectionRef = collection(firestore, 'users', user.uid, 'attendance');
-            await addDoc(attendanceCollectionRef, {
+            await addDoc(attendanceRef, {
                 staffId: staffId,
                 staffName: staffMember.name,
                 shiftName: shift.name,

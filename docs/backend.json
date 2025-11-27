@@ -689,11 +689,11 @@
       },
       "description": "Stores shift schedules for a business."
     },
-    "/users/{userId}/attendance/{attendanceId}": {
+    "/users/{userId}/staff/{staffId}/attendance/{attendanceId}": {
       "schema": {
         "$ref": "#/entities/Attendance"
       },
-      "description": "Stores attendance records for staff members."
+      "description": "Stores attendance records for a specific staff member."
     },
     "/users/{userId}/devices/{deviceId}": {
       "schema": {
