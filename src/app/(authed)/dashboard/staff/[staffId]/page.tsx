@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, 'use memo';
+import React, { useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
