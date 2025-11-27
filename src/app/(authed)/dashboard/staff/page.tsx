@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -117,6 +116,116 @@ const getStatusVariant = (status: AttendanceRecord['status']) => {
   }
 };
 
+const StaffAttendanceRow = ({ staff, date }: { staff: StaffMember, date: Date }) => {
+    const { user, firestore } = useFirebase();
+    const { toast } = useToast();
+
+    const dateString = format(date, 'yyyy-MM-dd');
+
+    const attendanceRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'attendance') : null, [user, firestore]);
+    const attendanceQuery = useMemoFirebase(
+      () => attendanceRef ? query(attendanceRef, where('staffId', '==', staff.id), where('date', '==', dateString), limit(1)) : null,
+      [attendanceRef, staff.id, dateString]
+    );
+    const { data: attendanceData, isLoading } = useCollection<AttendanceRecord>(attendanceQuery);
+
+    const record = attendanceData?.[0];
+    const status = record?.status || 'Absent';
+
+    const handleStatusChange = async (newStatus: AttendanceRecord['status']) => {
+        if (!attendanceRef) return;
+        
+        try {
+            if (record) {
+                 const recordRef = doc(attendanceRef, record.id);
+                 await updateDoc(recordRef, { status: newStatus });
+            } else {
+                await addDoc(attendanceRef, {
+                    staffId: staff.id,
+                    staffName: staff.name,
+                    date: dateString,
+                    status: newStatus,
+                    captureTime: serverTimestamp(),
+                });
+            }
+            toast({ title: 'Status Updated', description: `Marked ${staff.name} as ${newStatus}.`});
+        } catch(e) {
+          toast({ variant: 'destructive', title: 'Error', description: 'Could not update status.' });
+          console.error(e);
+        }
+      };
+
+
+    return (
+        <React.Fragment>
+            <TableRow>
+            <TableCell>
+                <div className="flex items-center gap-4">
+                <Avatar>
+                    <AvatarImage src={staff.avatar} alt={staff.name} />
+                    <AvatarFallback>
+                    {staff.name
+                        .split(' ')
+                        .map((n) => n[0])
+                        .join('')}
+                    </AvatarFallback>
+                </Avatar>
+                <span className="font-medium">{staff.name}</span>
+                </div>
+
+            </TableCell>
+            <TableCell className="text-right">
+                {isLoading ? <Loader2 className="animate-spin h-5 w-5 ml-auto" /> : (
+                    <div className="flex gap-2 justify-end">
+                        {(['Present', 'Absent', 'Half Day', 'Paid Leave'] as const).map((s) => (
+                            <Badge
+                            key={s}
+                            variant={status === s ? getStatusVariant(s) : 'outline'}
+                            onClick={() => handleStatusChange(s)}
+                            className={cn(
+                                "cursor-pointer capitalize w-24 justify-center",
+                                status !== s && "bg-transparent text-foreground"
+                            )}
+                            >
+                            {s}
+                            </Badge>
+                        ))}
+                    </div>
+                )}
+            </TableCell>
+            </TableRow>
+             {record?.imageUrl && (
+                <TableRow>
+                    <TableCell colSpan={2} className="py-2 px-4 bg-gray-50 dark:bg-gray-800/50">
+                        <div className="flex items-center gap-4">
+                            <Dialog>
+                                <DialogTrigger asChild>
+                                    <div className="relative h-12 w-12 rounded-md overflow-hidden cursor-pointer">
+                                        <Image src={record.imageUrl} alt={`Attendance for ${staff.name}`} layout="fill" objectFit="cover" />
+                                    </div>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-lg">
+                                    <DialogHeader>
+                                        <DialogTitle>Attendance for {staff.name}</DialogTitle>
+                                        <DialogDescription>{record.captureTime?.toDate().toLocaleString()}</DialogDescription>
+                                    </DialogHeader>
+                                     <div className="relative mt-4 h-96 w-full">
+                                        <Image src={record.imageUrl} alt={`Attendance for ${staff.name}`} layout="fill" objectFit="contain" />
+                                     </div>
+                                </DialogContent>
+                            </Dialog>
+                            <div>
+                                <p className="text-xs text-muted-foreground">Captured at:</p>
+                                <p className="text-sm font-medium">{record.captureTime?.toDate().toLocaleTimeString()}</p>
+                            </div>
+                        </div>
+                    </TableCell>
+                </TableRow>
+            )}
+        </React.Fragment>
+    )
+}
+
 export default function StaffPage() {
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
@@ -126,14 +235,10 @@ export default function StaffPage() {
   const shiftsRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'shifts') : null, [firestore, user]);
   
   const [date, setDate] = useState<Date>(new Date());
-  
-  const attendanceRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'attendance') : null, [firestore, user]);
-  const attendanceQuery = useMemoFirebase(() => attendanceRef ? query(attendanceRef, where('date', '==', format(date, 'yyyy-MM-dd'))) : null, [attendanceRef, date]);
-  
+    
   const { data: adminUser } = useDoc<{ adminAccessCode?: string }>(userRef);
   const { data: staffListData, isLoading: staffLoading } = useCollection<StaffMember>(staffRef);
   const { data: shiftsData, isLoading: shiftsLoading } = useCollection<Shift>(shiftsRef);
-  const { data: attendanceData, isLoading: attendanceLoading } = useCollection<AttendanceRecord>(attendanceQuery);
   
   const staffList = staffListData || [];
   const shifts = shiftsData || [];
@@ -154,44 +259,6 @@ export default function StaffPage() {
   const [isSavingStaff, setIsSavingStaff] = useState(false);
   const [accessCodeError, setAccessCodeError] = useState<string | null>(null);
 
-  const dailyAttendance = staffList
-    .filter(staff => staff.active)
-    .map(staff => {
-        const record = attendanceData?.find(att => att.staffId === staff.id);
-        return {
-            ...staff,
-            status: record?.status || 'Absent',
-            record: record || null,
-        };
-    });
-
-
-  const handleStatusChange = async (staffId: string, newStatus: AttendanceRecord['status']) => {
-    if (!attendanceRef) return;
-    const dateString = format(date, 'yyyy-MM-dd');
-    const existingRecord = attendanceData?.find(att => att.staffId === staffId && att.date === dateString);
-
-    try {
-        if (existingRecord) {
-             const recordRef = doc(attendanceRef, existingRecord.id);
-             await updateDoc(recordRef, { status: newStatus });
-        } else {
-            const staffMember = staffList.find(s => s.id === staffId);
-            await addDoc(attendanceRef, {
-                staffId,
-                staffName: staffMember?.name || 'N/A',
-                date: dateString,
-                status: newStatus,
-                captureTime: serverTimestamp(),
-            });
-        }
-        toast({ title: 'Status Updated', description: `Marked as ${newStatus}.`});
-    } catch(e) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Could not update status.' });
-      console.error(e);
-    }
-  };
-  
   const handlePrevDay = () => {
     setDate(prev => subDays(prev, 1));
   };
@@ -472,7 +539,7 @@ export default function StaffPage() {
               </div>
             </CardHeader>
             <CardContent>
-              {staffLoading || attendanceLoading ? <p>Loading staff...</p> : (
+              {staffLoading ? <p>Loading staff...</p> : (
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -481,71 +548,8 @@ export default function StaffPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {dailyAttendance.map((staff) => (
-                    <React.Fragment key={staff.id}>
-                        <TableRow>
-                        <TableCell>
-                            <div className="flex items-center gap-4">
-                            <Avatar>
-                                <AvatarImage src={staff.avatar} alt={staff.name} />
-                                <AvatarFallback>
-                                {staff.name
-                                    .split(' ')
-                                    .map((n) => n[0])
-                                    .join('')}
-                                </AvatarFallback>
-                            </Avatar>
-                            <span className="font-medium">{staff.name}</span>
-                            </div>
-
-                        </TableCell>
-                        <TableCell className="text-right">
-                            <div className="flex gap-2 justify-end">
-                                {(['Present', 'Absent', 'Half Day', 'Paid Leave'] as const).map((status) => (
-                                    <Badge
-                                    key={status}
-                                    variant={staff.status === status ? getStatusVariant(status) : 'outline'}
-                                    onClick={() => handleStatusChange(staff.id, status)}
-                                    className={cn(
-                                        "cursor-pointer capitalize w-24 justify-center",
-                                        staff.status !== status && "bg-transparent text-foreground"
-                                    )}
-                                    >
-                                    {status}
-                                    </Badge>
-                                ))}
-                            </div>
-                        </TableCell>
-                        </TableRow>
-                        {staff.record?.imageUrl && (
-                            <TableRow>
-                                <TableCell colSpan={2} className="py-2 px-4 bg-gray-50 dark:bg-gray-800/50">
-                                    <div className="flex items-center gap-4">
-                                        <Dialog>
-                                            <DialogTrigger asChild>
-                                                <div className="relative h-12 w-12 rounded-md overflow-hidden cursor-pointer">
-                                                    <Image src={staff.record.imageUrl} alt={`Attendance for ${staff.name}`} layout="fill" objectFit="cover" />
-                                                </div>
-                                            </DialogTrigger>
-                                            <DialogContent className="max-w-lg">
-                                                <DialogHeader>
-                                                    <DialogTitle>Attendance for {staff.name}</DialogTitle>
-                                                    <DialogDescription>{staff.record.captureTime?.toDate().toLocaleString()}</DialogDescription>
-                                                </DialogHeader>
-                                                 <div className="relative mt-4 h-96 w-full">
-                                                    <Image src={staff.record.imageUrl} alt={`Attendance for ${staff.name}`} layout="fill" objectFit="contain" />
-                                                 </div>
-                                            </DialogContent>
-                                        </Dialog>
-                                        <div>
-                                            <p className="text-xs text-muted-foreground">Captured at:</p>
-                                            <p className="text-sm font-medium">{staff.record.captureTime?.toDate().toLocaleTimeString()}</p>
-                                        </div>
-                                    </div>
-                                </TableCell>
-                            </TableRow>
-                        )}
-                    </React.Fragment>
+                  {activeStaffList.map((staff) => (
+                    <StaffAttendanceRow key={staff.id} staff={staff} date={date} />
                   ))}
                 </TableBody>
               </Table>
