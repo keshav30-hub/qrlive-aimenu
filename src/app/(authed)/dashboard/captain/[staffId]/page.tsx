@@ -128,7 +128,7 @@ export default function CaptainTasksPage() {
   }
   
   return (
-    <div className="space-y-6 p-4 md:p-6">
+    <div className="space-y-6 max-w-lg mx-auto py-6 px-4">
       <div className="flex justify-between items-center">
         <div>
             <h1 className="text-3xl font-bold">Captain's Dashboard</h1>

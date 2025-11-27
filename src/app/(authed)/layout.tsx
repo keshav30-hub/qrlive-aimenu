@@ -207,8 +207,10 @@ export default function AuthedLayout({
                   <NotificationPanel />
                 </header>
               )}
-              <div className={cn("flex-1 overflow-y-auto", !isSpecialLayout && "p-4")}>
-                {children}
+              <div className={cn("flex-1 overflow-y-auto", !isSpecialLayout && "p-4 md:p-6")}>
+                 <div className={cn(!isSpecialLayout && "max-w-7xl mx-auto")}>
+                    {children}
+                 </div>
               </div>
             </main>
           </SidebarProvider>

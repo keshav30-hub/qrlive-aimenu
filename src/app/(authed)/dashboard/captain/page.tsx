@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -75,7 +76,7 @@ export default function CaptainAccessCodePage() {
   };
 
   return (
-    <div className="flex items-center justify-center p-4">
+    <div className="flex h-screen items-center justify-center p-4">
        <Card className="w-full max-w-md">
          <CardHeader className="text-center">
             <Fingerprint className="mx-auto h-12 w-12 text-primary" />
