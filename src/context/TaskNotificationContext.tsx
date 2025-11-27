@@ -69,7 +69,9 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
   const [isAcknowledging, setIsAcknowledging] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [unattendedTaskCount, setUnattendedTaskCount] = useState(0);
-  const [acknowledgedTaskTimes, setAcknowledgedTaskTimes] = useState<Set<string>>(new Set());
+  
+  // Keep track of the specific task being shown in the dialog
+  const [notifiedTask, setNotifiedTask] = useState<Task | null>(null);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -86,7 +88,6 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
     setUnattendedTaskCount(totalUnattendedCount);
   }, [totalUnattendedCount]);
 
-  // Initialize audio element
   useEffect(() => {
     if (typeof window !== 'undefined') {
       audioRef.current = new Audio('/notificationalert.mp3');
@@ -95,7 +96,6 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
     }
   }, []);
 
-  // Control audio playback and vibration
   useEffect(() => {
     const audio = audioRef.current;
     
@@ -105,16 +105,14 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
         audio.currentTime = 0;
       }
       if (navigator.vibrate) {
-        navigator.vibrate(0); // Stop any ongoing vibration
+        navigator.vibrate(0);
       }
     };
 
     if (unattendedTaskCount > 0 && !isMuted) {
       audio?.play().catch(error => console.error("Audio playback failed:", error));
       if (navigator.vibrate) {
-        // A pattern of vibration: 200ms vibration, 100ms pause, 200ms vibration.
-        // It will repeat because the audio loops.
-        navigator.vibrate([200, 100, 200]);
+        navigator.vibrate([200, 100, 200, 100, 200]);
       }
     } else {
       stopNotifications();
@@ -123,11 +121,27 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
     return stopNotifications;
   }, [unattendedTaskCount, isMuted]);
 
-  // Effect to show notifications for new tasks
+  useEffect(() => {
+    if (isDialogOpen && notifiedTask) {
+        // If the dialog is open for a specific task, check if it's still in the unattended list.
+        const taskIsStillPending = unattendedTasks.some(
+            task => task.time === notifiedTask.time && task.table === notifiedTask.table && task.request === notifiedTask.request
+        );
+        // If it's not pending anymore (i.e., someone else handled it), close the dialog.
+        if (!taskIsStillPending) {
+            closeDialog();
+        }
+    }
+  }, [unattendedTasks, isDialogOpen, notifiedTask]);
+
+
   useEffect(() => {
     if (tasksLiveRef && unattendedTasks && unattendedTasks.length > 0) {
       const latestTask = unattendedTasks[unattendedTasks.length - 1];
-      if (!acknowledgedTaskTimes.has(latestTask.time) && !isDialogOpen) {
+      
+      // Check if the dialog is already open to avoid replacing an active notification
+      if (!isDialogOpen) {
+        setNotifiedTask(latestTask); // Track the task being notified
         setNotification({
           title: "New Task Received!",
           description: "A new service request has been received.",
@@ -144,7 +158,6 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
                     pendingCalls: arrayRemove(latestTask),
                     attendedCalls: arrayUnion(updatedTask)
                 });
-                // No redirect here. User stays on the current page.
              } catch(e) {
                 console.error("Failed to acknowledge task", e);
              } finally {
@@ -155,13 +168,13 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
         setIsDialogOpen(true);
       }
     }
-  }, [tasksLiveRef, unattendedTasks, router, acknowledgedTaskTimes, isDialogOpen]);
+  }, [tasksLiveRef, unattendedTasks, isDialogOpen]);
   
-  // Effect to show notifications for new urgent feedback
   useEffect(() => {
     if (urgentFeedbacks && urgentFeedbacks.length > 0) {
         const latestFeedback = urgentFeedbacks[0];
-        if (!acknowledgedTaskTimes.has(latestFeedback.time) && !isDialogOpen) {
+        if (!isDialogOpen) {
+            // For simplicity, we can treat urgent feedback similarly, although it doesn't have a task object to track
             setNotification({
                 title: "Urgent Feedback Received!",
                 description: `A ${latestFeedback.type} was submitted.`,
@@ -175,7 +188,6 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
                     if (urgentFeedbackRef) {
                         try {
                            await deleteDoc(doc(urgentFeedbackRef, latestFeedback.id));
-                           // No redirect here
                         } catch(e) {
                            console.error("Failed to acknowledge feedback", e);
                         } finally {
@@ -187,23 +199,19 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
             setIsDialogOpen(true);
         }
     }
-  }, [urgentFeedbacks, router, urgentFeedbackRef, acknowledgedTaskTimes, isDialogOpen]);
+  }, [urgentFeedbacks, urgentFeedbackRef, isDialogOpen]);
 
   const toggleMute = () => {
     setIsMuted(prev => !prev);
   };
   
   const showNewTask = useCallback((payload: NewTaskPayload) => {
-    // This function can be used by other components to manually trigger a notification if needed
-    // For now, it's primarily driven by the useEffect hooks above
   }, []);
 
   const closeDialog = () => {
-    if (notification?.data.Time) {
-      setAcknowledgedTaskTimes(prev => new Set(prev).add(notification.data.Time));
-    }
     setIsDialogOpen(false);
     setNotification(null);
+    setNotifiedTask(null); // Clear the tracked task
   };
 
   const handleAcknowledge = async () => {
