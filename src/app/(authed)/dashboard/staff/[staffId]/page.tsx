@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -30,6 +30,13 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import {
   User,
   Fingerprint,
   Briefcase,
@@ -45,8 +52,8 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { useFirebase, useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, Timestamp, doc } from 'firebase/firestore';
-import { format, getMonth, startOfYear, endOfYear, eachMonthOfInterval, getDaysInMonth, startOfMonth, endOfMonth } from 'date-fns';
+import { collection, query, where, Timestamp, doc, getDocs, orderBy } from 'firebase/firestore';
+import { format, getMonth, startOfYear, endOfYear, eachMonthOfInterval, getDaysInMonth, startOfMonth, endOfMonth, getYear } from 'date-fns';
 import { useCurrency } from '@/hooks/use-currency';
 
 type StaffMember = {
@@ -75,6 +82,10 @@ type AttendanceRecord = {
   imageUrl?: string;
   captureTime?: Timestamp;
 };
+
+type UserProfile = {
+    createdAt?: Timestamp;
+}
 
 const getStatusVariant = (status: AttendanceRecord['status']) => {
   switch (status) {
@@ -210,6 +221,46 @@ export default function StaffDetailPage() {
   const params = useParams();
   const staffId = params.staffId as string;
   const { format: formatCurrency } = useCurrency();
+  
+  const currentYear = new Date().getFullYear();
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [availableYears, setAvailableYears] = useState<number[]>([]);
+
+  const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [user, firestore]);
+  const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
+
+  useEffect(() => {
+    if (!user || !staffId || !firestore || !userProfile) return;
+
+    const fetchAvailableYears = async () => {
+        const staffAttendanceRef = collection(firestore, 'users', user.uid, 'staff', staffId, 'attendance');
+        const querySnapshot = await getDocs(query(staffAttendanceRef, orderBy('date', 'desc')));
+        
+        const yearsWithData = new Set<number>();
+        
+        // Add account creation year
+        if (userProfile.createdAt) {
+            yearsWithData.add(getYear(userProfile.createdAt.toDate()));
+        } else {
+            yearsWithData.add(currentYear); // Fallback
+        }
+
+        querySnapshot.forEach(doc => {
+            const date = new Date(doc.data().date);
+            yearsWithData.add(getYear(date));
+        });
+
+        const sortedYears = Array.from(yearsWithData).sort((a, b) => b - a);
+        setAvailableYears(sortedYears);
+        
+        // Ensure selected year is valid
+        if (!sortedYears.includes(selectedYear)) {
+            setSelectedYear(sortedYears[0] || currentYear);
+        }
+    };
+
+    fetchAvailableYears();
+  }, [user, staffId, firestore, userProfile, currentYear, selectedYear]);
 
   const staffDocRef = useMemoFirebase(
     () => (user && staffId ? doc(firestore, 'users', user.uid, 'staff', staffId) : null),
@@ -222,17 +273,13 @@ export default function StaffDetailPage() {
     [firestore, user, staff]
   );
   const { data: shift, isLoading: shiftLoading } = useDoc<Shift>(shiftDocRef);
-  
-  const currentYear = new Date().getFullYear();
-  const startOfCurrentYear = startOfYear(new Date());
-  const endOfCurrentYear = endOfYear(new Date());
 
   const monthsOfYear = useMemo(() => {
     return eachMonthOfInterval({
-        start: startOfCurrentYear,
-        end: endOfCurrentYear,
+        start: startOfYear(new Date(selectedYear, 0, 1)),
+        end: endOfYear(new Date(selectedYear, 11, 31)),
     });
-  }, [startOfCurrentYear, endOfCurrentYear]);
+  }, [selectedYear]);
 
 
   if (staffLoading || shiftLoading) {
@@ -302,18 +349,36 @@ export default function StaffDetailPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Attendance History - {currentYear}</CardTitle>
-          <CardDescription>Monthly breakdown of attendance and salary for the current year.</CardDescription>
+            <div className="flex justify-between items-center">
+                 <div>
+                    <CardTitle>Attendance History</CardTitle>
+                    <CardDescription>Monthly breakdown of attendance and salary.</CardDescription>
+                 </div>
+                 {availableYears.length > 0 && (
+                    <Select
+                        value={selectedYear.toString()}
+                        onValueChange={(value) => setSelectedYear(parseInt(value, 10))}
+                    >
+                        <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Select a year" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {availableYears.map(year => (
+                                <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                 )}
+            </div>
         </CardHeader>
         <CardContent>
           <Accordion type="single" collapsible className="w-full">
             {monthsOfYear.map(monthDate => {
               const monthName = format(monthDate, 'MMMM');
-
               return (
                 <AccordionItem key={monthName} value={monthName}>
                   <AccordionTrigger>
-                    {monthName}
+                    {monthName} {selectedYear}
                   </AccordionTrigger>
                   <AccordionContent>
                       <MonthAttendance monthDate={monthDate} staffId={staffId} />
@@ -327,3 +392,4 @@ export default function StaffDetailPage() {
     </div>
   );
 }
+
