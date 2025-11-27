@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -46,7 +46,7 @@ import {
 } from '@/components/ui/dialog';
 import { useFirebase, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, Timestamp, doc } from 'firebase/firestore';
-import { format, getMonth, startOfYear, endOfYear, eachMonthOfInterval, getDaysInMonth } from 'date-fns';
+import { format, getMonth, startOfYear, endOfYear, eachMonthOfInterval, getDaysInMonth, startOfMonth, endOfMonth } from 'date-fns';
 import { useCurrency } from '@/hooks/use-currency';
 
 type StaffMember = {
@@ -86,6 +86,125 @@ const getStatusVariant = (status: AttendanceRecord['status']) => {
   }
 };
 
+const MonthAttendance = ({ monthDate, staffId }: { monthDate: Date, staffId: string }) => {
+    const { user, firestore } = useFirebase();
+    const { format: formatCurrency } = useCurrency();
+    
+    const staffDocRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid, 'staff', staffId) : null, [firestore, user, staffId]);
+    const { data: staff } = useDoc<StaffMember>(staffDocRef);
+
+    const attendanceRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'attendance') : null, [firestore, user]);
+    
+    const monthQuery = useMemoFirebase(() => {
+        if (!attendanceRef) return null;
+        const start = format(startOfMonth(monthDate), 'yyyy-MM-dd');
+        const end = format(endOfMonth(monthDate), 'yyyy-MM-dd');
+        return query(attendanceRef, where('staffId', '==', staffId), where('date', '>=', start), where('date', '<=', end));
+    }, [attendanceRef, monthDate, staffId]);
+
+    const { data: recordsForMonth, isLoading } = useCollection<AttendanceRecord>(monthQuery);
+    
+    if (isLoading || !staff) {
+        return <div className="p-4 text-center">Loading month data...</div>;
+    }
+
+    const monthName = format(monthDate, 'MMMM');
+    const totalDaysInMonth = getDaysInMonth(monthDate);
+    const presentCount = (recordsForMonth || []).filter(r => r.status === 'Present').length;
+    const absentCount = (recordsForMonth || []).filter(r => r.status === 'Absent').length;
+    const halfDayCount = (recordsForMonth || []).filter(r => r.status === 'Half Day').length;
+    const paidLeaveCount = (recordsForMonth || []).filter(r => r.status === 'Paid Leave').length;
+
+    const monthlySalary = staff.monthlySalary || 0;
+    const lateFine = staff.lateFine || 0;
+    const bonus = staff.monthlyBonus || 0;
+    const perDaySalary = monthlySalary / totalDaysInMonth;
+    const salaryForDays = perDaySalary * (presentCount + paidLeaveCount);
+    const totalDeductions = lateFine * halfDayCount;
+    const finalSalary = salaryForDays - totalDeductions + bonus;
+              
+    return (
+        <div className="p-4 border-t">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 text-center">
+            <div className='p-2 rounded-md bg-gray-100 dark:bg-gray-800'>
+              <p className="text-sm text-muted-foreground">Total Days</p>
+              <p className="font-bold text-lg">{totalDaysInMonth}</p>
+            </div>
+            <div className='p-2 rounded-md bg-green-100 dark:bg-green-900/30'>
+              <p className="text-sm text-green-800 dark:text-green-300">Present</p>
+              <p className="font-bold text-lg text-green-900 dark:text-green-200">{presentCount}</p>
+            </div>
+            <div className='p-2 rounded-md bg-red-100 dark:bg-red-900/30'>
+               <p className="text-sm text-red-800 dark:text-red-300">Absent</p>
+              <p className="font-bold text-lg text-red-900 dark:text-red-200">{absentCount}</p>
+            </div>
+            <div className='p-2 rounded-md bg-yellow-100 dark:bg-yellow-900/30'>
+               <p className="text-sm text-yellow-800 dark:text-yellow-300">Half Day / Leave</p>
+              <p className="font-bold text-lg text-yellow-900 dark:text-yellow-200">{halfDayCount} / {paidLeaveCount}</p>
+            </div>
+          </div>
+
+          <Card className='mb-4'>
+              <CardHeader className='p-4'>
+                  <CardTitle className='text-base'>Salary Calculation</CardTitle>
+              </CardHeader>
+              <CardContent className='p-4 text-sm space-y-2'>
+                  <div className='flex justify-between'><span>Base Salary for working days:</span> <span className='font-medium'>{formatCurrency(salaryForDays)}</span></div>
+                  <div className='flex justify-between'><span>Late Fine Deduction:</span> <span className='font-medium text-destructive'>- {formatCurrency(totalDeductions)}</span></div>
+                  <div className='flex justify-between'><span>Monthly Bonus:</span> <span className='font-medium text-green-600'>+ {formatCurrency(bonus)}</span></div>
+                  <div className='flex justify-between font-bold text-base border-t pt-2 mt-2'><span>Final Salary:</span> <span>{formatCurrency(finalSalary)}</span></div>
+              </CardContent>
+          </Card>
+
+        {(recordsForMonth || []).length > 0 ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Capture Time</TableHead>
+                <TableHead>Image</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {(recordsForMonth || []).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(record => (
+                <TableRow key={record.id}>
+                  <TableCell>{format(new Date(record.date), 'PPP')}</TableCell>
+                  <TableCell>
+                    <Badge variant={getStatusVariant(record.status)} className="capitalize">{record.status}</Badge>
+                  </TableCell>
+                  <TableCell>{record.captureTime ? record.captureTime.toDate().toLocaleTimeString() : '-'}</TableCell>
+                  <TableCell>
+                    {record.imageUrl ? (
+                        <Dialog>
+                            <DialogTrigger asChild>
+                               <Button variant="ghost" size="icon">
+                                <ImageIcon className="h-5 w-5" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-lg">
+                                <DialogHeader>
+                                    <DialogTitle>Attendance for {format(new Date(record.date), 'PPP')}</DialogTitle>
+                                </DialogHeader>
+                                    <div className="relative mt-4 h-96 w-full">
+                                    <Image src={record.imageUrl} alt={`Attendance for ${staff.name}`} layout="fill" objectFit="contain" />
+                                </div>
+                            </DialogContent>
+                        </Dialog>
+                    ) : '-'}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <p className="text-center text-muted-foreground p-4">No attendance records for {monthName}.</p>
+        )}
+        </div>
+    );
+};
+
+
 export default function StaffDetailPage() {
   const { user, firestore } = useFirebase();
   const params = useParams();
@@ -103,27 +222,10 @@ export default function StaffDetailPage() {
     [firestore, user, staff]
   );
   const { data: shift, isLoading: shiftLoading } = useDoc<Shift>(shiftDocRef);
-
-  const attendanceRef = useMemoFirebase(
-    () => (user && staffId ? collection(firestore, 'users', user.uid, 'attendance') : null),
-    [firestore, user, staffId]
-  );
   
   const currentYear = new Date().getFullYear();
   const startOfCurrentYear = startOfYear(new Date());
   const endOfCurrentYear = endOfYear(new Date());
-  
-  const attendanceQuery = useMemoFirebase(
-    () => attendanceRef ? query(
-        attendanceRef, 
-        where('staffId', '==', staffId),
-        where('date', '>=', format(startOfCurrentYear, 'yyyy-MM-dd')),
-        where('date', '<=', format(endOfCurrentYear, 'yyyy-MM-dd'))
-    ) : null,
-    [attendanceRef, staffId, startOfCurrentYear, endOfCurrentYear]
-  );
-
-  const { data: attendanceData, isLoading: attendanceLoading } = useCollection<AttendanceRecord>(attendanceQuery);
 
   const monthsOfYear = useMemo(() => {
     return eachMonthOfInterval({
@@ -133,19 +235,7 @@ export default function StaffDetailPage() {
   }, [startOfCurrentYear, endOfCurrentYear]);
 
 
-  const attendanceByMonth = useMemo(() => {
-    const grouped: { [key: number]: AttendanceRecord[] } = {};
-    (attendanceData || []).forEach(record => {
-      const month = getMonth(new Date(record.date));
-      if (!grouped[month]) {
-        grouped[month] = [];
-      }
-      grouped[month].push(record);
-    });
-    return grouped;
-  }, [attendanceData]);
-  
-  if (staffLoading || shiftLoading || attendanceLoading) {
+  if (staffLoading || shiftLoading) {
     return <div className="flex h-screen items-center justify-center">Loading staff details...</div>;
   }
 
@@ -218,115 +308,15 @@ export default function StaffDetailPage() {
         <CardContent>
           <Accordion type="single" collapsible className="w-full">
             {monthsOfYear.map(monthDate => {
-              const monthIndex = getMonth(monthDate);
               const monthName = format(monthDate, 'MMMM');
-              const recordsForMonth = attendanceByMonth[monthIndex] || [];
-              
-              const totalDaysInMonth = getDaysInMonth(monthDate);
-              const presentCount = recordsForMonth.filter(r => r.status === 'Present').length;
-              const absentCount = recordsForMonth.filter(r => r.status === 'Absent').length;
-              const halfDayCount = recordsForMonth.filter(r => r.status === 'Half Day').length;
-              const paidLeaveCount = recordsForMonth.filter(r => r.status === 'Paid Leave').length;
-
-              const monthlySalary = staff.monthlySalary || 0;
-              const lateFine = staff.lateFine || 0;
-              const bonus = staff.monthlyBonus || 0;
-              const perDaySalary = monthlySalary / totalDaysInMonth;
-              const salaryForDays = perDaySalary * (presentCount + paidLeaveCount);
-              const totalDeductions = lateFine * halfDayCount;
-              const finalSalary = salaryForDays - totalDeductions + bonus;
-
 
               return (
                 <AccordionItem key={monthName} value={monthName}>
                   <AccordionTrigger>
-                    <div className="flex justify-between w-full pr-4">
-                        <span>{monthName}</span>
-                        <div className="flex gap-4 text-sm">
-                            <span>Present: {presentCount}</span>
-                            <span>Absent: {absentCount}</span>
-                             <span>Half Day: {halfDayCount}</span>
-                        </div>
-                    </div>
+                    {monthName}
                   </AccordionTrigger>
                   <AccordionContent>
-                    <div className="p-4 border-t">
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 text-center">
-                        <div className='p-2 rounded-md bg-gray-100 dark:bg-gray-800'>
-                          <p className="text-sm text-muted-foreground">Total Days</p>
-                          <p className="font-bold text-lg">{totalDaysInMonth}</p>
-                        </div>
-                        <div className='p-2 rounded-md bg-green-100 dark:bg-green-900/30'>
-                          <p className="text-sm text-green-800 dark:text-green-300">Present</p>
-                          <p className="font-bold text-lg text-green-900 dark:text-green-200">{presentCount}</p>
-                        </div>
-                        <div className='p-2 rounded-md bg-red-100 dark:bg-red-900/30'>
-                           <p className="text-sm text-red-800 dark:text-red-300">Absent</p>
-                          <p className="font-bold text-lg text-red-900 dark:text-red-200">{absentCount}</p>
-                        </div>
-                        <div className='p-2 rounded-md bg-yellow-100 dark:bg-yellow-900/30'>
-                           <p className="text-sm text-yellow-800 dark:text-yellow-300">Half Day / Leave</p>
-                          <p className="font-bold text-lg text-yellow-900 dark:text-yellow-200">{halfDayCount} / {paidLeaveCount}</p>
-                        </div>
-                      </div>
-
-                      <Card className='mb-4'>
-                          <CardHeader className='p-4'>
-                              <CardTitle className='text-base'>Salary Calculation</CardTitle>
-                          </CardHeader>
-                          <CardContent className='p-4 text-sm space-y-2'>
-                              <div className='flex justify-between'><span>Base Salary for working days:</span> <span className='font-medium'>{formatCurrency(salaryForDays)}</span></div>
-                              <div className='flex justify-between'><span>Late Fine Deduction:</span> <span className='font-medium text-destructive'>- {formatCurrency(totalDeductions)}</span></div>
-                              <div className='flex justify-between'><span>Monthly Bonus:</span> <span className='font-medium text-green-600'>+ {formatCurrency(bonus)}</span></div>
-                              <div className='flex justify-between font-bold text-base border-t pt-2 mt-2'><span>Final Salary:</span> <span>{formatCurrency(finalSalary)}</span></div>
-                          </CardContent>
-                      </Card>
-
-                    {recordsForMonth.length > 0 ? (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Date</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Capture Time</TableHead>
-                            <TableHead>Image</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {recordsForMonth.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(record => (
-                            <TableRow key={record.id}>
-                              <TableCell>{format(new Date(record.date), 'PPP')}</TableCell>
-                              <TableCell>
-                                <Badge variant={getStatusVariant(record.status)} className="capitalize">{record.status}</Badge>
-                              </TableCell>
-                              <TableCell>{record.captureTime ? record.captureTime.toDate().toLocaleTimeString() : '-'}</TableCell>
-                              <TableCell>
-                                {record.imageUrl ? (
-                                    <Dialog>
-                                        <DialogTrigger asChild>
-                                           <Button variant="ghost" size="icon">
-                                            <ImageIcon className="h-5 w-5" />
-                                          </Button>
-                                        </DialogTrigger>
-                                        <DialogContent className="max-w-lg">
-                                            <DialogHeader>
-                                                <DialogTitle>Attendance for {format(new Date(record.date), 'PPP')}</DialogTitle>
-                                            </DialogHeader>
-                                                <div className="relative mt-4 h-96 w-full">
-                                                <Image src={record.imageUrl} alt={`Attendance for ${staff.name}`} layout="fill" objectFit="contain" />
-                                            </div>
-                                        </DialogContent>
-                                    </Dialog>
-                                ) : '-'}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    ) : (
-                      <p className="text-center text-muted-foreground p-4">No attendance records for {monthName}.</p>
-                    )}
-                    </div>
+                      <MonthAttendance monthDate={monthDate} staffId={staffId} />
                   </AccordionContent>
                 </AccordionItem>
               );

@@ -21,8 +21,8 @@ service cloud.firestore {
     }
     
     match /users/{userId} {
-      allow get, list: if isAdmin();
-      allow read: if true;
+      allow get: if true;
+      allow list: if isAdmin();
       allow update, delete: if isOwner(userId);
       allow create: if isSignedIn();
     }
@@ -64,6 +64,11 @@ service cloud.firestore {
       allow write: if isOwner(userId);
     }
     
+    // New rule to allow public querying of a single event by its unique ID
+    match /{path=**}/events/{eventId} {
+      allow list: if request.query.keys.hasOnly(['id']) && request.query.id == resource.data.id;
+    }
+
     match /users/{userId}/events/{eventId}/rsvps/{rsvpId} {
       allow read: if isOwner(userId);
       allow create: if true;
@@ -120,8 +125,10 @@ service cloud.firestore {
     }
 
     match /users/{userId}/attendance/{attendanceId} {
-        allow create: if true; // Allow anyone to create an attendance record
-        allow read, update, delete: if isOwner(userId);
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if true; // Allow anyone to create an attendance record
+      allow update, delete: if isOwner(userId);
     }
     
     match /users/{userId}/shifts/{shiftId} {
