@@ -2,10 +2,10 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useParams } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { useParams, useRouter } from 'next/navigation';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Camera, Loader2, CheckCircle } from 'lucide-react';
+import { Camera, Loader2, CheckCircle, LogOut } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useFirebaseStorage } from '@/firebase/storage/use-firebase-storage';
@@ -35,6 +35,7 @@ type AttendanceRecord = {
 
 export default function StaffAttendancePage() {
   const params = useParams();
+  const router = useRouter();
   const { staffId } = params;
   const { toast } = useToast();
   const { uploadFile, isLoading: isUploading } = useFirebaseStorage();
@@ -168,6 +169,10 @@ export default function StaffAttendancePage() {
         }
     }, 'image/jpeg', 0.9);
   };
+  
+  const handleLogout = () => {
+    router.push('/dashboard/attendance');
+  }
 
   if (isLoadingData) {
     return <div className="flex h-screen items-center justify-center">Verifying attendance status...</div>;
@@ -226,6 +231,12 @@ export default function StaffAttendancePage() {
                         Captured at: {existingAttendance.captureTime.toDate().toLocaleTimeString()}
                     </p>
                 </CardContent>
+                 <CardFooter>
+                  <Button variant="outline" className="w-full" onClick={handleLogout}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Logout
+                  </Button>
+                </CardFooter>
             </Card>
         ) : (
           <>
