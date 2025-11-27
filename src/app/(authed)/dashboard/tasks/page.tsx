@@ -25,7 +25,7 @@ import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc, arrayRemove, arrayUnion } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Info } from 'lucide-react';
+import { Info, PhoneCall, CheckCircle, XCircle } from 'lucide-react';
 
 type Task = {
   table: string;
@@ -76,6 +76,13 @@ export default function TasksPage() {
   useEffect(() => {
     setUnattendedTaskCount(unattendedTasks.length);
   }, [unattendedTasks, setUnattendedTaskCount]);
+
+  const stats = useMemo(() => {
+    const attended = taskHistory.filter(t => t.status === 'attended').length;
+    const ignored = taskHistory.filter(t => t.status === 'ignored').length;
+    const total = unattendedTasks.length + taskHistory.length;
+    return { total, attended, ignored };
+  }, [unattendedTasks, taskHistory]);
 
 
   const totalPages = Math.ceil(taskHistory.length / ITEMS_PER_PAGE);
@@ -145,6 +152,48 @@ export default function TasksPage() {
         <h1 className="text-3xl font-bold">Tasks</h1>
         <Button onClick={simulateTask} variant="secondary">Simulate New Task</Button>
       </div>
+
+       <div className="grid gap-6 md:grid-cols-3">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Requests</CardTitle>
+              <PhoneCall className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              {tasksLoading ? (
+                <div className="h-8 w-12 bg-gray-200 animate-pulse rounded-md" />
+              ) : (
+                <div className="text-2xl font-bold">{stats.total}</div>
+              )}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Attended</CardTitle>
+              <CheckCircle className="h-4 w-4 text-green-500" />
+            </CardHeader>
+            <CardContent>
+               {tasksLoading ? (
+                <div className="h-8 w-12 bg-gray-200 animate-pulse rounded-md" />
+              ) : (
+                <div className="text-2xl font-bold">{stats.attended}</div>
+              )}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Ignored</CardTitle>
+              <XCircle className="h-4 w-4 text-destructive" />
+            </CardHeader>
+            <CardContent>
+               {tasksLoading ? (
+                <div className="h-8 w-12 bg-gray-200 animate-pulse rounded-md" />
+              ) : (
+                <div className="text-2xl font-bold">{stats.ignored}</div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
        <Alert>
         <Info className="h-4 w-4" />
