@@ -1,8 +1,8 @@
 
 'use client';
 
-import React, { useMemo } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import React, 'use memo';
+import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -34,8 +34,6 @@ import {
   Fingerprint,
   Briefcase,
   ChevronLeft,
-  Calendar,
-  Clock,
   ImageIcon,
 } from 'lucide-react';
 import {
@@ -43,12 +41,11 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { useFirebase, useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, Timestamp } from 'firebase/firestore';
-import { format, getMonth, getYear, startOfYear, endOfYear, eachMonthOfInterval } from 'date-fns';
+import { collection, query, where, Timestamp, doc } from 'firebase/firestore';
+import { format, getMonth, startOfYear, endOfYear, eachMonthOfInterval } from 'date-fns';
 
 type StaffMember = {
   id: string;
