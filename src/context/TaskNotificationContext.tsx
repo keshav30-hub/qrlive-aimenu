@@ -48,6 +48,7 @@ type TaskNotificationContextType = {
   unattendedTaskCount: number;
   setUnattendedTaskCount: (count: number) => void;
   showNewTask: (payload: NewTaskPayload) => void;
+  setDialogsDisabled: (disabled: boolean) => void;
 };
 
 const TaskNotificationContext = createContext<TaskNotificationContextType | undefined>(undefined);
@@ -69,8 +70,8 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
   const [isAcknowledging, setIsAcknowledging] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [unattendedTaskCount, setUnattendedTaskCount] = useState(0);
+  const [dialogsDisabled, setDialogsDisabled] = useState(false);
   
-  // Keep track of the specific task being shown in the dialog
   const [notifiedTask, setNotifiedTask] = useState<Task | null>(null);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -105,29 +106,27 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
         audio.currentTime = 0;
       }
       if (navigator.vibrate) {
-        navigator.vibrate(0);
+        navigator.vibrate(0); // Stop vibration
       }
     };
 
-    if (unattendedTaskCount > 0 && !isMuted) {
+    if (unattendedTaskCount > 0 && !isMuted && !dialogsDisabled) {
       audio?.play().catch(error => console.error("Audio playback failed:", error));
       if (navigator.vibrate) {
-        navigator.vibrate([200, 100, 200, 100, 200]);
+        navigator.vibrate([200, 100, 200, 100, 200, 100, 200]);
       }
     } else {
       stopNotifications();
     }
     
     return stopNotifications;
-  }, [unattendedTaskCount, isMuted]);
+  }, [unattendedTaskCount, isMuted, dialogsDisabled]);
 
   useEffect(() => {
     if (isDialogOpen && notifiedTask) {
-        // If the dialog is open for a specific task, check if it's still in the unattended list.
         const taskIsStillPending = unattendedTasks.some(
             task => task.time === notifiedTask.time && task.table === notifiedTask.table && task.request === notifiedTask.request
         );
-        // If it's not pending anymore (i.e., someone else handled it), close the dialog.
         if (!taskIsStillPending) {
             closeDialog();
         }
@@ -136,12 +135,11 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
 
 
   useEffect(() => {
-    if (tasksLiveRef && unattendedTasks && unattendedTasks.length > 0) {
+    if (tasksLiveRef && unattendedTasks && unattendedTasks.length > 0 && !dialogsDisabled) {
       const latestTask = unattendedTasks[unattendedTasks.length - 1];
       
-      // Check if the dialog is already open to avoid replacing an active notification
       if (!isDialogOpen) {
-        setNotifiedTask(latestTask); // Track the task being notified
+        setNotifiedTask(latestTask);
         setNotification({
           title: "New Task Received!",
           description: "A new service request has been received.",
@@ -168,13 +166,12 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
         setIsDialogOpen(true);
       }
     }
-  }, [tasksLiveRef, unattendedTasks, isDialogOpen]);
+  }, [tasksLiveRef, unattendedTasks, isDialogOpen, dialogsDisabled]);
   
   useEffect(() => {
-    if (urgentFeedbacks && urgentFeedbacks.length > 0) {
+    if (urgentFeedbacks && urgentFeedbacks.length > 0 && !dialogsDisabled) {
         const latestFeedback = urgentFeedbacks[0];
         if (!isDialogOpen) {
-            // For simplicity, we can treat urgent feedback similarly, although it doesn't have a task object to track
             setNotification({
                 title: "Urgent Feedback Received!",
                 description: `A ${latestFeedback.type} was submitted.`,
@@ -199,7 +196,7 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
             setIsDialogOpen(true);
         }
     }
-  }, [urgentFeedbacks, urgentFeedbackRef, isDialogOpen]);
+  }, [urgentFeedbacks, urgentFeedbackRef, isDialogOpen, dialogsDisabled]);
 
   const toggleMute = () => {
     setIsMuted(prev => !prev);
@@ -211,7 +208,7 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
   const closeDialog = () => {
     setIsDialogOpen(false);
     setNotification(null);
-    setNotifiedTask(null); // Clear the tracked task
+    setNotifiedTask(null); 
   };
 
   const handleAcknowledge = async () => {
@@ -226,7 +223,8 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
     toggleMute,
     unattendedTaskCount,
     setUnattendedTaskCount,
-    showNewTask
+    showNewTask,
+    setDialogsDisabled
   };
 
   return (

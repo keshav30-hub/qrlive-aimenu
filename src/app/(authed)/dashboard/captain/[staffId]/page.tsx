@@ -10,19 +10,30 @@ import {
   CardTitle,
   CardDescription,
 } from '@/components/ui/card';
+import {
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
+} from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { LogOut } from 'lucide-react';
 import { useTaskNotification } from '@/context/TaskNotificationContext';
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc, arrayRemove, arrayUnion } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
 
 type Task = {
   table: string;
   request: string;
   time: string;
   status: 'attended' | 'ignored' | 'unattended';
+  handledBy?: string;
 };
 
 type StaffMember = {
@@ -34,6 +45,19 @@ type TaskDoc = {
     pendingCalls: Task[];
     attendedCalls: Task[];
 }
+
+const statusVariant = (status: string) => {
+  switch (status) {
+    case 'attended':
+      return 'default';
+    case 'ignored':
+      return 'destructive';
+    case 'unattended':
+      return 'secondary';
+    default:
+      return 'outline';
+  }
+};
 
 
 export default function CaptainTasksPage() {
@@ -50,8 +74,20 @@ export default function CaptainTasksPage() {
   const { data: tasksDoc, isLoading: tasksLoading } = useDoc<TaskDoc>(tasksLiveRef);
 
   const unattendedTasks = useMemo(() => (tasksDoc?.pendingCalls || []).sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime()), [tasksDoc]);
+  const attendedToday = useMemo(() => {
+    const today = format(new Date(), 'yyyy-MM-dd');
+    return (tasksDoc?.attendedCalls || [])
+        .filter(task => task.handledBy === staffMember?.name && task.time.startsWith(today))
+        .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+  }, [tasksDoc, staffMember]);
+
   
-  const { showNewTask, setUnattendedTaskCount } = useTaskNotification();
+  const { setUnattendedTaskCount, setDialogsDisabled } = useTaskNotification();
+
+  useEffect(() => {
+    setDialogsDisabled(true); // Disable global popups on this page
+    return () => setDialogsDisabled(false); // Re-enable on unmount
+  }, [setDialogsDisabled]);
 
   useEffect(() => {
     setUnattendedTaskCount(unattendedTasks.length);
@@ -137,6 +173,51 @@ export default function CaptainTasksPage() {
             </div>
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>Today's Attended Tasks</CardTitle>
+           <CardDescription>Tasks you have handled today.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {tasksLoading ? <p>Loading history...</p> : (
+          <>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Time</TableHead>
+                  <TableHead>Table</TableHead>
+                  <TableHead>Request</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {attendedToday.map((task, index) => (
+                  <TableRow key={index}>
+                    <TableCell>{new Date(task.time).toLocaleString()}</TableCell>
+                    <TableCell>{task.table}</TableCell>
+                    <TableCell>{task.request}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={statusVariant(task.status)}
+                        className="capitalize"
+                      >
+                        {task.status}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            {attendedToday.length === 0 && !tasksLoading && (
+              <div className="text-center py-10 text-muted-foreground">
+                  <p>You have not attended any tasks today.</p>
+              </div>
+            )}
+          </>
+          )}
         </CardContent>
       </Card>
     </div>

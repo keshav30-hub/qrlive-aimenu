@@ -63,46 +63,19 @@ export default function TasksPage() {
   const { data: tasksDoc, isLoading: tasksLoading } = useDoc<TaskDoc>(tasksLiveRef);
 
   const [currentPage, setCurrentPage] = useState(1);
-  const { showNewTask, setUnattendedTaskCount } = useTaskNotification();
+  const { setUnattendedTaskCount, setDialogsDisabled } = useTaskNotification();
+  
+  // Enable dialogs on this page
+  useEffect(() => {
+    setDialogsDisabled(false);
+  }, [setDialogsDisabled]);
 
   const unattendedTasks = useMemo(() => (tasksDoc?.pendingCalls || []).sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime()), [tasksDoc]);
   const taskHistory = useMemo(() => (tasksDoc?.attendedCalls || []).sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()), [tasksDoc]);
 
-  const prevPendingCallsRef = useRef<Task[]>([]);
-
   useEffect(() => {
-    // This effect now does two things:
-    // 1. Keeps the global context updated with the number of unattended tasks.
-    // 2. Shows a pop-up notification only when a *new* task is detected.
-
     setUnattendedTaskCount(unattendedTasks.length);
-
-    if (tasksLoading) return;
-
-    // Check if a new task has been added since the last render.
-    if (unattendedTasks.length > prevPendingCallsRef.current.length) {
-      const newTasks = unattendedTasks.filter(
-        task => !prevPendingCallsRef.current.some(
-          prevTask => prevTask.time === task.time && prevTask.table === task.table && prevTask.request === task.request
-        )
-      );
-      
-      if (newTasks.length > 0) {
-        // Find the absolute latest task among the new ones
-        const latestTask = newTasks.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())[0];
-        // Trigger the pop-up notification
-        showNewTask({
-          tableName: latestTask.table,
-          requestType: latestTask.request,
-          dateTime: new Date(latestTask.time).toLocaleTimeString(),
-        });
-      }
-    }
-
-    // After processing, update the ref to the current state for the next render.
-    prevPendingCallsRef.current = unattendedTasks;
-
-  }, [unattendedTasks, showNewTask, tasksLoading, setUnattendedTaskCount]);
+  }, [unattendedTasks, setUnattendedTaskCount]);
 
 
   const totalPages = Math.ceil(taskHistory.length / ITEMS_PER_PAGE);

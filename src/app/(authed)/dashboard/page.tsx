@@ -15,6 +15,7 @@ import { collection, doc, query, where } from 'firebase/firestore';
 import Link from 'next/link';
 import { ListTodo, Calendar, MessageSquare, ArrowRight, Utensils, Users } from 'lucide-react';
 import { useTaskNotification } from '@/context/TaskNotificationContext';
+import { useEffect } from 'react';
 
 type Event = {
   id: string;
@@ -38,7 +39,13 @@ export default function DashboardPage() {
   const { firestore, user } = useFirebase();
 
   // Use the count from the context for tasks
-  const { unattendedTaskCount } = useTaskNotification();
+  const { unattendedTaskCount, setDialogsDisabled } = useTaskNotification();
+
+  // Enable dialogs on the main dashboard page
+  useEffect(() => {
+    setDialogsDisabled(false);
+  }, [setDialogsDisabled]);
+
 
   // Fetch active events
   const eventsRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'events') : null, [firestore, user]);
