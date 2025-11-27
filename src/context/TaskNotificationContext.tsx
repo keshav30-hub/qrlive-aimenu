@@ -50,6 +50,7 @@ type TaskNotificationContextType = {
   showNewTask: (payload: NewTaskPayload) => void;
   setDialogsDisabled: (disabled: boolean) => void;
   unlockAudio: () => void;
+  isAudioUnlocked: boolean;
 };
 
 const TaskNotificationContext = createContext<TaskNotificationContextType | undefined>(undefined);
@@ -76,7 +77,8 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
   const [notifiedTask, setNotifiedTask] = useState<Task | UrgentFeedback | null>(null);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const isAudioUnlocked = useRef(false);
+  const audioUnlockedRef = useRef(false);
+  const [isAudioUnlocked, setIsAudioUnlocked] = useState(false);
 
   const tasksLiveRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid, 'tasks', 'live') : null, [user, firestore]);
   const { data: taskDoc } = useDoc<TaskDoc>(tasksLiveRef);
@@ -100,11 +102,12 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
   }, []);
 
   const unlockAudio = useCallback(() => {
-    if (audioRef.current && !isAudioUnlocked.current) {
+    if (audioRef.current && !audioUnlockedRef.current) {
         audioRef.current.play().then(() => {
             audioRef.current?.pause();
+            audioUnlockedRef.current = true;
+            setIsAudioUnlocked(true);
         }).catch(err => console.error("Audio unlock failed:", err));
-        isAudioUnlocked.current = true;
     }
   }, []);
 
@@ -121,7 +124,7 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
       }
     };
 
-    if (unattendedTaskCount > 0 && !isMuted && !dialogsDisabled && isAudioUnlocked.current) {
+    if (unattendedTaskCount > 0 && !isMuted && !dialogsDisabled && audioUnlockedRef.current) {
       audio?.play().catch(error => console.error("Audio playback failed:", error));
       if (navigator.vibrate) {
         navigator.vibrate([200, 100, 200, 100, 200, 100, 200]);
@@ -246,6 +249,7 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
     showNewTask,
     setDialogsDisabled,
     unlockAudio,
+    isAudioUnlocked: audioUnlockedRef.current,
   };
 
   return (

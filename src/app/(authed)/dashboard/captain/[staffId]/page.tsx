@@ -21,7 +21,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { LogOut } from 'lucide-react';
+import { LogOut, Volume2, VolumeX } from 'lucide-react';
 import { useTaskNotification } from '@/context/TaskNotificationContext';
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc, arrayRemove, arrayUnion } from 'firebase/firestore';
@@ -82,7 +82,7 @@ export default function CaptainTasksPage() {
   }, [tasksDoc, staffMember]);
 
   
-  const { setUnattendedTaskCount, setDialogsDisabled } = useTaskNotification();
+  const { setUnattendedTaskCount, setDialogsDisabled, isMuted, toggleMute, unlockAudio, isAudioUnlocked } = useTaskNotification();
 
   useEffect(() => {
     setDialogsDisabled(true); // Disable global popups on this page
@@ -123,21 +123,40 @@ export default function CaptainTasksPage() {
     router.push('/dashboard/captain');
   }
 
+  const handleSoundToggle = () => {
+    unlockAudio();
+    toggleMute();
+  }
+
   if (tasksLoading || staffLoading) {
     return <div className="flex h-screen items-center justify-center">Loading tasks...</div>;
   }
   
   return (
     <div className="space-y-6 max-w-lg mx-auto py-6 px-4">
+       {!isAudioUnlocked && (
+        <Card className="mb-4 bg-blue-50 border-blue-200">
+            <CardContent className="pt-6 flex items-center justify-between">
+                <p className="text-blue-900 font-medium">Enable sound for new task alerts?</p>
+                <Button onClick={unlockAudio}>Enable Sound</Button>
+            </CardContent>
+        </Card>
+      )}
       <div className="flex justify-between items-center">
         <div>
             <h1 className="text-3xl font-bold">Captain's Dashboard</h1>
             <p className="text-lg text-muted-foreground">Welcome, {staffMember?.name || 'Captain'}</p>
         </div>
-        <Button variant="outline" onClick={handleLogout}>
-            <LogOut className="mr-2 h-4 w-4" />
-            Logout
-        </Button>
+        <div className="flex items-center gap-2">
+            <Button variant="outline" size="icon" onClick={handleSoundToggle}>
+                {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+                <span className="sr-only">{isMuted ? 'Unmute' : 'Mute'}</span>
+            </Button>
+            <Button variant="outline" onClick={handleLogout}>
+                <LogOut className="mr-2 h-4 w-4" />
+                Logout
+            </Button>
+        </div>
       </div>
 
       <Card>
