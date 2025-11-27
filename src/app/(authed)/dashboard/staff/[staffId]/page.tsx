@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useMemo, useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -222,7 +222,8 @@ export default function StaffDetailPage() {
   const params = useParams();
   const staffId = params.staffId as string;
   const { format: formatCurrency } = useCurrency();
-  
+  const router = useRouter();
+
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
   
@@ -292,7 +293,7 @@ export default function StaffDetailPage() {
               <CardTitle className="text-3xl">{staff.name}</CardTitle>
             </div>
           </div>
-          <Button variant="outline">
+           <Button variant="outline" onClick={() => router.push('/dashboard/staff')}>
             <FilePenLine className="mr-2 h-4 w-4" />
             Edit
           </Button>
