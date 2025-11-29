@@ -1,6 +1,6 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
-import { adminApp } from '@/lib/firebase/server-admin'; // Adjust path as needed
+import { adminApp } from '@/lib/firebase/server-admin'; // Correct path to the fixed initialization file
 import { Timestamp } from 'firebase-admin/firestore'; // Use server Timestamp
 
 // Define the expected structure of the incoming data from Wix Velo
@@ -19,7 +19,8 @@ interface WixPayload {
  */
 export async function POST(req: NextRequest) {
   // Get initialized services inside the handler
-  const auth = adminApp.auth();
+  // This relies on src/lib/firebase/server-admin being correct
+  const auth = adminApp.auth(); 
   const db = adminApp.firestore();
 
   // 1. SECURITY VALIDATION
@@ -67,19 +68,20 @@ export async function POST(req: NextRequest) {
       {
         wixId: payload.wixId,
         email: payload.email,
-        onboarding: true,
+        onboarding: true, // You can use this for first-time user flows
         lastLoginAt: Timestamp.now(),
       },
       { merge: true }
     );
 
-    // 4. SYNC SUBSCRIPTION DATA (Dedicated Collection)
+    // 4. SYNC SUBSCRIPTION DATA (Dedicated Collection - Per your request)
     await db.collection('subscriptions').doc(firebaseUid).set(
       {
         planName: payload.planName,
         status: payload.status,
         wixId: payload.wixId,
-        startDate: payload.startDate ? Timestamp.fromDate(new Date(payload.startDate)) : null,
+        // Convert ISO strings to server-side Firestore Timestamps
+        startDate: payload.startDate ? Timestamp.fromDate(new Date(payload.startDate)) : null, 
         endDate: payload.endDate ? Timestamp.fromDate(new Date(payload.endDate)) : null,
         updatedAt: Timestamp.now(),
       },
