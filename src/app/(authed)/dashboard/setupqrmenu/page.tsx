@@ -108,7 +108,7 @@ export default function SetupQrMenuPage() {
         return;
     }
     const tableSlug = tableName.toLowerCase().replace(/ /g, '-');
-    const menuUrl = `${window.location.origin}/qrmenu/${businessId}/${tableSlug}`;
+    const menuUrl = `https://qrlive-aimenu.vercel.app/qrmenu/${businessId}/${tableSlug}`;
     const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(
       menuUrl
     )}`;

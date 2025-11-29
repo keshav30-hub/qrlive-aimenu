@@ -1,6 +1,6 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
-import { auth, db } from '@/lib/firebase/server-admin'; // Adjust path as needed
+import { adminApp } from '@/lib/firebase/server-admin'; // Adjust path as needed
 import { Timestamp } from 'firebase-admin/firestore'; // Use server Timestamp
 
 // Define the expected structure of the incoming data from Wix Velo
@@ -18,35 +18,39 @@ interface WixPayload {
  * Receives secure data from Wix Velo, handles authentication, and redirects the user.
  */
 export async function POST(req: NextRequest) {
+  // Get initialized services inside the handler
+  const auth = adminApp.auth();
+  const db = adminApp.firestore();
+
+  // 1. SECURITY VALIDATION
+  const expectedSecret = process.env.WIX_SSO_SECRET;
+  const receivedSecret = req.headers.get('x-wix-secret'); // Wix will send this in the header
+
+  if (!expectedSecret || receivedSecret !== expectedSecret) {
+    console.warn('SSO Unauthorized: Secret mismatch.', { ip: req.ip });
+    return new NextResponse(JSON.stringify({ error: 'Unauthorized Access' }), { status: 403 });
+  }
+
+  let payload: WixPayload;
   try {
-    // 1. SECURITY VALIDATION
-    const expectedSecret = process.env.WIX_SSO_SECRET;
-    const receivedSecret = req.headers.get('x-wix-secret'); // Wix will send this in the header
+    payload = (await req.json()) as WixPayload;
+  } catch (e) {
+    return new NextResponse(JSON.stringify({ error: 'Invalid JSON Body' }), { status: 400 });
+  }
 
-    if (!expectedSecret || receivedSecret !== expectedSecret) {
-      console.warn('SSO Unauthorized: Secret mismatch.', { ip: req.ip });
-      return new NextResponse(JSON.stringify({ error: 'Unauthorized Access' }), { status: 403 });
-    }
+  if (!payload.email || !payload.wixId) {
+    return new NextResponse(JSON.stringify({ error: 'Missing required fields (email/wixId)' }), { status: 400 });
+  }
 
-    let payload: WixPayload;
-    try {
-      payload = (await req.json()) as WixPayload;
-    } catch (e) {
-      return new NextResponse(JSON.stringify({ error: 'Invalid JSON Body' }), { status: 400 });
-    }
-
-    if (!payload.email || !payload.wixId) {
-      return new NextResponse(JSON.stringify({ error: 'Missing required fields (email/wixId)' }), { status: 400 });
-    }
-
-    let firebaseUid: string;
-    
+  let firebaseUid: string;
+  try {
     // 2. FIND OR CREATE FIREBASE USER (Auth)
     let userRecord;
     try {
       userRecord = await auth.getUserByEmail(payload.email);
     } catch (error: any) {
       if (error.code === 'auth/user-not-found') {
+        // User does not exist, create a new one
         console.log(`Creating new Firebase user for: ${payload.email}`);
         userRecord = await auth.createUser({
           email: payload.email,

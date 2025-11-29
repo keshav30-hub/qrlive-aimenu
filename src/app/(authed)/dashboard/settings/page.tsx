@@ -172,12 +172,12 @@ export default function SettingsPage() {
   };
 
   const handleDownloadAttendanceQr = () => {
-    const attendanceUrl = `${window.location.origin}/dashboard/attendance`;
+    const attendanceUrl = `https://qrlive-aimenu.vercel.app/dashboard/attendance`;
     generateAndDownloadQr(attendanceUrl, 'attendance-qr-code.png');
   };
 
   const handleDownloadCaptainQr = () => {
-    const captainUrl = `${window.location.origin}/dashboard/captain`;
+    const captainUrl = `https://qrlive-aimenu.vercel.app/dashboard/captain`;
     generateAndDownloadQr(captainUrl, 'captain-login-qr-code.png');
   };
 
@@ -471,5 +471,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-
-    
