@@ -1,31 +1,23 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
-import { adminApp } from '@/lib/firebase/server-admin'; // Correct path to the fixed initialization file
-import { Timestamp } from 'firebase-admin/firestore'; // Use server Timestamp
+import { adminApp } from '@/lib/firebase/server-admin';
+import { Timestamp } from 'firebase-admin/firestore';
 
-// Define the expected structure of the incoming data from Wix Velo
 interface WixPayload {
   email: string;
   wixId: string;
   status: 'active' | 'inactive' | 'pending';
   planName: string;
-  startDate: string; // ISO 8601 string or similar
-  endDate: string;   // ISO 8601 string or similar
+  startDate: string;
+  endDate: string;
 }
 
-/**
- * POST handler for the Wix SSO Bridge.
- * Receives secure data from Wix Velo, handles authentication, and redirects the user.
- */
 export async function POST(req: NextRequest) {
-  // Get initialized services inside the handler
-  // This relies on src/lib/firebase/server-admin being correct
-  const auth = adminApp.auth(); 
+  const auth = adminApp.auth();
   const db = adminApp.firestore();
 
-  // 1. SECURITY VALIDATION
   const expectedSecret = process.env.WIX_SSO_SECRET;
-  const receivedSecret = req.headers.get('x-wix-secret'); // Wix will send this in the header
+  const receivedSecret = req.headers.get('x-wix-secret');
 
   if (!expectedSecret || receivedSecret !== expectedSecret) {
     console.warn('SSO Unauthorized: Secret mismatch.', { ip: req.ip });
@@ -43,12 +35,21 @@ export async function POST(req: NextRequest) {
     return new NextResponse(JSON.stringify({ error: 'Missing required fields (email/wixId)' }), { status: 400 });
   }
 
-  let firebaseUid: string;
   try {
-    // 2. FIND OR CREATE FIREBASE USER (Auth)
     let userRecord;
+    const userRef = db.collection('users');
+    let firebaseUid: string;
+
     try {
       userRecord = await auth.getUserByEmail(payload.email);
+      firebaseUid = userRecord.uid;
+      // User exists, update their profile
+      await userRef.doc(firebaseUid).set({
+        wixId: payload.wixId,
+        email: payload.email,
+        lastLoginAt: Timestamp.now(),
+      }, { merge: true });
+
     } catch (error: any) {
       if (error.code === 'auth/user-not-found') {
         // User does not exist, create a new one
@@ -57,44 +58,36 @@ export async function POST(req: NextRequest) {
           email: payload.email,
           emailVerified: true,
         });
+        firebaseUid = userRecord.uid;
+        // Create their Firestore profile with onboarding complete
+        await userRef.doc(firebaseUid).set({
+          uid: firebaseUid,
+          wixId: payload.wixId,
+          email: payload.email,
+          onboarding: true,
+          createdAt: Timestamp.now(),
+          lastLoginAt: Timestamp.now(),
+        });
       } else {
-        throw error; // Rethrow other Auth errors
+        throw error;
       }
     }
-    firebaseUid = userRecord.uid;
 
-    // 3. SYNC TO FIRESTORE (User Profile)
-    await db.collection('users').doc(firebaseUid).set(
-      {
-        wixId: payload.wixId,
-        email: payload.email,
-        onboarding: true, // You can use this for first-time user flows
-        lastLoginAt: Timestamp.now(),
-      },
-      { merge: true }
-    );
+    // Sync subscription data separately
+    await db.collection('subscriptions').doc(firebaseUid).set({
+      planName: payload.planName,
+      status: payload.status,
+      wixId: payload.wixId,
+      startDate: payload.startDate ? Timestamp.fromDate(new Date(payload.startDate)) : null,
+      endDate: payload.endDate ? Timestamp.fromDate(new Date(payload.endDate)) : null,
+      updatedAt: Timestamp.now(),
+    }, { merge: true });
 
-    // 4. SYNC SUBSCRIPTION DATA (Dedicated Collection - Per your request)
-    await db.collection('subscriptions').doc(firebaseUid).set(
-      {
-        planName: payload.planName,
-        status: payload.status,
-        wixId: payload.wixId,
-        // Convert ISO strings to server-side Firestore Timestamps
-        startDate: payload.startDate ? Timestamp.fromDate(new Date(payload.startDate)) : null, 
-        endDate: payload.endDate ? Timestamp.fromDate(new Date(payload.endDate)) : null,
-        updatedAt: Timestamp.now(),
-      },
-      { merge: true }
-    );
-
-    // 5. MINT THE KEYCARD (Custom Token)
     const customToken = await auth.createCustomToken(firebaseUid, {
       wixId: payload.wixId,
       subscriptionStatus: payload.status,
     });
 
-    // 6. REDIRECT TO THE LANDING PAGE
     const redirectUrl = new URL('/auth/complete', req.nextUrl.origin);
     redirectUrl.searchParams.set('token', customToken);
 
@@ -102,7 +95,6 @@ export async function POST(req: NextRequest) {
 
   } catch (error) {
     console.error('SSO Bridge Error:', error);
-    // On error, redirect the user to a generic login/error page
     const errorRedirect = new URL('/login?error=sso_failed', req.nextUrl.origin);
     return NextResponse.redirect(errorRedirect, { status: 302 });
   }
