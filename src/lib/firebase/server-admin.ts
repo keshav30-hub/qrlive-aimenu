@@ -1,36 +1,32 @@
 
 import * as admin from 'firebase-admin';
 
-// The admin app instance. It's safe to export this directly.
 let adminApp: admin.app.App;
 
 // Ensures the Admin SDK is initialized exactly once.
-if (!admin.apps.length) {
-    const serviceAccountString = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
-    
-    if (!serviceAccountString) {
-        // This log helps debug Vercel deployment issues
-        console.error("CRITICAL: FIREBASE_SERVICE_ACCOUNT_JSON is missing. Cannot initialize Firebase Admin SDK.");
-        throw new Error("Missing Firebase Service Account JSON.");
-    }
-    
-    try {
-        // Parse the single-line JSON string into a certificate object
-        const serviceAccount = JSON.parse(serviceAccountString);
+if (admin.apps.length === 0) {
+  const serviceAccountString = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
 
-        adminApp = admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount),
-        });
-        console.log("Firebase Admin SDK initialized successfully.");
+  if (!serviceAccountString) {
+    console.error("CRITICAL: FIREBASE_SERVICE_ACCOUNT_JSON is missing. Cannot initialize Firebase Admin SDK.");
+    throw new Error("Missing Firebase Service Account JSON.");
+  }
 
-    } catch (error) {
-        console.error("Firebase Admin SDK Initialization failed:", error);
-        // Throwing the error here ensures the Next.js build fails early if the credential is bad
-        throw new Error("Firebase Admin SDK failed to initialize. Check JSON formatting.");
-    }
+  try {
+    const serviceAccount = JSON.parse(serviceAccountString);
+
+    adminApp = admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+    });
+    console.log("Firebase Admin SDK initialized successfully.");
+
+  } catch (error: any) {
+    console.error("Firebase Admin SDK Initialization failed:", error.message);
+    throw new Error("Firebase Admin SDK failed to initialize. Check JSON formatting.");
+  }
 } else {
-    // If it's already initialized (e.g., during Next.js hot reload), reuse the existing app.
-    adminApp = admin.app();
+  // If it's already initialized, use the first initialized app.
+  adminApp = admin.apps[0]!;
 }
 
 // Export the initialized app instance
