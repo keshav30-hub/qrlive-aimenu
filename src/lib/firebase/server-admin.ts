@@ -4,28 +4,28 @@ import * as admin from 'firebase-admin';
 let adminApp: admin.app.App;
 
 if (admin.apps.length === 0) {
-  const projectId = process.env.FIREBASE_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  // The private key from Vercel env vars will have \\n for newlines
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+  const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
 
-  if (!projectId || !clientEmail || !privateKey) {
-    console.error("CRITICAL: Missing one or more Firebase Admin environment variables (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY).");
+  if (!serviceAccountJson) {
+    console.error("CRITICAL: Firebase Admin environment variable 'FIREBASE_SERVICE_ACCOUNT_JSON' is not set.");
     throw new Error("Missing Firebase Admin environment variables.");
   }
 
   try {
+    const serviceAccount = JSON.parse(serviceAccountJson);
+
+    // Correctly format the private_key by replacing escaped newlines.
+    if (serviceAccount.private_key) {
+        serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+    }
+    
     adminApp = admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId,
-        clientEmail,
-        privateKey,
-      }),
+      credential: admin.credential.cert(serviceAccount),
     });
     console.log("Firebase Admin SDK initialized successfully.");
 
   } catch (error: any) {
-    console.error("Firebase Admin SDK Initialization failed:", error.message);
+    console.error("Firebase Admin SDK Initialization failed. Ensure FIREBASE_SERVICE_ACCOUNT_JSON is a valid JSON string.", error.message);
     throw new Error("Firebase Admin SDK failed to initialize. Check credentials.");
   }
 } else {
