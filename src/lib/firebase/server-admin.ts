@@ -14,12 +14,7 @@ if (admin.apps.length === 0) {
 
   try {
     const serviceAccount: ServiceAccount = JSON.parse(serviceAccountString);
-
-    // Correctly format the private_key by replacing escaped newlines.
-    if (serviceAccount.private_key) {
-        serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
-    }
-
+    
     adminApp = admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
     });
