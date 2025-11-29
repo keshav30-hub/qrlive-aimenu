@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
         wixId: payload.wixId,
         email: payload.email,
         onboarding: true,
-        lastLoginAt: Timestamp.now(), // Aligned with existing schema
+        lastLoginAt: Timestamp.now(), // Corrected from lastLogin
       },
       { merge: true }
     );
