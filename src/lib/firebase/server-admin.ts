@@ -16,8 +16,15 @@ if (admin.apps.length === 0) {
     // Parse the JSON string into a service account object.
     const serviceAccount = JSON.parse(serviceAccountJson);
 
+    // IMPORTANT: Replace the literal '\\n' characters in the private key with actual newline characters.
+    // This is necessary because .env files store the key as a single line with escaped newlines.
+    const formattedPrivateKey = serviceAccount.private_key.replace(/\\n/g, '\n');
+
     adminApp = admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
+      credential: admin.credential.cert({
+        ...serviceAccount,
+        private_key: formattedPrivateKey, // Use the correctly formatted key
+      }),
     });
     console.log("Firebase Admin SDK initialized successfully.");
 
