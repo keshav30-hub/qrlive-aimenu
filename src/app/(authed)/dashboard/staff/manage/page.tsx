@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -74,6 +75,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useFirebase, useCollection, useDoc, useMemoFirebase } from '@/firebase';
 import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query, where, getDocs, Timestamp, limit } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { Switch } from '@/components/ui/switch';
 
 type AttendanceRecord = {
     id: string;
@@ -835,3 +837,5 @@ export default function StaffManagementPage() {
     </div>
   );
 }
+
+    
