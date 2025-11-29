@@ -128,6 +128,10 @@ service cloud.firestore {
         allow create: if true;
     }
     
+    match /users/{userId}/staff/{staffId}/payroll/{payrollId} {
+        allow read, write: if isOwner(userId);
+    }
+    
     match /users/{userId}/shifts/{shiftId} {
       allow read, write: if isOwner(userId);
     }
@@ -147,3 +151,5 @@ service cloud.firestore {
     }
   }
 }
+
+    

@@ -64,6 +64,7 @@ export default function StaffAttendancePage() {
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -71,8 +72,6 @@ export default function StaffAttendancePage() {
   }, []);
 
   useEffect(() => {
-    let stream: MediaStream | null = null;
-    
     const getCameraPermission = async () => {
       if (todaysAttendance && todaysAttendance.length > 0) return;
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -80,7 +79,8 @@ export default function StaffAttendancePage() {
         return;
       }
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        streamRef.current = stream;
         setHasCameraPermission(true);
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
@@ -93,14 +93,9 @@ export default function StaffAttendancePage() {
     
     getCameraPermission();
 
-    // Cleanup function to stop the camera stream
     return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
-      if(videoRef.current && videoRef.current.srcObject) {
-         (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
-         videoRef.current.srcObject = null;
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
       }
     };
   }, [todaysAttendance]);
@@ -131,6 +126,15 @@ export default function StaffAttendancePage() {
             toast({ variant: 'destructive', title: 'Error', description: 'Failed to capture image.' });
             setIsProcessing(false);
             return;
+        }
+
+        // Stop camera tracks before database operations
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+            streamRef.current = null;
+        }
+         if (videoRef.current) {
+            videoRef.current.srcObject = null;
         }
 
         try {
@@ -265,3 +269,5 @@ export default function StaffAttendancePage() {
     </div>
   );
 }
+
+    

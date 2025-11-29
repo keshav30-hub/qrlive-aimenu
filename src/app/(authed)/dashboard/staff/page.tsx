@@ -25,7 +25,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { CalendarIcon, ChevronLeft, ChevronRight, PlusCircle, Clock, FilePenLine, Trash2, MoreVertical, AlarmClock, Loader2, Image as ImageIcon } from 'lucide-react';
-import { format, subDays } from 'date-fns';
+import { format, subDays, startOfMonth } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
@@ -71,7 +71,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Separator } from '@/components/ui/separator';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useFirebase, useCollection, useDoc, useMemoFirebase } from '@/firebase';
 import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query, where, getDocs, Timestamp, limit } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -141,6 +141,12 @@ const StaffAttendanceRow = ({ staff, date }: { staff: StaffMember, date: Date })
       [attendanceRef, dateString]
     );
     const { data: attendanceData, isLoading } = useCollection<AttendanceRecord>(attendanceQuery);
+    
+    const [isAdjustmentDialogOpen, setIsAdjustmentDialogOpen] = useState(false);
+    const [adjustmentType, setAdjustmentType] = useState<'fine' | 'bonus' | null>(null);
+    const [adjustmentAmount, setAdjustmentAmount] = useState('');
+    const [adjustmentComment, setAdjustmentComment] = useState('');
+    const [isSavingAdjustment, setIsSavingAdjustment] = useState(false);
 
     const record = attendanceData?.[0];
     const status = record?.status || 'Absent';
@@ -167,10 +173,41 @@ const StaffAttendanceRow = ({ staff, date }: { staff: StaffMember, date: Date })
           console.error(e);
         }
       };
+      
+    const openAdjustmentDialog = (type: 'fine' | 'bonus') => {
+        setAdjustmentType(type);
+        setIsAdjustmentDialogOpen(true);
+    }
+    
+    const handleSaveAdjustment = async () => {
+        if (!user || !adjustmentType || !adjustmentAmount) return;
+        
+        const payrollRef = collection(firestore, 'users', user.uid, 'staff', staff.id, 'payroll');
+        
+        setIsSavingAdjustment(true);
+        try {
+            await addDoc(payrollRef, {
+                staffId: staff.id,
+                type: adjustmentType,
+                amount: Number(adjustmentAmount),
+                comment: adjustmentComment,
+                date: format(startOfMonth(date), 'yyyy-MM-dd'), // Save against the first day of the month
+            });
+            toast({ title: 'Success', description: `Added ${adjustmentType} for ${staff.name}.`});
+            setIsAdjustmentDialogOpen(false);
+            setAdjustmentAmount('');
+            setAdjustmentComment('');
+        } catch (e) {
+            toast({ variant: 'destructive', title: 'Error', description: `Could not add ${adjustmentType}.`});
+            console.error(e);
+        } finally {
+            setIsSavingAdjustment(false);
+        }
+    };
 
 
     return (
-        <React.Fragment>
+        <Dialog open={isAdjustmentDialogOpen} onOpenChange={setIsAdjustmentDialogOpen}>
             <TableRow>
             <TableCell>
                 <div className="flex items-center gap-4">
@@ -189,53 +226,74 @@ const StaffAttendanceRow = ({ staff, date }: { staff: StaffMember, date: Date })
             </TableCell>
             <TableCell className="text-right">
                 {isLoading ? <Loader2 className="animate-spin h-5 w-5 ml-auto" /> : (
-                    <div className="flex gap-2 justify-end">
-                        {(['Present', 'Absent', 'Half Day', 'Paid Leave'] as const).map((s) => (
-                            <Badge
-                            key={s}
-                            variant={status === s ? getStatusVariant(s) : 'outline'}
-                            onClick={() => handleStatusChange(s)}
-                            className={cn(
-                                "cursor-pointer capitalize w-24 justify-center",
-                                status !== s && "bg-transparent text-foreground"
-                            )}
-                            >
-                            {s}
-                            </Badge>
-                        ))}
+                     <div className="flex items-center justify-end gap-2">
+                         <div className="flex gap-1">
+                            {(['Present', 'Absent', 'Half Day', 'Paid Leave'] as const).map((s) => (
+                                <Badge
+                                key={s}
+                                variant={status === s ? getStatusVariant(s) : 'outline'}
+                                onClick={() => handleStatusChange(s)}
+                                className={cn(
+                                    "cursor-pointer capitalize w-24 justify-center",
+                                    status !== s && "bg-transparent text-foreground"
+                                )}
+                                >
+                                {s}
+                                </Badge>
+                            ))}
+                        </div>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                    <MoreVertical className="h-4 w-4"/>
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => openAdjustmentDialog('fine')}>Add Late Fine</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => openAdjustmentDialog('bonus')}>Add Bonus</DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
                 )}
             </TableCell>
             </TableRow>
-             {record?.imageUrl && (
-                <TableRow>
-                    <TableCell colSpan={2} className="py-2 px-4 bg-gray-50 dark:bg-gray-800/50">
-                        <div className="flex items-center gap-4">
-                            <Dialog>
-                                <DialogTrigger asChild>
-                                    <div className="relative h-12 w-12 rounded-md overflow-hidden cursor-pointer">
-                                        <Image src={record.imageUrl} alt={`Attendance for ${staff.name}`} layout="fill" objectFit="cover" />
-                                    </div>
-                                </DialogTrigger>
-                                <DialogContent className="max-w-lg">
-                                    <DialogHeader>
-                                        <DialogTitle>Attendance for {staff.name}</DialogTitle>
-                                        <DialogDescription>{record.captureTime?.toDate().toLocaleString()}</DialogDescription>
-                                    </DialogHeader>
-                                     <div className="relative mt-4 h-96 w-full">
-                                        <Image src={record.imageUrl} alt={`Attendance for ${staff.name}`} layout="fill" objectFit="contain" />
-                                     </div>
-                                </DialogContent>
-                            </Dialog>
-                            <div>
-                                <p className="text-xs text-muted-foreground">Captured at:</p>
-                                <p className="text-sm font-medium">{record.captureTime?.toDate().toLocaleTimeString()}</p>
-                            </div>
-                        </div>
-                    </TableCell>
-                </TableRow>
-            )}
-        </React.Fragment>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Add {adjustmentType === 'fine' ? 'Late Fine' : 'Bonus'} for {staff.name}</DialogTitle>
+                    <DialogDescription>
+                        This adjustment will be applied to the salary calculation for {format(date, 'MMMM yyyy')}.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                     <div className="space-y-2">
+                        <Label htmlFor="adjustment-amount">Amount</Label>
+                        <Input 
+                            id="adjustment-amount" 
+                            type="number" 
+                            value={adjustmentAmount}
+                            onChange={e => setAdjustmentAmount(e.target.value)}
+                            placeholder="Enter amount" 
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="adjustment-comment">Comment (Optional)</Label>
+                        <Textarea 
+                            id="adjustment-comment"
+                            value={adjustmentComment}
+                            onChange={e => setAdjustmentComment(e.target.value)} 
+                            placeholder="Reason for this adjustment" 
+                        />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsAdjustmentDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={handleSaveAdjustment} disabled={isSavingAdjustment || !adjustmentAmount}>
+                        {isSavingAdjustment && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Save Adjustment
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     )
 }
 
@@ -570,7 +628,7 @@ export default function StaffPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Staff Member</TableHead>
-                    <TableHead className="text-right">Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -705,7 +763,7 @@ export default function StaffPage() {
                         <Link href={`/dashboard/staff/${staff.id}`} className="block flex-grow">
                             <CardContent className="pt-6 flex flex-col items-center justify-center text-center gap-3">
                                 <Avatar className="h-24 w-24">
-                                    <AvatarImage src={staff.avatar} alt={staff.name} />
+                                    <AvatarImage src={staff.avatar} />
                                     <AvatarFallback>
                                     {staff.name.split(' ').map((n) => n[0]).join('')}
                                     </AvatarFallback>
@@ -727,7 +785,7 @@ export default function StaffPage() {
                                 <DropdownMenuContent align="end">
                                     <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setNewStaff(staff); setIsSheetOpen(true); }}>Edit</DropdownMenuItem>
                                     <AlertDialogTrigger asChild>
-                                      <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive" onClick={() => setStaffToDelete(staff)}>
+                                      <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">
                                         Delete
                                       </DropdownMenuItem>
                                     </AlertDialogTrigger>
@@ -743,8 +801,8 @@ export default function StaffPage() {
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDeleteStaff()} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                        <AlertDialogCancel onClick={() => setStaffToDelete(null)}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteStaff} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
@@ -761,3 +819,5 @@ export default function StaffPage() {
     </div>
   );
 }
+
+    

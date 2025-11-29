@@ -124,14 +124,6 @@
         "monthlySalary": {
           "type": "number",
           "description": "The monthly salary for the staff member."
-        },
-        "lateFine": {
-            "type": "number",
-            "description": "The amount to be deducted for each late mark or half day."
-        },
-        "monthlyBonus": {
-            "type": "number",
-            "description": "A fixed monthly bonus amount."
         }
       },
       "required": ["id", "name", "monthlySalary"]
@@ -164,6 +156,21 @@
         "date": { "type": "string", "format": "date" }
       },
       "required": ["id", "staffId", "captureTime", "status", "date"]
+    },
+    "PayrollAdjustment": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PayrollAdjustment",
+      "type": "object",
+      "description": "Represents a single payroll adjustment (fine or bonus) for a staff member for a specific month.",
+      "properties": {
+        "id": { "type": "string" },
+        "staffId": { "type": "string" },
+        "type": { "type": "string", "enum": ["bonus", "fine"] },
+        "amount": { "type": "number" },
+        "comment": { "type": "string" },
+        "date": { "type": "string", "format": "date" }
+      },
+      "required": ["id", "staffId", "type", "amount", "date"]
     },
     "Device": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -695,6 +702,12 @@
       },
       "description": "Stores attendance records for a specific staff member."
     },
+    "/users/{userId}/staff/{staffId}/payroll/{payrollId}": {
+      "schema": {
+        "$ref": "#/entities/PayrollAdjustment"
+      },
+      "description": "Stores payroll adjustments (fines/bonuses) for a staff member."
+    },
     "/users/{userId}/devices/{deviceId}": {
       "schema": {
         "$ref": "#/entities/Device"
@@ -781,3 +794,5 @@
     }
   }
 }
+
+    
