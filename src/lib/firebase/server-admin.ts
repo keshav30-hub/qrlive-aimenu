@@ -1,30 +1,27 @@
 
 import * as admin from 'firebase-admin';
+import type { ServiceAccount } from 'firebase-admin';
 
 let adminApp: admin.app.App;
 
 if (admin.apps.length === 0) {
-  // The entire service account JSON is expected to be in this single environment variable.
-  const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  const serviceAccountString = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
 
-  if (!serviceAccountJson) {
-    console.error("CRITICAL: Firebase Admin credentials are not set. The 'FIREBASE_SERVICE_ACCOUNT_JSON' environment variable is missing.");
-    throw new Error("Firebase Admin credentials are not set.");
+  if (!serviceAccountString) {
+    console.error("CRITICAL: Firebase Admin credentials are not set. Ensure the FIREBASE_SERVICE_ACCOUNT_JSON environment variable is populated.");
+    throw new Error("Firebase Admin credentials are not set in the environment.");
   }
 
   try {
-    // Parse the JSON string into a service account object.
-    const serviceAccount = JSON.parse(serviceAccountJson);
+    const serviceAccount: ServiceAccount = JSON.parse(serviceAccountString);
 
-    // IMPORTANT: Replace the literal '\\n' characters in the private key with actual newline characters.
-    // This is necessary because .env files store the key as a single line with escaped newlines.
-    const formattedPrivateKey = serviceAccount.private_key.replace(/\\n/g, '\n');
+    // Correctly format the private_key by replacing escaped newlines.
+    if (serviceAccount.private_key) {
+        serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+    }
 
     adminApp = admin.initializeApp({
-      credential: admin.credential.cert({
-        ...serviceAccount,
-        private_key: formattedPrivateKey, // Use the correctly formatted key
-      }),
+      credential: admin.credential.cert(serviceAccount),
     });
     console.log("Firebase Admin SDK initialized successfully.");
 
