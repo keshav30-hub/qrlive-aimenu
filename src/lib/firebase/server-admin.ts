@@ -30,8 +30,5 @@ if (!admin.apps.length) {
   }
 }
 
-// Export the initialized services
-const auth = admin.auth();
-const db = admin.firestore();
-
-export { auth, db, admin as adminApp };
+// Export the initialized app
+export { admin as adminApp };
