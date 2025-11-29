@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useUser, useDoc, useMemoFirebase, useCollection } from '@/firebase';
@@ -193,7 +192,7 @@ export default function AuthedLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const isSpecialLayout = pathname.startsWith('/dashboard/attendance') || pathname.startsWith('/dashboard/captain');
+  const isSpecialLayout = pathname.startsWith('/dashboard/attendance') || pathname.startsWith('/dashboard/captain') || pathname === '/dashboard/staff';
 
   return (
     <AuthRedirect>
