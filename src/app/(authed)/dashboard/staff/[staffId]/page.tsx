@@ -56,8 +56,8 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { useFirebase, useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, Timestamp, doc, getDocs, orderBy, startOfMonth, endOfMonth } from 'firebase/firestore';
-import { format, getMonth, startOfYear, endOfYear, eachMonthOfInterval, getDaysInMonth, getYear } from 'date-fns';
+import { collection, query, where, Timestamp, doc, getDocs, orderBy } from 'firebase/firestore';
+import { format, getMonth, startOfYear, endOfYear, eachMonthOfInterval, getDaysInMonth, getYear, startOfMonth, endOfMonth } from 'date-fns';
 import { useCurrency } from '@/hooks/use-currency';
 
 type StaffMember = {
