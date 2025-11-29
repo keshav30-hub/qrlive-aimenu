@@ -43,7 +43,6 @@ export async function POST(req: NextRequest) {
     try {
       userRecord = await auth.getUserByEmail(payload.email);
       firebaseUid = userRecord.uid;
-      // User exists, update their profile
       await userRef.doc(firebaseUid).set({
         wixId: payload.wixId,
         email: payload.email,
@@ -52,28 +51,34 @@ export async function POST(req: NextRequest) {
 
     } catch (error: any) {
       if (error.code === 'auth/user-not-found') {
-        // User does not exist, create a new one
         console.log(`Creating new Firebase user for: ${payload.email}`);
         userRecord = await auth.createUser({
           email: payload.email,
           emailVerified: true,
         });
         firebaseUid = userRecord.uid;
-        // Create their Firestore profile with onboarding complete
+        
+        // **FIX:** Create the user document with ALL required fields and default values.
         await userRef.doc(firebaseUid).set({
           uid: firebaseUid,
           wixId: payload.wixId,
           email: payload.email,
-          onboarding: true,
+          onboarding: true, // Mark as onboarded since data comes from Wix
           createdAt: Timestamp.now(),
           lastLoginAt: Timestamp.now(),
+          businessName: payload.email.split('@')[0], // Default value
+          ownerName: payload.email.split('@')[0], // Default value
+          contact: '', // Default value
+          address: '', // Default value
+          gst: '', // Default value
+          businessType: 'restaurant', // Default value
+          logo: `https://ui-avatars.com/api/?name=${payload.email.charAt(0)}&color=7F9CF5&background=EBF4FF`, // Default logo
         });
       } else {
         throw error;
       }
     }
 
-    // Sync subscription data separately
     await db.collection('subscriptions').doc(firebaseUid).set({
       planName: payload.planName,
       status: payload.status,

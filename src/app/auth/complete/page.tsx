@@ -1,12 +1,12 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useFirebase } from '@/firebase';
 import { signInWithCustomToken } from 'firebase/auth';
 
-export default function AuthCompletePage() {
+function AuthComplete() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { auth } = useFirebase();
@@ -45,7 +45,6 @@ export default function AuthCompletePage() {
     handleSignIn();
   }, [searchParams, router, auth]);
 
-
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">
       <div className="text-center space-y-2">
@@ -53,5 +52,13 @@ export default function AuthCompletePage() {
         <p className="text-sm text-muted-foreground">You will be redirected shortly.</p>
       </div>
     </div>
+  );
+}
+
+export default function AuthCompletePage() {
+  return (
+    <Suspense fallback={<div className="flex h-screen items-center justify-center">Loading...</div>}>
+      <AuthComplete />
+    </Suspense>
   );
 }
