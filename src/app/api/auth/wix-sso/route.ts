@@ -1,11 +1,7 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
-import { adminApp } from '@/lib/firebase/server-admin';
-import { Timestamp } from 'firebase-admin/firestore';
-
-// Destructure required services from the initialized Admin app
-const auth = adminApp.auth();
-const db = adminApp.firestore();
+import { auth, db } from '@/lib/firebase/server-admin'; // Adjust path as needed
+import { Timestamp } from 'firebase-admin/firestore'; // Use server Timestamp
 
 // Define the expected structure of the incoming data from Wix Velo
 interface WixPayload {
@@ -68,7 +64,7 @@ export async function POST(req: NextRequest) {
         wixId: payload.wixId,
         email: payload.email,
         onboarding: true,
-        lastLoginAt: Timestamp.now(), // Corrected from lastLogin
+        lastLoginAt: Timestamp.now(),
       },
       { merge: true }
     );
@@ -93,7 +89,7 @@ export async function POST(req: NextRequest) {
     });
 
     // 6. REDIRECT TO THE LANDING PAGE
-    const redirectUrl = new URL('/auth/complete', req.url);
+    const redirectUrl = new URL('/auth/complete', req.nextUrl.origin);
     redirectUrl.searchParams.set('token', customToken);
 
     return NextResponse.redirect(redirectUrl, { status: 302 });
@@ -101,7 +97,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('SSO Bridge Error:', error);
     // On error, redirect the user to a generic login/error page
-    const errorRedirect = new URL('/login?error=sso_failed', req.url);
+    const errorRedirect = new URL('/login?error=sso_failed', req.nextUrl.origin);
     return NextResponse.redirect(errorRedirect, { status: 302 });
   }
 }
