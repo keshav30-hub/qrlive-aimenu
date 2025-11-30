@@ -180,7 +180,11 @@ export default function SubscriptionPage() {
                   </Card>
               ))
           )}
-          {!plansLoading && plans && plans.map(plan => (
+          {!plansLoading && plans && plans.map(plan => {
+              const priceToUse = plan.offerPrice > 0 ? plan.offerPrice : plan.priceINR;
+              const perDayCost = Math.floor(priceToUse / (plan.durationMonths * 30));
+
+              return (
                <Card key={plan.id} className={cn("flex flex-col relative", plan.recommended && "border-primary border-2")}>
                   <CardHeader>
                     <div className="flex justify-between items-center">
@@ -196,6 +200,10 @@ export default function SubscriptionPage() {
                     <CardDescription>{plan.durationMonths} month access</CardDescription>
                   </CardHeader>
                   <CardContent className="flex-grow">
+                  <div className='p-3 rounded-md bg-green-50 dark:bg-green-900/20 text-center mb-4'>
+                      <p className='text-lg font-bold text-green-700 dark:text-green-300'>{format(perDayCost)}/day</p>
+                      {plan.offerPrice > 0 && <p className='text-xs text-green-600 dark:text-green-400'>(Based on offer price)</p>}
+                  </div>
                   <ul className="space-y-3 text-sm text-muted-foreground">
                       <li>Renews at {format(plan.offerPrice)} every {plan.durationMonths} months.</li>
                       <li>Cancel anytime.</li>
@@ -207,7 +215,7 @@ export default function SubscriptionPage() {
                   </Button>
                   </CardFooter>
               </Card>
-          ))}
+          )})}
       </div>
       
        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
