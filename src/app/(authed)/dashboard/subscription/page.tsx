@@ -181,7 +181,7 @@ export default function SubscriptionPage() {
               ))
           )}
           {!plansLoading && plans && plans.map(plan => (
-               <Card key={plan.id} className={cn("flex flex-col relative overflow-hidden", plan.recommended && "border-primary border-2")}>
+               <Card key={plan.id} className={cn("flex flex-col relative", plan.recommended && "border-primary border-2")}>
                   <CardHeader>
                     <div className="flex justify-between items-center">
                         <CardTitle className="text-2xl capitalize">{plan.name}</CardTitle>
@@ -237,7 +237,7 @@ export default function SubscriptionPage() {
                                 id="coupon"
                                 placeholder="Enter coupon code"
                                 value={couponCode}
-                                onChange={(e) => setCouponCode(e.target.value)}
+                                onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                                 disabled={isApplyingCoupon}
                             />
                             <Button variant="outline" onClick={handleApplyCoupon} disabled={isApplyingCoupon || !couponCode}>
