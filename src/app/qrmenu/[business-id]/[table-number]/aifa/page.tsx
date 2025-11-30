@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Button } from "@/components/ui/button";
@@ -506,7 +507,7 @@ export default function AIFAPage() {
             <div className="max-w-[480px] mx-auto h-full flex flex-col bg-white dark:bg-gray-950 shadow-lg">
                 <header className="p-4 flex justify-between items-center sticky top-0 bg-white dark:bg-gray-950 z-10 border-b">
                     <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="icon" onClick={() => router.back()}>
+                        <Button size="icon" onClick={() => router.back()} className="bg-primary text-primary-foreground">
                             <ChevronLeft className="h-6 w-6" />
                         </Button>
                         <div>

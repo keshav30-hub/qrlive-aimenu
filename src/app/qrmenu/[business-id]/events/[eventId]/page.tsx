@@ -88,7 +88,7 @@ export default function PublicEventPage() {
     <div className="h-screen w-full bg-gray-100 dark:bg-black">
       <div className="max-w-2xl mx-auto h-full flex flex-col bg-white dark:bg-gray-950 shadow-lg">
         <header className="p-4 flex items-center gap-2 sticky top-0 bg-white dark:bg-gray-950 z-10 border-b">
-          <Button variant="ghost" size="icon" onClick={() => router.back()}>
+          <Button size="icon" onClick={() => router.back()} className="bg-primary text-primary-foreground">
             <ChevronLeft className="h-6 w-6" />
           </Button>
           <h1 className="text-xl font-bold truncate">{event.name}</h1>

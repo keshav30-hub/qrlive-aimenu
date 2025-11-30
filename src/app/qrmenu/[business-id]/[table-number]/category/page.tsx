@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -109,6 +110,9 @@ const ModifierDialog = ({ item, onAddToCart, open, setOpen }: { item: MenuItem; 
         );
     };
 
+    const hasModifiers = item.modifiers && item.modifiers.length > 0 && item.modifiers.some(m => m.name && m.price);
+    const hasAddons = item.addons && item.addons.length > 0 && item.addons.some(a => a.name && a.price);
+
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogContent>
@@ -118,11 +122,12 @@ const ModifierDialog = ({ item, onAddToCart, open, setOpen }: { item: MenuItem; 
                 </DialogHeader>
                 <ScrollArea className="max-h-[60vh] pr-4">
                     <div className="space-y-6">
-                        {item.modifiers && item.modifiers.length > 0 && (
+                        {hasModifiers && (
                             <div className="space-y-4">
                                 <h4 className="font-semibold">Options</h4>
                                 <RadioGroup onValueChange={(value) => setSelectedModifier(item.modifiers?.find(m => m.name === value))}>
-                                    {item.modifiers.map(modifier => (
+                                    {item.modifiers?.map(modifier => (
+                                        modifier.name && modifier.price &&
                                         <div key={modifier.name} className="flex items-center justify-between">
                                             <Label htmlFor={modifier.name} className="flex-1 cursor-pointer">{modifier.name} ({format(Number(modifier.price))})</Label>
                                             <RadioGroupItem value={modifier.name} id={modifier.name} />
@@ -131,10 +136,11 @@ const ModifierDialog = ({ item, onAddToCart, open, setOpen }: { item: MenuItem; 
                                 </RadioGroup>
                             </div>
                         )}
-                        {item.addons && item.addons.length > 0 && (
+                        {hasAddons && (
                             <div className="space-y-4">
                                 <h4 className="font-semibold">Add-ons</h4>
-                                {item.addons.map(addon => (
+                                {item.addons?.map(addon => (
+                                    addon.name && addon.price &&
                                     <div key={addon.name} className="flex items-center justify-between">
                                         <Label htmlFor={addon.name} className="flex-1 cursor-pointer">{addon.name} (+{format(Number(addon.price))})</Label>
                                         <Checkbox id={addon.name} onCheckedChange={(checked) => handleAddonToggle(addon, !!checked)} />
@@ -312,8 +318,10 @@ export default function CategoryMenuPage() {
   }
 
   const handleAddToCartClick = (item: MenuItem) => {
-    const hasOptions = (item.addons && item.addons.length > 0) || (item.modifiers && item.modifiers.length > 0);
-    if (hasOptions) {
+    const hasModifiers = item.modifiers && item.modifiers.length > 0 && item.modifiers.some(m => m.name && m.price);
+    const hasAddons = item.addons && item.addons.length > 0 && item.addons.some(a => a.name && a.price);
+
+    if (hasModifiers || hasAddons) {
         setSelectedItemForDialog(item);
         setIsModifierDialogOpen(true);
     } else {
@@ -330,9 +338,9 @@ export default function CategoryMenuPage() {
   return (
     <div className="h-screen w-full bg-gray-100 dark:bg-black">
       <div className="max-w-[480px] mx-auto h-full flex flex-col bg-white dark:bg-gray-950 shadow-lg">
-        <header className="p-4 flex justify-between items-center sticky top-0 bg-white dark:bg-gray-950 z-10">
+        <header className="px-4 py-2 flex justify-between items-center sticky top-0 bg-white dark:bg-gray-950 z-10">
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={() => router.back()}>
+            <Button size="icon" onClick={() => router.back()} className="bg-primary text-primary-foreground">
               <ChevronLeft className="h-6 w-6" />
             </Button>
             <h1 className="text-xl font-bold capitalize">{categoryName}</h1>
@@ -413,7 +421,7 @@ export default function CategoryMenuPage() {
           </div>
         </header>
 
-        <div className="p-4 flex items-center gap-4 sticky top-[72px] bg-white dark:bg-gray-950 z-10 border-b">
+        <div className="px-4 flex items-center gap-4 sticky top-[64px] bg-white dark:bg-gray-950 z-10 border-b">
           <div className="relative flex-grow">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input 
