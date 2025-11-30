@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Check, Loader2 } from 'lucide-react';
-import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirebase, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, query, orderBy, DocumentData } from 'firebase/firestore';
 import { useCurrency } from '@/hooks/use-currency';
 import { cn } from '@/lib/utils';
@@ -30,6 +30,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { validateCoupon } from '@/lib/firebase/coupons';
+import { RAZORPAY_KEY_ID } from '@/lib/config';
 
 const features = [
   'Unlimited Menu Items & Categories',
@@ -53,10 +54,19 @@ type Plan = {
     sortOrder: number;
 };
 
+type UserProfile = {
+  email?: string;
+  contact?: string;
+  businessName?: string;
+}
+
 export default function SubscriptionPage() {
-  const { firestore } = useFirebase();
+  const { firestore, user } = useFirebase();
   const { format } = useCurrency();
   const { toast } = useToast();
+
+  const userRef = useMemoFirebase(() => user ? useDoc(firestore, 'users', user.uid) : null, [user, firestore]);
+  const { data: userProfile } = useDoc<UserProfile>(userRef);
 
   const plansRef = useMemoFirebase(
     () => (firestore ? collection(firestore, 'plans') : null),
@@ -75,6 +85,7 @@ export default function SubscriptionPage() {
   const [discount, setDiscount] = useState(0);
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState<DocumentData | null>(null);
+  const [isSubscribing, setIsSubscribing] = useState(false);
 
   const handleSelectPlan = (plan: Plan) => {
     setSelectedPlan(plan);
@@ -127,6 +138,59 @@ export default function SubscriptionPage() {
     } finally {
       setIsApplyingCoupon(false);
     }
+  };
+
+  const handleSubscribe = async () => {
+    if (!selectedPlan || !userProfile) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Plan or user details are missing.'});
+      return;
+    }
+    
+    setIsSubscribing(true);
+
+    const finalAmount = selectedPlan.offerPrice - discount;
+
+    const options = {
+      key: RAZORPAY_KEY_ID,
+      amount: finalAmount * 100, // Amount in paise
+      currency: "INR",
+      name: selectedPlan.name,
+      description: `QRLive Menu - ${selectedPlan.durationMonths} Month Subscription`,
+      handler: function (response: any) {
+        toast({ title: 'Payment Successful', description: `Payment ID: ${response.razorpay_payment_id}`});
+        // Here you would typically save the subscription details to your database
+        // e.g., createSubscription(user.uid, selectedPlan.id, response.razorpay_payment_id);
+        setIsDialogOpen(false);
+      },
+      prefill: {
+        name: userProfile.businessName,
+        email: userProfile.email,
+        contact: userProfile.contact,
+      },
+      notes: {
+        plan_id: selectedPlan.id,
+        user_id: user?.uid,
+        coupon_applied: appliedCoupon?.code || 'None',
+      },
+      theme: {
+        color: "#0f172a"
+      },
+      modal: {
+        ondismiss: function() {
+            setIsSubscribing(false);
+        }
+      }
+    };
+    
+    // @ts-ignore
+    const rzp = new window.Razorpay(options);
+
+    rzp.on('payment.failed', function (response: any){
+        toast({ variant: 'destructive', title: 'Payment Failed', description: response.error.description });
+        setIsSubscribing(false);
+    });
+
+    rzp.open();
   };
 
   const finalPrice = selectedPlan ? selectedPlan.offerPrice - discount : 0;
@@ -185,13 +249,13 @@ export default function SubscriptionPage() {
               const perDayCost = Math.floor(priceToUse / (plan.durationMonths * 30));
 
               return (
-               <Card key={plan.id} className={cn("flex flex-col relative", plan.recommended && "border-primary border-2")}>
+               <Card key={plan.id} className={cn("flex flex-col", plan.recommended && "border-primary border-2")}>
+                  {plan.recommended && (
+                    <div className="bg-primary text-primary-foreground text-center py-1 text-sm font-semibold">Recommended</div>
+                  )}
                   <CardHeader>
                     <div className="flex justify-between items-center">
                         <CardTitle className="text-2xl capitalize">{plan.name}</CardTitle>
-                        {plan.recommended && (
-                            <Badge variant="default">Recommended</Badge>
-                        )}
                     </div>
                     <div className="flex items-baseline gap-2 pt-2">
                         <span className="text-4xl font-bold">{format(plan.offerPrice)}</span>
@@ -263,9 +327,10 @@ export default function SubscriptionPage() {
                     </div>
                 </div>
                 <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                    <Button>
-                        Subscribe
+                    <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSubscribing}>Cancel</Button>
+                    <Button onClick={handleSubscribe} disabled={isSubscribing}>
+                        {isSubscribing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {isSubscribing ? 'Processing...' : 'Subscribe'}
                     </Button>
                 </DialogFooter>
             </DialogContent>
