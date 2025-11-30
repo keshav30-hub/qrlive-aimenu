@@ -11,12 +11,23 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Check, Loader2 } from 'lucide-react';
+import { Check, Loader2, Tag } from 'lucide-react';
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { useCurrency } from '@/hooks/use-currency';
 import { cn } from '@/lib/utils';
 import { useEffect, useState } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 
 const features = [
   'Unlimited Menu Items & Categories',
@@ -41,7 +52,7 @@ type Plan = {
     sortOrder: number;
 };
 
-function PlanCard({ planId }: { planId: string }) {
+function PlanCard({ planId, onSelectPlan }: { planId: string, onSelectPlan: (plan: Plan) => void }) {
     const { firestore } = useFirebase();
     const { format } = useCurrency();
 
@@ -74,7 +85,7 @@ function PlanCard({ planId }: { planId: string }) {
     }
 
     if (!plan) {
-        return null; // Don't render anything if the plan doesn't exist
+        return null;
     }
 
     return (
@@ -97,7 +108,7 @@ function PlanCard({ planId }: { planId: string }) {
             </ul>
             </CardContent>
             <CardFooter>
-            <Button className="w-full">
+            <Button className="w-full" onClick={() => onSelectPlan(plan)}>
                 Choose Plan
             </Button>
             </CardFooter>
@@ -107,8 +118,22 @@ function PlanCard({ planId }: { planId: string }) {
 
 
 export default function SubscriptionPage() {
-  // Hardcode the plan IDs as per the new strategy
   const planIds = ['starter', 'pro', 'business'];
+  const { format } = useCurrency();
+
+  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [couponCode, setCouponCode] = useState('');
+  const [discount, setDiscount] = useState(0);
+
+  const handleSelectPlan = (plan: Plan) => {
+    setSelectedPlan(plan);
+    setCouponCode('');
+    setDiscount(0);
+    setIsDialogOpen(true);
+  };
+  
+  const finalPrice = selectedPlan ? selectedPlan.offerPrice - discount : 0;
 
   return (
     <div className="space-y-8">
@@ -139,8 +164,57 @@ export default function SubscriptionPage() {
       </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {planIds.map(planId => <PlanCard key={planId} planId={planId} />)}
+          {planIds.map(planId => <PlanCard key={planId} planId={planId} onSelectPlan={handleSelectPlan} />)}
       </div>
+      
+       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Confirm Your Subscription</DialogTitle>
+                    <DialogDescription>
+                        You are about to subscribe to the <span className="font-semibold capitalize">{selectedPlan?.name}</span> for {selectedPlan?.durationMonths} months.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                    <div className="flex justify-between items-center text-sm">
+                        <span className="text-muted-foreground">Base Price</span>
+                        <span className="font-medium">{selectedPlan ? format(selectedPlan.offerPrice) : ''}</span>
+                    </div>
+                     {discount > 0 && (
+                        <div className="flex justify-between items-center text-sm text-green-600">
+                            <span className="text-muted-foreground">Coupon Discount</span>
+                            <span className="font-medium">- {format(discount)}</span>
+                        </div>
+                    )}
+
+                    <div className="space-y-2">
+                        <Label htmlFor="coupon">Coupon Code (Optional)</Label>
+                        <div className="flex items-center gap-2">
+                            <Input
+                                id="coupon"
+                                placeholder="Enter coupon code"
+                                value={couponCode}
+                                onChange={(e) => setCouponCode(e.target.value)}
+                            />
+                            <Button variant="outline">Apply</Button>
+                        </div>
+                    </div>
+
+                    <Separator />
+
+                    <div className="flex justify-between items-center text-lg font-bold">
+                        <span>Total Payable</span>
+                        <span>{format(finalPrice)}</span>
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+                    <Button>
+                        Subscribe
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     </div>
   );
 }
