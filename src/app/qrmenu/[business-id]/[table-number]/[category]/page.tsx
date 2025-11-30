@@ -4,6 +4,10 @@ import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
   Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardFooter,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,14 +19,11 @@ import {
   DialogDescription,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useCurrency } from '@/hooks/use-currency';
 import {
-  Star,
-  Flame,
   Bell,
   ChevronLeft,
   Search,
@@ -39,17 +40,6 @@ import { getBusinessDataBySlug, getMenuData, type MenuItem, submitServiceRequest
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 
-
-const getTagIcon = (tag: string) => {
-  switch (tag) {
-    case 'bestseller':
-      return <Star className="h-3 w-3" />;
-    case 'healthy':
-      return <Flame className="h-3 w-3" />;
-    default:
-      return null;
-  }
-};
 
 const serviceRequests = [
     { text: 'Get Bill', icon: <FileText /> },
@@ -190,13 +180,13 @@ export default function CategoryMenuPage() {
 
         <ScrollArea className="flex-1 min-h-0">
           <main className="p-4">
-            <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
               {filteredItems.map((item) => (
                 <Card
                   key={item.id}
-                  className="flex gap-4 overflow-hidden"
+                  className="overflow-hidden flex flex-col"
                 >
-                  <div className="relative w-24 h-24 flex-shrink-0">
+                  <div className="relative w-full aspect-square">
                     <Image
                       src={item.imageUrl}
                       alt={item.name}
@@ -205,39 +195,15 @@ export default function CategoryMenuPage() {
                       data-ai-hint={item.imageHint}
                     />
                   </div>
-                  <div className="flex-grow p-3 flex flex-col">
-                    <div className="flex justify-between items-start">
-                      <h3 className="font-semibold">{item.name}</h3>
-                      <Badge
-                        variant={
-                          item.type === 'veg' ? 'secondary' : 'destructive'
-                        }
-                        className="capitalize h-5"
-                      >
-                        {item.type}
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground flex-grow line-clamp-2 mt-1">
-                      {item.description}
-                    </p>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                      {item.kcal} kcal
-                      {item.tags && item.tags.length > 0 && <Separator orientation='vertical' className='h-3' />}
-                      <div className='flex gap-2'>
-                          {(item.tags || []).map(tag => (
-                              <div key={tag} className="flex items-center gap-1 capitalize">
-                                  {getTagIcon(tag)} {tag}
-                              </div>
-                          ))}
-                      </div>
-                    </div>
-                    <div className="flex justify-between items-end mt-2">
-                      <span className="font-bold text-lg">
+                  <div className="p-3 flex flex-col flex-grow">
+                    <h3 className="font-semibold text-sm flex-grow">{item.name}</h3>
+                    <div className="flex justify-between items-center mt-2">
+                      <span className="font-bold text-base">
                         {format(Number(item.mrp || item.price))}
                       </span>
                       <Button
                         size="sm"
-                        className="h-8"
+                        className="h-7 px-2 text-xs"
                         onClick={() => addToCart(item)}
                       >
                         Add
@@ -246,12 +212,12 @@ export default function CategoryMenuPage() {
                   </div>
                 </Card>
               ))}
-              {filteredItems.length === 0 && (
-                  <div className="text-center py-10 text-muted-foreground">
-                      <p>No dishes found that match your search.</p>
-                  </div>
-              )}
             </div>
+            {filteredItems.length === 0 && (
+                <div className="text-center py-10 text-muted-foreground">
+                    <p>No dishes found that match your search.</p>
+                </div>
+            )}
           </main>
         </ScrollArea>
         
@@ -267,5 +233,3 @@ export default function CategoryMenuPage() {
     </div>
   );
 }
-
-    
