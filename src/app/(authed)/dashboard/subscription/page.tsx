@@ -13,7 +13,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Check, Loader2 } from 'lucide-react';
 import { useFirebase, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, query, orderBy, DocumentData } from 'firebase/firestore';
+import { collection, query, orderBy, DocumentData, doc } from 'firebase/firestore';
 import { useCurrency } from '@/hooks/use-currency';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
@@ -250,12 +250,10 @@ export default function SubscriptionPage() {
 
               return (
                <Card key={plan.id} className={cn("flex flex-col", plan.recommended && "border-primary border-2")}>
-                  {plan.recommended && (
-                    <div className="bg-primary text-primary-foreground text-center py-1 text-sm font-semibold">Recommended</div>
-                  )}
                   <CardHeader>
                     <div className="flex justify-between items-center">
                         <CardTitle className="text-2xl capitalize">{plan.name}</CardTitle>
+                        {plan.recommended && <Badge>Recommended</Badge>}
                     </div>
                     <div className="flex items-baseline gap-2 pt-2">
                         <span className="text-4xl font-bold">{format(plan.offerPrice)}</span>
