@@ -40,7 +40,6 @@ const features = [
   'Dedicated Captain App',
   'Events & RSVP System',
   'Customer Feedback Tools',
-  'Detailed Sales Reporting',
   '24/7 Support',
 ];
 
