@@ -26,6 +26,10 @@ type UserProfile = {
     adminAccessCode?: string;
 };
 
+type Subscription = {
+    status: 'active' | 'inactive';
+}
+
 type Notification = {
     id: string;
     message: string;
@@ -38,27 +42,37 @@ function AuthRedirect({ children }: { children: React.ReactNode }) {
     const { user, isUserLoading } = useUser();
     const { firestore } = useFirebase();
     const router = useRouter();
+    const pathname = usePathname();
 
-    const userDocRef = useMemoFirebase(() => {
-        if (!user || !firestore) return null;
-        return doc(firestore, 'users', user.uid);
-    }, [user, firestore]);
+    const userDocRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [user, firestore]);
+    const subscriptionRef = useMemoFirebase(() => (user ? doc(firestore, 'subscriptions', user.uid) : null), [user, firestore]);
     
     const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userDocRef);
+    const { data: subscription, isLoading: isSubscriptionLoading } = useDoc<Subscription>(subscriptionRef);
 
-    const isDataLoading = isUserLoading || isProfileLoading;
+    const isDataLoading = isUserLoading || isProfileLoading || isSubscriptionLoading;
     
     useEffect(() => {
-        if (!isDataLoading) {
-            if (!user) {
-                router.replace('/login');
-            } else if (userProfile && userProfile.onboarding === false) {
-                router.replace('/onboarding');
-            }
-        }
-    }, [user, userProfile, isDataLoading, router]);
+        if (isDataLoading) return; // Wait for all data to load
 
-    const isLoading = isUserLoading || (user && isProfileLoading);
+        if (!user) {
+            router.replace('/login');
+            return;
+        }
+
+        if (userProfile && userProfile.onboarding === false) {
+            router.replace('/onboarding');
+            return;
+        }
+        
+        if (subscription && subscription.status === 'inactive' && pathname !== '/dashboard/subscription') {
+            router.replace('/dashboard/subscription');
+            return;
+        }
+
+    }, [user, userProfile, subscription, isDataLoading, router, pathname]);
+
+    const isLoading = isUserLoading || (user && (isProfileLoading || isSubscriptionLoading));
 
     if (isLoading) {
         return (
@@ -68,7 +82,15 @@ function AuthRedirect({ children }: { children: React.ReactNode }) {
         );
     }
     
-    if (user && userProfile?.onboarding) {
+    if (user && userProfile?.onboarding && subscription?.status === 'active') {
+        return (
+            <TaskNotificationProvider>
+                {children}
+            </TaskNotificationProvider>
+        );
+    }
+
+    if (pathname === '/dashboard/subscription' && subscription?.status === 'inactive') {
         return (
             <TaskNotificationProvider>
                 {children}
@@ -193,6 +215,7 @@ export default function AuthedLayout({
 }) {
   const pathname = usePathname();
   const isSpecialLayout = pathname.startsWith('/dashboard/attendance') || pathname.startsWith('/dashboard/captain') || pathname === '/dashboard/staff';
+  const isSubscriptionPage = pathname === '/dashboard/subscription';
 
   return (
     <AuthRedirect>
@@ -201,11 +224,12 @@ export default function AuthedLayout({
           <SidebarProvider>
             {!isSpecialLayout && <AppSidebar />}
             <main className="flex-1 flex flex-col bg-gray-100 dark:bg-black">
-              {!isSpecialLayout && (
+              {(!isSpecialLayout && !isSubscriptionPage) && (
                 <header className="flex h-16 items-center justify-end border-b bg-background px-4">
                   <NotificationPanel />
                 </header>
               )}
+               {isSubscriptionPage && <div className="h-16 flex-shrink-0" />}
               <div className={cn("flex-1 overflow-y-auto", !isSpecialLayout && "p-4 md:p-6")}>
                  <div className={cn(!isSpecialLayout && "max-w-7xl mx-auto")}>
                     {children}

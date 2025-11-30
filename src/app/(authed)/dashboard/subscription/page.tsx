@@ -13,7 +13,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Check, Loader2 } from 'lucide-react';
 import { useFirebase, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, query, orderBy, DocumentData, doc } from 'firebase/firestore';
+import { collection, query, orderBy, DocumentData, doc, getDoc } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useCurrency } from '@/hooks/use-currency';
 import { cn } from '@/lib/utils';
@@ -31,6 +31,8 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { RAZORPAY_KEY_ID } from '@/lib/config';
+import { validateCoupon } from '@/lib/firebase/coupons';
+
 
 const features = [
   'Unlimited Menu Items & Categories',
@@ -100,27 +102,23 @@ export default function SubscriptionPage() {
   };
   
   const handleApplyCoupon = async () => {
-      // Client-side coupon validation is insecure. This is just for UI purposes.
-      // The real validation will happen in the `createOrder` cloud function.
       if (!couponCode.trim() || !selectedPlan) return;
       setIsApplyingCoupon(true);
       
-      const couponRef = doc(firestore, 'coupons', couponCode);
-      const couponSnap = await getDoc(couponRef);
-
-      if (couponSnap.exists()) {
-        const couponData = couponSnap.data();
+      const { isValid, message, coupon } = await validateCoupon(couponCode, selectedPlan.id);
+      
+      if (isValid && coupon) {
         let calculatedDiscount = 0;
-        if (couponData.type === 'percentage') {
-          calculatedDiscount = (selectedPlan.offerPrice * couponData.value) / 100;
+        if (coupon.type === 'percentage') {
+          calculatedDiscount = (selectedPlan.offerPrice * coupon.value) / 100;
         } else {
-          calculatedDiscount = couponData.value;
+          calculatedDiscount = coupon.value;
         }
         setDiscount(calculatedDiscount);
-        setAppliedCoupon(couponData);
+        setAppliedCoupon(coupon);
         toast({ title: 'Coupon Applied!', description: `You saved ${format(calculatedDiscount)}.` });
       } else {
-        toast({ variant: 'destructive', title: 'Invalid Coupon' });
+        toast({ variant: 'destructive', title: 'Invalid Coupon', description: message });
         setDiscount(0);
         setAppliedCoupon(null);
       }
@@ -165,6 +163,7 @@ export default function SubscriptionPage() {
                 });
                 toast({ title: 'Payment Successful!', description: 'Your subscription is now active.'});
                 setIsDialogOpen(false);
+                // The layout will automatically redirect on subscription status change
             } catch (verifyError: any) {
                 toast({ variant: 'destructive', title: 'Verification Failed', description: verifyError.message });
             }
