@@ -355,7 +355,8 @@ export default function AIFAPage() {
     const handleConfirmOrder = async (orderSummary: string) => {
         if (businessData?.id) {
             try {
-                await submitServiceRequest(businessData.id, tableNumber, `Order ready to be taken: ${orderSummary}`);
+                const taskDescription = `Order ready: ${orderSummary}`;
+                await submitServiceRequest(businessData.id, tableNumber, taskDescription);
                 toast({
                     title: "Order Confirmed!",
                     description: "A captain will be with you shortly to finalize your order.",
@@ -397,7 +398,8 @@ export default function AIFAPage() {
             }
         } else if (response.includes('[CONFIRM_ORDER]')) {
             const cleanResponse = response.replace('[CONFIRM_ORDER]', '').trim();
-            const orderSummary = cleanResponse.split("Here's your order:")[1]?.trim() || "Your confirmed order.";
+            const orderSummaryMatch = cleanResponse.match(/Here's your order so far:\s*(.*)/is);
+            const orderSummary = orderSummaryMatch ? orderSummaryMatch[1].trim() : "Your confirmed order.";
             addMessage('aifa', <ConfirmOrder orderText={cleanResponse} onConfirm={() => handleConfirmOrder(orderSummary)} />);
         }
         else {
