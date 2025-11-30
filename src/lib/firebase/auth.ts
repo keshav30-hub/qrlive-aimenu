@@ -55,6 +55,7 @@ export async function createUserDocument(user: User) {
         createdAt: createdAt,
         lastLoginAt: createdAt,
         onboarding: false, // Set onboarding to false for new users
+        setupFeePaid: false, // Set setupFeePaid to false for new users
       });
     } catch (e) {
       console.error("Error creating user document: ", e);
@@ -68,3 +69,5 @@ export async function createUserDocument(user: User) {
     }
   }
 }
+
+    

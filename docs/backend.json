@@ -30,6 +30,10 @@
           "type": "boolean",
           "description": "Indicates whether the user has completed the onboarding process."
         },
+        "setupFeePaid": {
+          "type": "boolean",
+          "description": "Indicates whether the user has paid the one-time setup fee."
+        },
         "businessId": {
           "type": "string",
           "description": "The ID of the business associated with the user (e.g., is-Menu-25-DFCV68)."
@@ -83,6 +87,7 @@
         "createdAt",
         "lastLoginAt",
         "onboarding",
+        "setupFeePaid",
         "businessType"
       ]
     },
@@ -794,3 +799,5 @@
     }
   }
 }
+
+    
