@@ -16,7 +16,7 @@ import Link from 'next/link';
 import { runAifaFlow } from "@/ai/flows/aifa-flow";
 import { type AIFALowInput, type MenuItemSchema, type ComboSchema } from "@/ai/flows/aifa-schema";
 import { useCurrency } from "@/hooks/use-currency";
-import { getBusinessDataBySlug, getEvents, getMenuData, type BusinessData, type Event, type Category as MenuCategory, type MenuItem, type Combo, submitFeedback } from '@/lib/qrmenu';
+import { getBusinessDataBySlug, getEvents, getMenuData, type BusinessData, type Event, type Category as MenuCategory, type MenuItem, type Combo, submitFeedback, submitServiceRequest } from '@/lib/qrmenu';
 import { Star } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { useFirebaseStorage } from "@/firebase/storage/use-firebase-storage";
@@ -165,6 +165,27 @@ const InstagramButton = ({ href }: { href: string }) => (
         </Link>
     </div>
 );
+
+const ConfirmOrder = ({ orderText, onConfirm }: { orderText: string, onConfirm: () => void }) => {
+    const [isConfirming, setIsConfirming] = useState(false);
+    
+    const handleConfirm = async () => {
+        setIsConfirming(true);
+        await onConfirm();
+        // The parent component will handle the success message from the server.
+        setIsConfirming(false);
+    }
+
+    return (
+        <div className="space-y-3 pt-2">
+            <p className="text-sm font-medium">{orderText}</p>
+             <Button className="w-full" onClick={handleConfirm} disabled={isConfirming}>
+                 {isConfirming ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                 Confirm Order & Call Captain
+             </Button>
+        </div>
+    )
+};
 
 
 const processDataForServerAction = (data: any) => {
@@ -330,6 +351,26 @@ export default function AIFAPage() {
             setIsThinking(false);
         }, 300);
     }
+    
+    const handleConfirmOrder = async (orderSummary: string) => {
+        if (businessData?.id) {
+            try {
+                await submitServiceRequest(businessData.id, tableNumber, `Order ready to be taken: ${orderSummary}`);
+                toast({
+                    title: "Order Confirmed!",
+                    description: "A captain will be with you shortly to finalize your order.",
+                });
+                addMessage('aifa', "Excellent! I've notified our staff. They will be right with you to confirm everything.");
+            } catch (error) {
+                console.error("Failed to submit order confirmation task:", error);
+                toast({
+                    variant: "destructive",
+                    title: "Confirmation Failed",
+                    description: "We couldn't notify the staff. Please try again or call a captain.",
+                });
+            }
+        }
+    };
 
     const handleInitialAction = async (action: string) => {
         addMessage('user', action);
@@ -354,6 +395,10 @@ export default function AIFAPage() {
             if (businessData?.instagramLink) {
                 addMessage('aifa', <InstagramButton href={businessData.instagramLink} />);
             }
+        } else if (response.includes('[CONFIRM_ORDER]')) {
+            const cleanResponse = response.replace('[CONFIRM_ORDER]', '').trim();
+            const orderSummary = cleanResponse.split("Here's your order:")[1]?.trim() || "Your confirmed order.";
+            addMessage('aifa', <ConfirmOrder orderText={cleanResponse} onConfirm={() => handleConfirmOrder(orderSummary)} />);
         }
         else {
             addMessage('aifa', response);
