@@ -294,7 +294,7 @@ export default function CombosPage() {
           </div>
         </header>
 
-        <div className="p-4 flex items-center gap-4 sticky top-[64px] bg-white dark:bg-gray-950 z-10 border-b">
+        <div className="px-4 py-2 flex items-center gap-4 sticky top-[64px] bg-white dark:bg-gray-950 z-10 border-b">
           <div className="relative flex-grow">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input 
@@ -361,5 +361,3 @@ export default function CombosPage() {
     </div>
   );
 }
-
-    
