@@ -85,7 +85,6 @@ export const verifyPayment = functions.https.onCall(async (data, context) => {
   
     const order = await razorpay.orders.fetch(razorpay_order_id);
     const notes = order.notes || {};
-    const isSetupFeeExpected = (notes.isSetupFeeExpected === 'true');
     const payment = await razorpay.payments.fetch(razorpay_payment_id);
     const amountPaise = payment.amount;
     const amountINR = amountPaise / 100;
@@ -105,14 +104,14 @@ export const verifyPayment = functions.https.onCall(async (data, context) => {
         razorpayOrderId: razorpay_order_id,
         amount: amountINR,
         currency: payment.currency,
-        isSetupFee: isSetupFeeExpected,
+        isSetupFee: notes.isSetupFeeExpected === 'true',
         couponUsed: notes.couponCode || null,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         planId: planId,
       });
   
       // Update user's setup fee status if it was paid
-      if (isSetupFeeExpected) {
+      if (notes.isSetupFeeExpected === 'true') {
         tx.update(userRef, { setupFeePaid: true });
       }
   
@@ -133,10 +132,111 @@ export const verifyPayment = functions.https.onCall(async (data, context) => {
         duration: `${durationMonths} months`
       };
       
-      // Using set with merge: true will create the doc if it doesn't exist,
-      // or update it if it does. This handles both new and recurring subscriptions.
       tx.set(subRef, subData, { merge: true });
     });
   
     return { success: true, paymentId: razorpay_payment_id };
   });
+
+export const razorpayWebhook = functions.https.onRequest(async (req, res) => {
+    const secret = functions.config().razorpay.webhook_secret;
+    const signature = req.headers['x-razorpay-signature'];
+
+    if (!secret) {
+        console.error("Razorpay webhook secret is not configured.");
+        res.status(500).send("Webhook secret not configured.");
+        return;
+    }
+
+    try {
+        const shasum = crypto.createHmac('sha256', secret);
+        shasum.update(JSON.stringify(req.body));
+        const digest = shasum.digest('hex');
+
+        if (digest !== signature) {
+            console.warn("Invalid webhook signature.");
+            res.status(403).send("Invalid signature.");
+            return;
+        }
+
+        const event = req.body;
+        
+        if (event.event === 'payment.captured') {
+            const paymentEntity = event.payload.payment.entity;
+            const orderId = paymentEntity.order_id;
+            const paymentId = paymentEntity.id;
+            const amountPaise = paymentEntity.amount;
+            const amountINR = amountPaise / 100;
+            
+            const order = await razorpay.orders.fetch(orderId);
+            const { userId, planId, isSetupFeeExpected, couponCode } = order.notes || {};
+
+            if (!userId || !planId) {
+                console.error("Webhook Error: Missing userId or planId in order notes.", {orderId, paymentId});
+                res.status(400).send("Missing required order notes.");
+                return;
+            }
+            
+            const planDoc = await admin.firestore().collection('plans').doc(planId).get();
+            if (!planDoc.exists) {
+                 console.error(`Webhook Error: Plan with ID ${planId} not found.`);
+                 res.status(404).send("Plan not found.");
+                 return;
+            }
+            const planData = planDoc.data()!;
+            const durationMonths = planData.durationMonths;
+
+            const userRef = admin.firestore().collection('users').doc(userId);
+            const subRef = admin.firestore().collection('subscriptions').doc(userId);
+            const paymentDocRef = admin.firestore().collection('payments').doc(paymentId);
+            
+             await admin.firestore().runTransaction(async (tx) => {
+                const existingPayment = await tx.get(paymentDocRef);
+                if (existingPayment.exists) {
+                    console.log(`Payment ${paymentId} already processed.`);
+                    return;
+                }
+        
+                tx.set(paymentDocRef, {
+                    userId,
+                    razorpayPaymentId: paymentId,
+                    razorpayOrderId: orderId,
+                    amount: amountINR,
+                    currency: paymentEntity.currency,
+                    isSetupFee: isSetupFeeExpected === 'true',
+                    couponUsed: couponCode || null,
+                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                    planId: planId,
+                    processedBy: 'webhook'
+                });
+        
+                if (isSetupFeeExpected === 'true') {
+                    tx.update(userRef, { setupFeePaid: true });
+                }
+        
+                const now = admin.firestore.Timestamp.now();
+                const expiresAt = new Date();
+                expiresAt.setMonth(expiresAt.getMonth() + durationMonths);
+        
+                const subData = {
+                    planId: planId,
+                    planName: planData.name,
+                    startedAt: now,
+                    expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
+                    status: 'active',
+                    lastPaymentId: paymentId,
+                    couponCode: couponCode || null,
+                    paidAmount: amountINR,
+                    duration: `${durationMonths} months`
+                };
+                
+                tx.set(subRef, subData, { merge: true });
+            });
+        }
+        
+        res.status(200).send("Webhook processed.");
+    } catch (error) {
+        console.error("Error processing Razorpay webhook:", error);
+        res.status(500).send("Internal Server Error.");
+    }
+});
