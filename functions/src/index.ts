@@ -96,8 +96,9 @@ export const verifyPayment = functions.https.onCall(async (data, context) => {
 
     await admin.firestore().runTransaction(async (tx) => {
       const existingPayment = await tx.get(paymentDocRef);
-      if (existingPayment.exists) return;
+      if (existingPayment.exists) return; // Prevent duplicate processing
   
+      // Create payment document
       tx.set(paymentDocRef, {
         userId,
         razorpayPaymentId: razorpay_payment_id,
@@ -110,11 +111,12 @@ export const verifyPayment = functions.https.onCall(async (data, context) => {
         planId: planId,
       });
   
-      const userSnap = await tx.get(userRef);
-      if (isSetupFeeExpected && userSnap.data()?.setupFeePaid !== true) {
+      // Update user's setup fee status if it was paid
+      if (isSetupFeeExpected) {
         tx.update(userRef, { setupFeePaid: true });
       }
   
+      // Create or update subscription document
       const now = admin.firestore.Timestamp.now();
       const expiresAt = new Date();
       expiresAt.setMonth(expiresAt.getMonth() + durationMonths);
@@ -130,7 +132,9 @@ export const verifyPayment = functions.https.onCall(async (data, context) => {
         paidAmount: amountINR,
         duration: `${durationMonths} months`
       };
-
+      
+      // Using set with merge: true will create the doc if it doesn't exist,
+      // or update it if it does. This handles both new and recurring subscriptions.
       tx.set(subRef, subData, { merge: true });
     });
   

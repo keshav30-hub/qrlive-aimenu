@@ -47,30 +47,20 @@ export async function createUserDocument(user: User) {
   const userSnap = await getDoc(userRef);
 
   if (!userSnap.exists()) {
-    // User is new, create user doc and subscription doc in a batch
+    // User is new, create user doc. Subscription doc is now created by the verifyPayment cloud function.
     const createdAt = serverTimestamp();
-    const subRef = doc(firestore, 'subscriptions', user.uid);
-
-    const batch = writeBatch(firestore);
-
-    batch.set(userRef, {
-        uid: user.uid,
-        email: user.email,
-        createdAt: createdAt,
-        lastLoginAt: createdAt,
-        onboarding: false,
-        setupFeePaid: false,
-    });
-
-    batch.set(subRef, {
-        createdAt: createdAt,
-        status: 'inactive',
-    });
-
+    
     try {
-        await batch.commit();
+        await setDoc(userRef, {
+            uid: user.uid,
+            email: user.email,
+            createdAt: createdAt,
+            lastLoginAt: createdAt,
+            onboarding: false,
+            setupFeePaid: false, // Set the initial setup fee status
+        });
     } catch (e) {
-        console.error("Error creating user and subscription documents: ", e);
+        console.error("Error creating user document: ", e);
     }
 
   } else {
