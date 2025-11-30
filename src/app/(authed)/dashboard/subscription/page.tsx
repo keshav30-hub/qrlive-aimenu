@@ -37,8 +37,8 @@ const features = [
   'Advanced QR Menu Analytics',
   'AI Food Assistant (AIFA)',
   'Staff Management & Attendance',
-  'Task & Service Request Management',
   'Dedicated Captain App',
+  'Task & Service Request Management',
   'Events & RSVP System',
   'Customer Feedback Tools',
   '24/7 Support',
@@ -65,7 +65,7 @@ export default function SubscriptionPage() {
   const { format } = useCurrency();
   const { toast } = useToast();
 
-  const userRef = useMemoFirebase(() => user ? useDoc(firestore, 'users', user.uid) : null, [user, firestore]);
+  const userRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [user, firestore]);
   const { data: userProfile } = useDoc<UserProfile>(userRef);
 
   const plansRef = useMemoFirebase(
