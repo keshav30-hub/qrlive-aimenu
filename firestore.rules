@@ -33,7 +33,27 @@ service cloud.firestore {
     }
     
     match /plans/{planId} {
-      allow read, write: if isAdmin();
+      allow get, list: if isSignedIn();
+      allow write: if isAdmin();
+    }
+    
+    match /subscriptions/{userId} {
+      // User can read their own subscription
+      allow get: if request.auth != null && request.auth.uid == userId;
+
+      // Only server can write
+      allow create, update, delete: if false;
+    }
+
+    match /payments/{paymentId} {
+      // Owner can read their payment doc
+      allow get: if request.auth != null && request.auth.uid == resource.data.userId;
+
+      // Allow listing payments that belong to the signed-in user
+      allow list: if request.auth != null && request.query.userId == request.auth.uid;
+
+      // Only server can write
+      allow create, update, delete: if false;
     }
 
     match /coupons/{couponId} {

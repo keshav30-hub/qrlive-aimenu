@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect, useRef } from 'react';
@@ -20,9 +19,9 @@ export function PlacesAutocomplete({
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
 
   useEffect(() => {
-    const apiKey = process.env.GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_PLACES_API_KEY;
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
     if (!apiKey) {
-      console.error('Google Places API key is missing.');
+      console.error('Google Places API key is missing. Make sure NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is set in your .env file.');
       return;
     }
 
@@ -35,7 +34,6 @@ export function PlacesAutocomplete({
         inputRef.current,
         {
           componentRestrictions: { country: 'in' },
-           // Request more fields to get the full address details
           fields: ["address_components", "geometry", "icon", "name", "formatted_address"],
         }
       );
@@ -57,7 +55,6 @@ export function PlacesAutocomplete({
           initializeAutocomplete();
           existingScript.removeEventListener('load', handleLoad);
         };
-        // If the script is already there, it might be loading, so add a listener
         if (existingScript.dataset.loaded) {
              initializeAutocomplete();
         } else {
