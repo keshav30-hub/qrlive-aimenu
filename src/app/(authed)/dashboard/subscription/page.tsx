@@ -35,16 +35,18 @@ type Plan = {
     priceINR: number;
     offerPrice: number;
     recommended: boolean;
+    sortOrder: number;
 };
 
 export default function SubscriptionPage() {
-  const { firestore, user } = useFirebase();
+  const { firestore } = useFirebase();
   const { format } = useCurrency();
 
   const plansRef = useMemoFirebase(
-    () => (user ? collection(firestore, 'plans') : null),
-    [firestore, user]
+    () => (firestore ? collection(firestore, 'plans') : null),
+    [firestore]
   );
+  
   const plansQuery = useMemoFirebase(
       () => (plansRef ? query(plansRef, orderBy('sortOrder')) : null),
       [plansRef]
