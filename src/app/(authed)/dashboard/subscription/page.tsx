@@ -24,9 +24,11 @@ const features = [
   'AI Food Assistant (AIFA)',
   'Staff Management & Attendance',
   'Task & Service Request Management',
+  'Dedicated Captain App',
   'Events & RSVP System',
   'Customer Feedback Tools',
-  'Priority Support'
+  'Detailed Sales Reporting',
+  '24/7 Support',
 ];
 
 type Plan = {
