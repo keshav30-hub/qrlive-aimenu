@@ -10,8 +10,12 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Check } from 'lucide-react';
-import Link from 'next/link';
+import { Badge } from '@/components/ui/badge';
+import { Check, Loader2 } from 'lucide-react';
+import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, orderBy } from 'firebase/firestore';
+import { useCurrency } from '@/hooks/use-currency';
+import { cn } from '@/lib/utils';
 
 const features = [
   'Unlimited Menu Items & Categories',
@@ -24,53 +28,31 @@ const features = [
   'Priority Support'
 ];
 
-const plans = [
-  {
-    name: 'Free',
-    price: '₹0',
-    priceDescription: '/month',
-    description: 'For individuals and small teams just getting started.',
-    features: [
-      'Up to 25 menu items',
-      'Basic QR menu analytics',
-      'Community support',
-    ],
-    cta: 'Your Current Plan',
-    disabled: true,
-  },
-  {
-    name: 'Pro',
-    price: '₹2499',
-    priceDescription: '/month',
-    description: 'For growing businesses that need more power and support.',
-    features: [
-      'Unlimited menu items',
-      'Advanced analytics & reports',
-      'AI Food Assistant (AIFA)',
-      'Staff management tools',
-      'Priority email support',
-    ],
-    cta: 'Upgrade to Pro',
-    disabled: false,
-  },
-  {
-    name: 'Enterprise',
-    price: 'Custom',
-    priceDescription: '',
-    description: 'For large-scale operations with custom requirements.',
-    features: [
-      'Everything in Pro, plus:',
-      'Dedicated account manager',
-      'Custom integrations',
-      'On-premise options',
-      '24/7 phone support',
-    ],
-    cta: 'Contact Sales',
-    disabled: false,
-  },
-];
+type Plan = {
+    id: string;
+    name: string;
+    durationMonths: number;
+    priceINR: number;
+    offerPrice: number;
+    recommended: boolean;
+};
 
 export default function SubscriptionPage() {
+  const { firestore, user } = useFirebase();
+  const { format } = useCurrency();
+
+  const plansRef = useMemoFirebase(
+    () => (user ? collection(firestore, 'plans') : null),
+    [firestore, user]
+  );
+  const plansQuery = useMemoFirebase(
+      () => (plansRef ? query(plansRef, orderBy('sortOrder')) : null),
+      [plansRef]
+  );
+  
+  const { data: plansData, isLoading: plansLoading } = useCollection<Plan>(plansQuery);
+  const plans = plansData || [];
+
   return (
     <div className="space-y-8">
       <div className="text-center">
@@ -99,38 +81,41 @@ export default function SubscriptionPage() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        {plans.map((plan) => (
-          <Card key={plan.name} className="flex flex-col">
-            <CardHeader>
-              <CardTitle className="text-2xl">{plan.name}</CardTitle>
-              <div className="flex items-baseline gap-2">
-                <span className="text-4xl font-bold">{plan.price}</span>
-                {plan.priceDescription && <span className="text-muted-foreground">{plan.priceDescription}</span>}
-              </div>
-              <CardDescription>{plan.description}</CardDescription>
-            </CardHeader>
-            <CardContent className="flex-grow">
-               <ul className="space-y-3">
-                {plan.features.map((feature) => (
-                  <li key={feature} className="flex items-center gap-2">
-                    <Check className="h-5 w-5 text-green-500" />
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-            <CardFooter>
-              <Button className="w-full" disabled={plan.disabled}>
-                {plan.cta}
-              </Button>
-            </CardFooter>
-          </Card>
-        ))}
-      </div>
-       <div className="text-center text-muted-foreground text-sm">
-            <p>Need a custom solution? <Link href="/contact" className="underline">Contact us</Link> for a personalized quote.</p>
-       </div>
+      {plansLoading ? (
+         <div className="flex justify-center items-center h-64">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="ml-4 text-muted-foreground">Loading plans...</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {plans.map((plan) => (
+            <Card key={plan.id} className={cn("flex flex-col", plan.recommended && "border-primary border-2 shadow-lg")}>
+              <CardHeader>
+                {plan.recommended && (
+                    <Badge className="absolute -top-3 right-4">Recommended</Badge>
+                )}
+                <CardTitle className="text-2xl capitalize">{plan.name}</CardTitle>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-4xl font-bold">{format(plan.offerPrice)}</span>
+                  <span className="text-muted-foreground line-through">{format(plan.priceINR)}</span>
+                </div>
+                <CardDescription>{plan.durationMonths} month access</CardDescription>
+              </CardHeader>
+              <CardContent className="flex-grow">
+                 <ul className="space-y-3 text-sm text-muted-foreground">
+                    <li>Renews at {format(plan.offerPrice)} every {plan.durationMonths} months.</li>
+                    <li>Cancel anytime.</li>
+                </ul>
+              </CardContent>
+              <CardFooter>
+                <Button className="w-full">
+                  Choose Plan
+                </Button>
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
