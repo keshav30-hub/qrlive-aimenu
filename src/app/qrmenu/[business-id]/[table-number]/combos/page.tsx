@@ -16,8 +16,16 @@ import {
   DialogTitle,
   DialogDescription,
   DialogTrigger,
-  DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetFooter,
+  SheetDescription,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -34,6 +42,8 @@ import {
   Loader2,
   ShoppingBag,
   Plus,
+  Minus,
+  Trash2,
 } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
@@ -64,20 +74,27 @@ export default function CombosPage() {
   const [searchTerm, setSearchTerm] = useState('');
   
   const storageKey = `qrlive-cart-${businessId}-${tableNumber}`;
-  const [cart, setCart] = useState<CartItem[]>(() => {
-    try {
-        const savedCart = localStorage.getItem(storageKey);
-        return savedCart ? JSON.parse(savedCart) : [];
-    } catch {
-        return [];
-    }
-  });
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [isCartOpen, setIsCartOpen] = useState(false);
 
   const [combos, setCombos] = useState<Combo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRequestingService, setIsRequestingService] = useState(false);
   const [isServiceRequestDialogOpen, setIsServiceRequestDialogOpen] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+
+
+  useEffect(() => {
+    try {
+        const savedCart = localStorage.getItem(storageKey);
+        if (savedCart) {
+            setCart(JSON.parse(savedCart));
+        }
+    } catch (e) {
+        console.error("Failed to parse cart from localStorage", e);
+    }
+  }, [storageKey]);
 
   useEffect(() => {
     localStorage.setItem(storageKey, JSON.stringify(cart));
@@ -122,6 +139,50 @@ export default function CombosPage() {
     }
   };
 
+  const handlePlaceOrder = async () => {
+    if (!userId || typeof tableNumber !== 'string' || cart.length === 0) return;
+
+    setIsPlacingOrder(true);
+    const orderSummary = cart.map(item => `${item.quantity}x ${item.name}`).join(', ');
+    const requestType = `New Order: ${orderSummary}`;
+
+    try {
+      await submitServiceRequest(userId, tableNumber, requestType);
+      toast({
+        title: 'Order Placed!',
+        description: 'Your order has been sent to the kitchen. A staff member will confirm it shortly.',
+      });
+      setCart([]);
+      setIsCartOpen(false);
+    } catch (error) {
+      console.error('Order placement failed:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Order Failed',
+        description: 'We could not place your order. Please call a staff member.',
+      });
+    } finally {
+      setIsPlacingOrder(false);
+    }
+  };
+  
+  const updateQuantity = (itemId: string, newQuantity: number) => {
+    setCart((prevCart) => {
+      if (newQuantity <= 0) {
+        return prevCart.filter((item) => item.id !== itemId);
+      }
+      return prevCart.map((item) =>
+        item.id === itemId ? { ...item, quantity: newQuantity } : item
+      );
+    });
+  };
+
+  const cartTotal = cart.reduce(
+    (total, item) => total + item.finalPrice * item.quantity,
+    0
+  );
+
+
   const filteredItems = useMemo(() => {
     return combos.filter(combo => combo.name.toLowerCase().includes(searchTerm.toLowerCase()));
   }, [combos, searchTerm]);
@@ -158,12 +219,54 @@ export default function CombosPage() {
             <h1 className="text-xl font-bold capitalize">Combos</h1>
           </div>
            <div className="flex items-center gap-2">
-            <Link href={`/qrmenu/${businessId}/${tableNumber}`}>
+            <Sheet open={isCartOpen} onOpenChange={setIsCartOpen}>
+              <SheetTrigger asChild>
                 <Button size="icon" variant="outline" className="relative">
                     <ShoppingBag className="h-6 w-6" />
                     {cart.length > 0 && <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center">{cart.reduce((total, item) => total + item.quantity, 0)}</span>}
                 </Button>
-            </Link>
+              </SheetTrigger>
+              <SheetContent side="bottom" className="max-w-[480px] mx-auto rounded-t-2xl p-0">
+                <SheetHeader className="p-4 text-left">
+                  <SheetTitle>Your Order</SheetTitle>
+                </SheetHeader>
+                <ScrollArea className="px-4 h-[40vh]">
+                  {cart.length === 0 ? (
+                    <div className="text-center py-10 text-muted-foreground">Your cart is empty.</div>
+                  ) : (
+                    <div className="space-y-4">
+                      {cart.map((item) => (
+                        <div key={item.id} className="flex items-center gap-4">
+                          <Image src={(item as MenuItem).imageUrl || "https://picsum.photos/seed/combo/64/64"} alt={item.name} width={64} height={64} className="rounded-md object-cover"/>
+                          <div className="flex-grow">
+                            <p className="font-medium">{item.name}</p>
+                            <p className="text-sm text-muted-foreground">{format(item.finalPrice)}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => updateQuantity(item.id, item.quantity - 1)}><Minus className="h-4 w-4" /></Button>
+                            <span className="w-6 text-center">{item.quantity}</span>
+                            <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => updateQuantity(item.id, item.quantity + 1)}><Plus className="h-4 w-4" /></Button>
+                          </div>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" onClick={() => updateQuantity(item.id, 0)}><Trash2 className="h-4 w-4" /></Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </ScrollArea>
+                <SheetFooter className="p-4 bg-gray-100 dark:bg-gray-900 rounded-b-2xl">
+                  <div className="w-full space-y-4">
+                    <div className="flex justify-between items-center text-lg font-semibold">
+                      <span>To Pay</span>
+                      <span>{format(cartTotal)}</span>
+                    </div>
+                    <Button className="w-full h-12 text-lg" onClick={handlePlaceOrder} disabled={cart.length === 0 || isPlacingOrder}>
+                      {isPlacingOrder ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
+                      {isPlacingOrder ? 'Placing Order...' : 'Place Order'}
+                    </Button>
+                  </div>
+                </SheetFooter>
+              </SheetContent>
+            </Sheet>
             <Dialog open={isServiceRequestDialogOpen} onOpenChange={setIsServiceRequestDialogOpen}>
                 <DialogTrigger asChild>
                     <Button size="icon" className="bg-primary text-primary-foreground">

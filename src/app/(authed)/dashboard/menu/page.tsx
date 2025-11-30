@@ -28,6 +28,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -138,6 +149,14 @@ type Combo = {
   available: boolean;
 }
 
+const initialComboState: Partial<Combo> = {
+  name: '',
+  items: [],
+  price: '',
+  description: '',
+  available: true,
+}
+
 const ITEMS_PER_PAGE = 15;
 
 export default function MenuPage() {
@@ -162,26 +181,26 @@ export default function MenuPage() {
   const [isCategorySheetOpen, setIsCategorySheetOpen] = useState(false);
   const [isEditingCategory, setIsEditingCategory] = useState(false);
   const [isComboDialogOpen, setIsComboDialogOpen] = useState(false);
+  const [isEditingCombo, setIsEditingCombo] = useState(false);
   
   const [currentItem, setCurrentItem] = useState<Partial<MenuItem>>(initialItemState);
   const [currentCategory, setCurrentCategory] = useState<Partial<Category>>(defaultCategory);
+  const [currentCombo, setCurrentCombo] = useState<Partial<Combo>>(initialComboState);
 
   // State for Combo Dialog
-  const [newComboName, setNewComboName] = useState('');
-  const [newComboPrice, setNewComboPrice] = useState('');
-  const [newComboDescription, setNewComboDescription] = useState('');
-  const [selectedComboItems, setSelectedComboItems] = useState<string[]>([]);
   const [comboSearchTerm, setComboSearchTerm] = useState('');
 
 
   const [isSavingItem, setIsSavingItem] = useState(false);
   const [isSavingCategory, setIsSavingCategory] = useState(false);
+  const [isSavingCombo, setIsSavingCombo] = useState(false);
   
   const [currentPage, setCurrentPage] = useState(1);
   const [itemSearch, setItemSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterType, setFilterType] = useState('all');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [comboToDelete, setComboToDelete] = useState<Combo | null>(null);
 
   const { format } = useCurrency();
   
@@ -208,18 +227,18 @@ export default function MenuPage() {
   };
 
   const handleGenerateComboDescription = async () => {
-    if (!newComboName || !newComboPrice || selectedComboItems.length === 0) {
+    if (!currentCombo.name || !currentCombo.price || !currentCombo.items || currentCombo.items.length === 0) {
       toast({ variant: 'destructive', title: 'Missing Info', description: 'Please provide combo name, price, and select items.' });
       return;
     }
     setIsGenerating(true);
     try {
       const result = await generateComboDescription({
-        comboName: newComboName,
-        items: selectedComboItems,
-        price: newComboPrice,
+        comboName: currentCombo.name,
+        items: currentCombo.items,
+        price: currentCombo.price,
       });
-      setNewComboDescription(result.description);
+      setCurrentCombo(prev => ({...prev, description: result.description}));
     } catch(e) {
        toast({ variant: "destructive", title: "AI Generation Failed", description: "Could not generate combo description." });
     } finally {
@@ -230,9 +249,11 @@ export default function MenuPage() {
   const filteredComboItems = items.filter(item => item.name.toLowerCase().includes(comboSearchTerm.toLowerCase()));
 
   const handleItemCheckboxChange = (itemName: string, checked: boolean) => {
-    setSelectedComboItems(prev => 
-      checked ? [...prev, itemName] : prev.filter(name => name !== itemName)
-    );
+    setCurrentCombo(prev => {
+        const currentItems = prev.items || [];
+        const newItems = checked ? [...currentItems, itemName] : currentItems.filter(name => name !== itemName);
+        return {...prev, items: newItems };
+    });
   };
 
 
@@ -479,43 +500,45 @@ const handleCategoryDayChange = (dayId: string, checked: boolean) => {
   };
 
   const handleSaveCombo = async () => {
-    if (!combosRef || !newComboName || !newComboPrice || selectedComboItems.length === 0) {
+    if (!combosRef || !currentCombo.name || !currentCombo.price || !currentCombo.items || currentCombo.items.length === 0) {
       toast({ variant: "destructive", title: "Missing Information", description: "Please provide a name, price, and select items for the combo." });
       return;
     }
     
-    setIsSavingItem(true);
+    setIsSavingCombo(true);
     try {
-        await addDoc(combosRef, {
-          name: newComboName,
-          price: newComboPrice,
-          description: newComboDescription,
-          items: selectedComboItems,
-          available: true,
-          createdAt: serverTimestamp() 
-        });
-        toast({ title: "Success", description: "Combo added." });
-        // Reset state and close dialog
-        setNewComboName('');
-        setNewComboPrice('');
-        setNewComboDescription('');
-        setSelectedComboItems([]);
-        setComboSearchTerm('');
+        const comboData = {
+            name: currentCombo.name,
+            price: currentCombo.price,
+            description: currentCombo.description,
+            items: currentCombo.items,
+            available: currentCombo.id ? currentCombo.available : true,
+        };
+
+        if (isEditingCombo && currentCombo.id) {
+            await updateDoc(doc(combosRef, currentCombo.id), comboData);
+            toast({ title: "Success", description: "Combo updated." });
+        } else {
+            await addDoc(combosRef, { ...comboData, createdAt: serverTimestamp() });
+            toast({ title: "Success", description: "Combo added." });
+        }
+        
         setIsComboDialogOpen(false);
     } catch (e) {
         toast({ variant: "destructive", title: "Error", description: "Could not save combo." });
         console.error(e);
     } finally {
-      setIsSavingItem(false);
+      setIsSavingCombo(false);
     }
   };
 
 
-  const handleDeleteCombo = async (comboId: string) => {
-    if (!combosRef) return;
+  const handleDeleteCombo = async () => {
+    if (!combosRef || !comboToDelete) return;
     try {
-        await deleteDoc(doc(combosRef, comboId));
+        await deleteDoc(doc(combosRef, comboToDelete.id));
         toast({ title: "Success", description: "Combo deleted." });
+        setComboToDelete(null);
     } catch (e) {
         toast({ variant: "destructive", title: "Error", description: "Could not delete combo." });
         console.error(e);
@@ -530,6 +553,18 @@ const handleCategoryDayChange = (dayId: string, checked: boolean) => {
         toast({ variant: "destructive", title: "Error", description: "Could not update combo availability." });
         console.error(e);
     }
+  };
+  
+  const handleAddComboClick = () => {
+    setIsEditingCombo(false);
+    setCurrentCombo(initialComboState);
+    setIsComboDialogOpen(true);
+  };
+  
+  const handleEditComboClick = (combo: Combo) => {
+    setIsEditingCombo(true);
+    setCurrentCombo(combo);
+    setIsComboDialogOpen(true);
   };
 
   const filteredItems = items
@@ -959,13 +994,13 @@ const handleCategoryDayChange = (dayId: string, checked: boolean) => {
             <div className="flex justify-end">
                 <Dialog open={isComboDialogOpen} onOpenChange={setIsComboDialogOpen}>
                     <DialogTrigger asChild>
-                        <Button>
+                        <Button onClick={handleAddComboClick}>
                             <PlusCircle className="mr-2" /> Add Combo
                         </Button>
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-2xl">
                         <DialogHeader>
-                        <DialogTitle>Create New Combo</DialogTitle>
+                        <DialogTitle>{isEditingCombo ? 'Edit Combo' : 'Create New Combo'}</DialogTitle>
                         <DialogDescription>
                             Bundle items together to create an attractive offer.
                         </DialogDescription>
@@ -974,11 +1009,11 @@ const handleCategoryDayChange = (dayId: string, checked: boolean) => {
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="combo-name">Combo Name</Label>
-                                    <Input id="combo-name" placeholder="e.g. Super Saver Combo" value={newComboName} onChange={e => setNewComboName(e.target.value)} />
+                                    <Input id="combo-name" placeholder="e.g. Super Saver Combo" value={currentCombo.name} onChange={e => setCurrentCombo(p => ({...p, name: e.target.value}))} />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="combo-price">Price ({format(0).substring(0,1)})</Label>
-                                    <Input id="combo-price" type="number" placeholder="e.g. 299" value={newComboPrice} onChange={e => setNewComboPrice(e.target.value)} />
+                                    <Input id="combo-price" type="number" placeholder="e.g. 299" value={currentCombo.price} onChange={e => setCurrentCombo(p => ({...p, price: e.target.value}))} />
                                 </div>
                             </div>
                             <div className="space-y-2">
@@ -988,13 +1023,13 @@ const handleCategoryDayChange = (dayId: string, checked: boolean) => {
                                       variant="outline"
                                       size="sm"
                                       onClick={handleGenerateComboDescription}
-                                      disabled={isGenerating || !newComboName || !newComboPrice || selectedComboItems.length === 0}
+                                      disabled={isGenerating || !currentCombo.name || !currentCombo.price || !currentCombo.items || currentCombo.items.length === 0}
                                     >
                                       <Sparkles className="mr-2 h-4 w-4" />
                                       {isGenerating ? 'Generating...' : 'Generate'}
                                     </Button>
                                 </div>
-                                <Textarea id="combo-description" placeholder="Describe the combo offer..." value={newComboDescription} onChange={e => setNewComboDescription(e.target.value)} />
+                                <Textarea id="combo-description" placeholder="Describe the combo offer..." value={currentCombo.description} onChange={e => setCurrentCombo(p => ({...p, description: e.target.value}))} />
                             </div>
                             <div className="space-y-4">
                                 <Label>Select Items</Label>
@@ -1014,7 +1049,7 @@ const handleCategoryDayChange = (dayId: string, checked: boolean) => {
                                                 <Checkbox 
                                                     id={`item-${item.id}`}
                                                     onCheckedChange={(checked) => handleItemCheckboxChange(item.name, !!checked)}
-                                                    checked={selectedComboItems.includes(item.name)}
+                                                    checked={(currentCombo.items || []).includes(item.name)}
                                                 />
                                                 <Label htmlFor={`item-${item.id}`} className="flex-1 font-normal cursor-pointer">
                                                     {item.name}
@@ -1029,8 +1064,8 @@ const handleCategoryDayChange = (dayId: string, checked: boolean) => {
                         </div>
                         <DialogFooter>
                             <Button variant="outline" onClick={() => setIsComboDialogOpen(false)}>Cancel</Button>
-                            <Button onClick={handleSaveCombo} disabled={isSavingItem}>
-                                {isSavingItem ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : 'Save Combo'}
+                            <Button onClick={handleSaveCombo} disabled={isSavingCombo}>
+                                {isSavingCombo ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : 'Save Combo'}
                             </Button>
                         </DialogFooter>
                     </DialogContent>
@@ -1038,53 +1073,69 @@ const handleCategoryDayChange = (dayId: string, checked: boolean) => {
             </div>
             <Card className="mt-4">
               <CardContent className="pt-6">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>#</TableHead>
-                      <TableHead>Combo Name</TableHead>
-                      <TableHead>Items</TableHead>
-                      <TableHead>Price</TableHead>
-                      <TableHead>Availability</TableHead>
-                      <TableHead className="text-right">More</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {combosLoading ? <TableRow><TableCell colSpan={6}>Loading...</TableCell></TableRow> : combos.map((combo, index) => (
-                      <TableRow key={combo.id}>
-                        <TableCell>{index + 1}</TableCell>
-                        <TableCell className="font-medium">{combo.name}</TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap gap-1">
-                            {combo.items.map((item, itemIndex) => (
-                              <Badge key={itemIndex} variant="secondary">{item}</Badge>
-                            ))}
-                          </div>
-                        </TableCell>
-                        <TableCell>{format(Number(combo.price))}</TableCell>
-                        <TableCell>
-                          <Switch
-                            checked={combo.available}
-                            onCheckedChange={(checked) => handleComboAvailabilityToggle(combo.id, checked)}
-                          />
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <MoreVertical className="h-5 w-5" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem>Edit</DropdownMenuItem>
-                              <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteCombo(combo.id)}>Delete</DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <AlertDialog>
+                    <Table>
+                    <TableHeader>
+                        <TableRow>
+                        <TableHead>#</TableHead>
+                        <TableHead>Combo Name</TableHead>
+                        <TableHead>Items</TableHead>
+                        <TableHead>Price</TableHead>
+                        <TableHead>Availability</TableHead>
+                        <TableHead className="text-right">More</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {combosLoading ? <TableRow><TableCell colSpan={6}>Loading...</TableCell></TableRow> : combos.map((combo, index) => (
+                        <TableRow key={combo.id}>
+                            <TableCell>{index + 1}</TableCell>
+                            <TableCell className="font-medium">{combo.name}</TableCell>
+                            <TableCell>
+                            <div className="flex flex-wrap gap-1">
+                                {combo.items.map((item, itemIndex) => (
+                                <Badge key={itemIndex} variant="secondary">{item}</Badge>
+                                ))}
+                            </div>
+                            </TableCell>
+                            <TableCell>{format(Number(combo.price))}</TableCell>
+                            <TableCell>
+                            <Switch
+                                checked={combo.available}
+                                onCheckedChange={(checked) => handleComboAvailabilityToggle(combo.id, checked)}
+                            />
+                            </TableCell>
+                            <TableCell className="text-right">
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                    <MoreVertical className="h-5 w-5" />
+                                </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleEditComboClick(combo)}>Edit</DropdownMenuItem>
+                                <AlertDialogTrigger asChild>
+                                    <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive" onClick={() => setComboToDelete(combo)}>Delete</DropdownMenuItem>
+                                </AlertDialogTrigger>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                            </TableCell>
+                        </TableRow>
+                        ))}
+                    </TableBody>
+                    </Table>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete the combo "{comboToDelete?.name}".
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel onClick={() => setComboToDelete(null)}>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleDeleteCombo} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
               </CardContent>
             </Card>
         </TabsContent>
