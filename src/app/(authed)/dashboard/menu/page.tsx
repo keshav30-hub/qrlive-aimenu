@@ -53,7 +53,7 @@ import {
   RadioGroupItem,
 } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
-import { PlusCircle, Trash2, MoreVertical, Save, Search, Sparkles, Loader2 } from 'lucide-react';
+import { PlusCircle, Trash2, MoreVertical, Save, Search, Sparkles, Loader2, Upload } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useCurrency } from '@/hooks/use-currency';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -147,6 +147,8 @@ type Combo = {
   price: string;
   description?: string;
   available: boolean;
+  imageUrl?: string;
+  imageStoragePath?: string;
 }
 
 const initialComboState: Partial<Combo> = {
@@ -155,6 +157,8 @@ const initialComboState: Partial<Combo> = {
   price: '',
   description: '',
   available: true,
+  imageUrl: '',
+  imageStoragePath: '',
 }
 
 const ITEMS_PER_PAGE = 15;
@@ -499,6 +503,27 @@ const handleCategoryDayChange = (dayId: string, checked: boolean) => {
     }
   };
 
+  const handleComboImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0] && user) {
+        const file = e.target.files[0];
+        const newPath = `users/${user.uid}/images/combos/${Date.now()}_${file.name}`;
+        const uploadResult = await uploadFile(newPath, file);
+        if (uploadResult) {
+            if (isEditingCombo && currentCombo.imageStoragePath) {
+                await deleteFile(currentCombo.imageStoragePath);
+            }
+            setCurrentCombo(prev => ({
+                ...prev,
+                imageUrl: uploadResult.downloadURL,
+                imageStoragePath: uploadResult.storagePath,
+            }));
+            toast({ title: 'Image Uploaded' });
+        } else {
+            toast({ variant: 'destructive', title: 'Upload Failed' });
+        }
+    }
+  };
+
   const handleSaveCombo = async () => {
     if (!combosRef || !currentCombo.name || !currentCombo.price || !currentCombo.items || currentCombo.items.length === 0) {
       toast({ variant: "destructive", title: "Missing Information", description: "Please provide a name, price, and select items for the combo." });
@@ -513,6 +538,8 @@ const handleCategoryDayChange = (dayId: string, checked: boolean) => {
             description: currentCombo.description,
             items: currentCombo.items,
             available: currentCombo.id ? currentCombo.available : true,
+            imageUrl: currentCombo.imageUrl || `https://picsum.photos/seed/combo${Date.now()}/400/300`,
+            imageStoragePath: currentCombo.imageStoragePath,
         };
 
         if (isEditingCombo && currentCombo.id) {
@@ -536,6 +563,9 @@ const handleCategoryDayChange = (dayId: string, checked: boolean) => {
   const handleDeleteCombo = async () => {
     if (!combosRef || !comboToDelete) return;
     try {
+        if(comboToDelete.imageStoragePath) {
+          await deleteFile(comboToDelete.imageStoragePath);
+        }
         await deleteDoc(doc(combosRef, comboToDelete.id));
         toast({ title: "Success", description: "Combo deleted." });
         setComboToDelete(null);
@@ -1005,66 +1035,80 @@ const handleCategoryDayChange = (dayId: string, checked: boolean) => {
                             Bundle items together to create an attractive offer.
                         </DialogDescription>
                         </DialogHeader>
-                        <div className="grid gap-6 py-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="combo-name">Combo Name</Label>
-                                    <Input id="combo-name" placeholder="e.g. Super Saver Combo" value={currentCombo.name} onChange={e => setCurrentCombo(p => ({...p, name: e.target.value}))} />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="combo-price">Price ({format(0).substring(0,1)})</Label>
-                                    <Input id="combo-price" type="number" placeholder="e.g. 299" value={currentCombo.price} onChange={e => setCurrentCombo(p => ({...p, price: e.target.value}))} />
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <div className="flex justify-between items-center">
-                                    <Label htmlFor="combo-description">Description</Label>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={handleGenerateComboDescription}
-                                      disabled={isGenerating || !currentCombo.name || !currentCombo.price || !currentCombo.items || currentCombo.items.length === 0}
-                                    >
-                                      <Sparkles className="mr-2 h-4 w-4" />
-                                      {isGenerating ? 'Generating...' : 'Generate'}
-                                    </Button>
-                                </div>
-                                <Textarea id="combo-description" placeholder="Describe the combo offer..." value={currentCombo.description} onChange={e => setCurrentCombo(p => ({...p, description: e.target.value}))} />
-                            </div>
-                            <div className="space-y-4">
-                                <Label>Select Items</Label>
-                                <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                    <Input 
-                                        placeholder="Search for items..." 
-                                        className="pl-10"
-                                        value={comboSearchTerm}
-                                        onChange={(e) => setComboSearchTerm(e.target.value)}
-                                    />
-                                </div>
-                                <ScrollArea className="h-48 rounded-md border">
-                                    <div className="p-4">
-                                        {filteredComboItems.length > 0 ? filteredComboItems.map(item => (
-                                            <div key={item.id} className="flex items-center space-x-2 py-2">
-                                                <Checkbox 
-                                                    id={`item-${item.id}`}
-                                                    onCheckedChange={(checked) => handleItemCheckboxChange(item.name, !!checked)}
-                                                    checked={(currentCombo.items || []).includes(item.name)}
-                                                />
-                                                <Label htmlFor={`item-${item.id}`} className="flex-1 font-normal cursor-pointer">
-                                                    {item.name}
-                                                </Label>
-                                            </div>
-                                        )) : (
-                                            <p className="text-center text-sm text-muted-foreground">No items found.</p>
-                                        )}
-                                    </div>
-                                </ScrollArea>
-                            </div>
-                        </div>
+                        <ScrollArea className="max-h-[70vh] pr-4">
+                          <div className="grid gap-6 py-4">
+                              <div className="space-y-2">
+                                  <Label htmlFor="combo-image">Combo Image</Label>
+                                  {currentCombo.imageUrl && (
+                                      <div className="relative w-full h-40 rounded-md overflow-hidden">
+                                          <Image src={currentCombo.imageUrl} alt={currentCombo.name || "Combo Image"} fill style={{objectFit: 'cover'}} />
+                                      </div>
+                                  )}
+                                  <div className="flex items-center gap-2">
+                                    <Input id="combo-image" type="file" onChange={handleComboImageChange} disabled={isUploading}/>
+                                    {isUploading && <Loader2 className="h-5 w-5 animate-spin" />}
+                                  </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-4">
+                                  <div className="space-y-2">
+                                      <Label htmlFor="combo-name">Combo Name</Label>
+                                      <Input id="combo-name" placeholder="e.g. Super Saver Combo" value={currentCombo.name} onChange={e => setCurrentCombo(p => ({...p, name: e.target.value}))} />
+                                  </div>
+                                  <div className="space-y-2">
+                                      <Label htmlFor="combo-price">Price ({format(0).substring(0,1)})</Label>
+                                      <Input id="combo-price" type="number" placeholder="e.g. 299" value={currentCombo.price} onChange={e => setCurrentCombo(p => ({...p, price: e.target.value}))} />
+                                  </div>
+                              </div>
+                              <div className="space-y-2">
+                                  <div className="flex justify-between items-center">
+                                      <Label htmlFor="combo-description">Description</Label>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={handleGenerateComboDescription}
+                                        disabled={isGenerating || !currentCombo.name || !currentCombo.price || !currentCombo.items || currentCombo.items.length === 0}
+                                      >
+                                        <Sparkles className="mr-2 h-4 w-4" />
+                                        {isGenerating ? 'Generating...' : 'Generate'}
+                                      </Button>
+                                  </div>
+                                  <Textarea id="combo-description" placeholder="Describe the combo offer..." value={currentCombo.description} onChange={e => setCurrentCombo(p => ({...p, description: e.target.value}))} />
+                              </div>
+                              <div className="space-y-4">
+                                  <Label>Select Items</Label>
+                                  <div className="relative">
+                                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                      <Input 
+                                          placeholder="Search for items..." 
+                                          className="pl-10"
+                                          value={comboSearchTerm}
+                                          onChange={(e) => setComboSearchTerm(e.target.value)}
+                                      />
+                                  </div>
+                                  <ScrollArea className="h-48 rounded-md border">
+                                      <div className="p-4">
+                                          {filteredComboItems.length > 0 ? filteredComboItems.map(item => (
+                                              <div key={item.id} className="flex items-center space-x-2 py-2">
+                                                  <Checkbox 
+                                                      id={`item-${item.id}`}
+                                                      onCheckedChange={(checked) => handleItemCheckboxChange(item.name, !!checked)}
+                                                      checked={(currentCombo.items || []).includes(item.name)}
+                                                  />
+                                                  <Label htmlFor={`item-${item.id}`} className="flex-1 font-normal cursor-pointer">
+                                                      {item.name}
+                                                  </Label>
+                                              </div>
+                                          )) : (
+                                              <p className="text-center text-sm text-muted-foreground">No items found.</p>
+                                          )}
+                                      </div>
+                                  </ScrollArea>
+                              </div>
+                          </div>
+                        </ScrollArea>
                         <DialogFooter>
                             <Button variant="outline" onClick={() => setIsComboDialogOpen(false)}>Cancel</Button>
-                            <Button onClick={handleSaveCombo} disabled={isSavingCombo}>
+                            <Button onClick={handleSaveCombo} disabled={isSavingCombo || isUploading}>
                                 {isSavingCombo ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : 'Save Combo'}
                             </Button>
                         </DialogFooter>
@@ -1143,3 +1187,5 @@ const handleCategoryDayChange = (dayId: string, checked: boolean) => {
     </div>
   );
 }
+
+    

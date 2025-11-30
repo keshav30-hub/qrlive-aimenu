@@ -286,6 +286,49 @@
         "description"
       ]
     },
+    "Combo": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Combo",
+      "type": "object",
+      "description": "Represents a combo deal, bundling multiple menu items.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "price": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "available": {
+          "type": "boolean"
+        },
+        "imageUrl": {
+          "type": "string",
+          "format": "uri"
+        },
+        "imageStoragePath": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "items",
+        "price",
+        "available"
+      ]
+    },
     "Event": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Event",
@@ -730,6 +773,12 @@
         "$ref": "#/entities/MenuCategory"
       },
       "description": "Stores menu categories created by a user."
+    },
+    "/users/{userId}/combos/{comboId}": {
+      "schema": {
+        "$ref": "#/entities/Combo"
+      },
+      "description": "Stores combo deals created by a user."
     },
     "/users/{userId}/events/{eventId}": {
       "schema": {

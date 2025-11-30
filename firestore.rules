@@ -81,6 +81,11 @@ service cloud.firestore {
       allow write: if isOwner(userId);
     }
     
+    match /users/{userId}/combos/{comboId} {
+      allow read: if true;
+      allow write: if isOwner(userId);
+    }
+    
     match /users/{userId}/events/{eventId} {
       allow read: if true;
       allow write: if isOwner(userId);
@@ -173,3 +178,5 @@ service cloud.firestore {
     }
   }
 }
+
+    

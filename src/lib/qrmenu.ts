@@ -63,6 +63,8 @@ export type Combo = {
   items: string[];
   price: string;
   available: boolean;
+  imageUrl?: string;
+  imageStoragePath?: string;
 }
 
 export type Event = {
@@ -300,3 +302,5 @@ export async function submitServiceRequest(userId: string, table: string, reques
       pendingCalls: arrayUnion(newCall)
   }, { merge: true });
 }
+
+    

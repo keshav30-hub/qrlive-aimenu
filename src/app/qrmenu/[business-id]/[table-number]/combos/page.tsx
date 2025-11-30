@@ -316,7 +316,7 @@ export default function CombosPage() {
                 >
                   <div className="relative w-full aspect-[4/3]">
                     <Image
-                      src={"https://picsum.photos/seed/combo/400/300"}
+                      src={item.imageUrl || "https://picsum.photos/seed/combo/400/300"}
                       alt={item.name}
                       fill
                       style={{ objectFit: 'cover' }}
@@ -361,3 +361,5 @@ export default function CombosPage() {
     </div>
   );
 }
+
+    
