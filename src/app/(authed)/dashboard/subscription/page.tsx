@@ -12,10 +12,11 @@ import {
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Check, Loader2 } from 'lucide-react';
-import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
 import { useCurrency } from '@/hooks/use-currency';
 import { cn } from '@/lib/utils';
+import { useEffect, useState } from 'react';
 
 const features = [
   'Unlimited Menu Items & Categories',
@@ -38,22 +39,74 @@ type Plan = {
     sortOrder: number;
 };
 
-export default function SubscriptionPage() {
-  const { firestore } = useFirebase();
-  const { format } = useCurrency();
+function PlanCard({ planId }: { planId: string }) {
+    const { firestore } = useFirebase();
+    const { format } = useCurrency();
 
-  const plansRef = useMemoFirebase(
-    () => (firestore ? collection(firestore, 'plans') : null),
-    [firestore]
-  );
-  
-  const plansQuery = useMemoFirebase(
-      () => (plansRef ? query(plansRef, orderBy('sortOrder')) : null),
-      [plansRef]
-  );
-  
-  const { data: plansData, isLoading: plansLoading } = useCollection<Plan>(plansQuery);
-  const plans = plansData || [];
+    const planRef = useMemoFirebase(
+        () => (firestore ? doc(firestore, 'plans', planId) : null),
+        [firestore, planId]
+    );
+    
+    const { data: plan, isLoading: planLoading } = useDoc<Plan>(planRef);
+
+    if (planLoading) {
+        return (
+            <Card className="flex flex-col justify-between animate-pulse">
+                <CardHeader>
+                    <div className="h-6 bg-gray-200 rounded w-3/4"></div>
+                    <div className="h-10 bg-gray-200 rounded w-1/2 mt-2"></div>
+                    <div className="h-4 bg-gray-200 rounded w-1/4 mt-1"></div>
+                </CardHeader>
+                <CardContent className="flex-grow">
+                    <div className="space-y-3">
+                        <div className="h-4 bg-gray-200 rounded"></div>
+                        <div className="h-4 bg-gray-200 rounded"></div>
+                    </div>
+                </CardContent>
+                <CardFooter>
+                    <div className="h-10 bg-gray-200 rounded w-full"></div>
+                </CardFooter>
+            </Card>
+        );
+    }
+
+    if (!plan) {
+        return null; // Don't render anything if the plan doesn't exist
+    }
+
+    return (
+        <Card key={plan.id} className={cn("flex flex-col", plan.recommended && "border-primary border-2 shadow-lg")}>
+            <CardHeader>
+            {plan.recommended && (
+                <Badge className="absolute -top-3 right-4">Recommended</Badge>
+            )}
+            <CardTitle className="text-2xl capitalize">{plan.name}</CardTitle>
+            <div className="flex items-baseline gap-2">
+                <span className="text-4xl font-bold">{format(plan.offerPrice)}</span>
+                <span className="text-muted-foreground line-through">{format(plan.priceINR)}</span>
+            </div>
+            <CardDescription>{plan.durationMonths} month access</CardDescription>
+            </CardHeader>
+            <CardContent className="flex-grow">
+            <ul className="space-y-3 text-sm text-muted-foreground">
+                <li>Renews at {format(plan.offerPrice)} every {plan.durationMonths} months.</li>
+                <li>Cancel anytime.</li>
+            </ul>
+            </CardContent>
+            <CardFooter>
+            <Button className="w-full">
+                Choose Plan
+            </Button>
+            </CardFooter>
+        </Card>
+    );
+}
+
+
+export default function SubscriptionPage() {
+  // Hardcode the plan IDs as per the new strategy
+  const planIds = ['starter', 'pro', 'business'];
 
   return (
     <div className="space-y-8">
@@ -83,41 +136,9 @@ export default function SubscriptionPage() {
         </CardContent>
       </Card>
 
-      {plansLoading ? (
-         <div className="flex justify-center items-center h-64">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="ml-4 text-muted-foreground">Loading plans...</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {plans.map((plan) => (
-            <Card key={plan.id} className={cn("flex flex-col", plan.recommended && "border-primary border-2 shadow-lg")}>
-              <CardHeader>
-                {plan.recommended && (
-                    <Badge className="absolute -top-3 right-4">Recommended</Badge>
-                )}
-                <CardTitle className="text-2xl capitalize">{plan.name}</CardTitle>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-4xl font-bold">{format(plan.offerPrice)}</span>
-                  <span className="text-muted-foreground line-through">{format(plan.priceINR)}</span>
-                </div>
-                <CardDescription>{plan.durationMonths} month access</CardDescription>
-              </CardHeader>
-              <CardContent className="flex-grow">
-                 <ul className="space-y-3 text-sm text-muted-foreground">
-                    <li>Renews at {format(plan.offerPrice)} every {plan.durationMonths} months.</li>
-                    <li>Cancel anytime.</li>
-                </ul>
-              </CardContent>
-              <CardFooter>
-                <Button className="w-full">
-                  Choose Plan
-                </Button>
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
-      )}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {planIds.map(planId => <PlanCard key={planId} planId={planId} />)}
+      </div>
     </div>
   );
 }
