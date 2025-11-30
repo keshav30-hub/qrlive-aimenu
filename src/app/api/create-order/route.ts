@@ -2,6 +2,17 @@
 import { NextResponse } from 'next/server';
 import Razorpay from 'razorpay';
 import admin from '@/lib/firebase/admin';
+import { headers } from 'next/headers';
+
+async function getAuthenticatedUid(): Promise<string> {
+  const authorization = headers().get('Authorization');
+  if (!authorization || !authorization.startsWith('Bearer ')) {
+    throw new Error('Unauthorized');
+  }
+  const idToken = authorization.split('Bearer ')[1];
+  const decodedToken = await admin.auth().verifyIdToken(idToken);
+  return decodedToken.uid;
+}
 
 export async function POST(req: Request) {
   try {
@@ -9,15 +20,12 @@ export async function POST(req: Request) {
       key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
       key_secret: process.env.RAZORPAY_KEY_SECRET!,
     });
-
-    const { userId, planId, baseAmount, couponCode } = await req.json();
-
-    if (!userId) {
-      return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
-    }
+    
+    const uid = await getAuthenticatedUid();
+    const { planId, baseAmount, couponCode } = await req.json();
 
     const firestore = admin.firestore();
-    const userRef = firestore.collection('users').doc(userId);
+    const userRef = firestore.collection('users').doc(uid);
     const userSnap = await userRef.get();
 
     if (!userSnap.exists) {
@@ -43,14 +51,14 @@ export async function POST(req: Request) {
     const needsSetupFee = user.setupFeePaid !== true;
     const finalAmountINR = Math.max(0, baseAmount - discount + (needsSetupFee ? setupFee : 0));
     const amountPaise = Math.round(finalAmountINR * 100);
-    const receipt = `rcpt_${userId}_${Date.now()}`;
+    const receipt = `rcpt_${uid}_${Date.now()}`;
 
     const order = await razorpay.orders.create({
       amount: amountPaise,
       currency: 'INR',
       receipt,
       notes: {
-        userId,
+        userId: uid,
         planId,
         isSetupFeeExpected: String(needsSetupFee),
         couponCode: couponCode || '',
@@ -68,6 +76,9 @@ export async function POST(req: Request) {
 
   } catch (error: any) {
     console.error('Create Order Error:', error);
+    if (error.message === 'Unauthorized') {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

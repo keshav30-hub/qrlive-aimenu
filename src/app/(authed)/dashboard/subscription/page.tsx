@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -128,15 +129,18 @@ export default function SubscriptionPage() {
     setIsSubscribing(true);
 
     try {
+      const idToken = await user.getIdToken();
       // 1. Create order via our API route
       const orderResponse = await fetch('/api/create-order', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}`,
+          },
           body: JSON.stringify({
               planId: selectedPlan.id,
               baseAmount: selectedPlan.offerPrice,
               couponCode: appliedCoupon?.code || '',
-              userId: user.uid,
           }),
       });
 
@@ -161,14 +165,16 @@ export default function SubscriptionPage() {
             try {
                 const verificationResponse = await fetch('/api/verify-payment', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${idToken}`,
+                    },
                     body: JSON.stringify({
                         razorpay_payment_id: response.razorpay_payment_id,
                         razorpay_order_id: response.razorpay_order_id,
                         razorpay_signature: response.razorpay_signature,
                         planId: selectedPlan.id,
                         durationMonths: selectedPlan.durationMonths,
-                        userId: user.uid,
                     })
                 });
 
