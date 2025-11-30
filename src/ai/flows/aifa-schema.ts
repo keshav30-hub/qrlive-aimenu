@@ -11,6 +11,16 @@ export const MenuCategorySchema = z.object({
   description: z.string().optional(),
 });
 
+export const AddonSchema = z.object({
+  name: z.string(),
+  price: z.string(),
+});
+
+export const ModifierSchema = z.object({
+  name: z.string(),
+  price: z.string(),
+});
+
 export const MenuItemSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -20,6 +30,8 @@ export const MenuItemSchema = z.object({
   description: z.string(),
   kcal: z.string(),
   tags: z.array(z.string()),
+  addons: z.array(AddonSchema).optional(),
+  modifiers: z.array(ModifierSchema).optional(),
 });
 export type MenuItemSchema = z.infer<typeof MenuItemSchema>;
 

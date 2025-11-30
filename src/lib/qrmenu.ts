@@ -31,6 +31,10 @@ export type Category = {
   isAvailable: boolean;
 };
 
+type Addon = { name: string; price: string };
+type Modifier = { name: string; price: string };
+
+
 export type MenuItem = {
   id: string;
   name: string;
@@ -44,6 +48,8 @@ export type MenuItem = {
   imageHint: string;
   available: boolean;
   mrp?: string;
+  addons?: Addon[];
+  modifiers?: Modifier[];
 };
 
 export type Event = {
@@ -72,6 +78,7 @@ export type BusinessData = {
     logo: string;
     businessId?: string;
     googleReviewLink?: string;
+    instagramLink?: string;
 };
 
 export type Shift = {
@@ -130,6 +137,7 @@ export async function getBusinessDataBySlug(slug: string): Promise<{ businessDat
                 logo: userData.logo || `https://ui-avatars.com/api/?name=${(userData.businessName || 'B').charAt(0)}&color=7F9CF5&background=EBF4FF`,
                 businessId: userData.businessId,
                 googleReviewLink: userData.googleReviewLink,
+                instagramLink: userData.instagramLink,
             },
             userId: userDoc.id,
         };
@@ -276,5 +284,3 @@ export async function submitServiceRequest(userId: string, table: string, reques
       pendingCalls: arrayUnion(newCall)
   }, { merge: true });
 }
-
-    

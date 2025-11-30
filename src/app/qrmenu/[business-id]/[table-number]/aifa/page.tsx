@@ -389,7 +389,7 @@ export default function AIFAPage() {
                     organizers: Array.isArray(e.organizers) ? e.organizers : ((e.organizers as any) || '').split(',').map((s: string) => s.trim()).filter(Boolean),
                  }));
 
-                const menuItemsForAI: (typeof MenuItemSchema)[] = menuItems.map((item) => ({
+                const menuItemsForAI: MenuItemSchema[] = menuItems.map((item) => ({
                     id: item.id,
                     name: item.name,
                     category: item.category,
@@ -398,6 +398,8 @@ export default function AIFAPage() {
                     description: item.description,
                     kcal: item.kcal || 'N/A',
                     tags: item.tags || [],
+                    addons: (item.addons || []).map(a => ({ name: a.name, price: a.price.toString() })),
+                    modifiers: (item.modifiers || []).map(m => ({ name: m.name, price: m.price.toString() })),
                 }));
 
                  const flowInput: AIFALowInput = {
