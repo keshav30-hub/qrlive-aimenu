@@ -13,6 +13,17 @@ import {
 import { Check } from 'lucide-react';
 import Link from 'next/link';
 
+const features = [
+  'Unlimited Menu Items & Categories',
+  'Advanced QR Menu Analytics',
+  'AI Food Assistant (AIFA)',
+  'Staff Management & Attendance',
+  'Task & Service Request Management',
+  'Events & RSVP System',
+  'Customer Feedback Tools',
+  'Priority Support'
+];
+
 const plans = [
   {
     name: 'Free',
@@ -63,11 +74,31 @@ export default function SubscriptionPage() {
   return (
     <div className="space-y-8">
       <div className="text-center">
-        <h1 className="text-4xl font-bold">Our Pricing Plans</h1>
+        <h1 className="text-4xl font-bold">Subscription Plans</h1>
         <p className="text-lg text-muted-foreground mt-2">
-          Choose the plan that's right for your business.
+          Choose the plan duration that's right for your business.
         </p>
       </div>
+
+       <Card className="bg-gray-50 dark:bg-gray-800/50">
+        <CardHeader>
+          <CardTitle className="text-2xl text-center">All Features Included</CardTitle>
+          <CardDescription className="text-center">
+            Every plan unlocks the full power of QRLive Menu.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4">
+            {features.map((feature) => (
+              <div key={feature} className="flex items-center gap-2">
+                <Check className="h-5 w-5 text-green-500 flex-shrink-0" />
+                <span className="text-sm font-medium">{feature}</span>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {plans.map((plan) => (
           <Card key={plan.name} className="flex flex-col">
@@ -80,7 +111,7 @@ export default function SubscriptionPage() {
               <CardDescription>{plan.description}</CardDescription>
             </CardHeader>
             <CardContent className="flex-grow">
-              <ul className="space-y-3">
+               <ul className="space-y-3">
                 {plan.features.map((feature) => (
                   <li key={feature} className="flex items-center gap-2">
                     <Check className="h-5 w-5 text-green-500" />
