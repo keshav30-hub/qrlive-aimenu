@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Check, Loader2 } from 'lucide-react';
 import { useFirebase, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, query, orderBy, DocumentData, doc } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useCurrency } from '@/hooks/use-currency';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
@@ -29,7 +30,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { validateCoupon } from '@/lib/firebase/coupons';
 import { RAZORPAY_KEY_ID } from '@/lib/config';
 
 const features = [
@@ -87,6 +87,10 @@ export default function SubscriptionPage() {
   const [appliedCoupon, setAppliedCoupon] = useState<DocumentData | null>(null);
   const [isSubscribing, setIsSubscribing] = useState(false);
 
+  const functions = getFunctions(useFirebase().firebaseApp);
+  const createOrder = httpsCallable(functions, 'createOrder');
+  const verifyPayment = httpsCallable(functions, 'verifyPayment');
+
   const handleSelectPlan = (plan: Plan) => {
     setSelectedPlan(plan);
     setCouponCode('');
@@ -96,102 +100,102 @@ export default function SubscriptionPage() {
   };
   
   const handleApplyCoupon = async () => {
-    if (!couponCode.trim() || !selectedPlan) return;
-    setIsApplyingCoupon(true);
-    setDiscount(0);
-    setAppliedCoupon(null);
-
-    try {
-      const result = await validateCoupon(couponCode, selectedPlan.id);
+      // Client-side coupon validation is insecure. This is just for UI purposes.
+      // The real validation will happen in the `createOrder` cloud function.
+      if (!couponCode.trim() || !selectedPlan) return;
+      setIsApplyingCoupon(true);
       
-      if (!result.isValid) {
-        toast({
-          variant: 'destructive',
-          title: 'Invalid Coupon',
-          description: result.message,
-        });
-        return;
+      const couponRef = doc(firestore, 'coupons', couponCode);
+      const couponSnap = await getDoc(couponRef);
+
+      if (couponSnap.exists()) {
+        const couponData = couponSnap.data();
+        let calculatedDiscount = 0;
+        if (couponData.type === 'percentage') {
+          calculatedDiscount = (selectedPlan.offerPrice * couponData.value) / 100;
+        } else {
+          calculatedDiscount = couponData.value;
+        }
+        setDiscount(calculatedDiscount);
+        setAppliedCoupon(couponData);
+        toast({ title: 'Coupon Applied!', description: `You saved ${format(calculatedDiscount)}.` });
+      } else {
+        toast({ variant: 'destructive', title: 'Invalid Coupon' });
+        setDiscount(0);
+        setAppliedCoupon(null);
       }
-      
-      let calculatedDiscount = 0;
-      if (result.coupon.type === 'percentage') {
-        calculatedDiscount = (selectedPlan.offerPrice * result.coupon.value) / 100;
-      } else { // flat discount
-        calculatedDiscount = result.coupon.value;
-      }
-
-      setDiscount(calculatedDiscount);
-      setAppliedCoupon(result.coupon);
-
-      toast({
-        title: 'Coupon Applied!',
-        description: `You saved ${format(calculatedDiscount)}.`,
-      });
-
-    } catch (error) {
-      console.error("Coupon application error:", error);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Could not apply coupon. Please try again.',
-      });
-    } finally {
       setIsApplyingCoupon(false);
-    }
   };
 
   const handleSubscribe = async () => {
-    if (!selectedPlan || !userProfile) {
+    if (!selectedPlan || !userProfile || !user) {
       toast({ variant: 'destructive', title: 'Error', description: 'Plan or user details are missing.'});
       return;
     }
     
     setIsSubscribing(true);
 
-    const finalAmount = selectedPlan.offerPrice - discount;
+    try {
+      // 1. Create order on the server
+      const orderResult: any = await createOrder({
+        planId: selectedPlan.id,
+        baseAmount: selectedPlan.offerPrice,
+        couponCode: appliedCoupon?.code || '',
+      });
 
-    const options = {
-      key: RAZORPAY_KEY_ID,
-      amount: finalAmount * 100, // Amount in paise
-      currency: "INR",
-      name: selectedPlan.name,
-      description: `QRLive Menu - ${selectedPlan.durationMonths} Month Subscription`,
-      handler: function (response: any) {
-        toast({ title: 'Payment Successful', description: `Payment ID: ${response.razorpay_payment_id}`});
-        // Here you would typically save the subscription details to your database
-        // e.g., createSubscription(user.uid, selectedPlan.id, response.razorpay_payment_id);
-        setIsDialogOpen(false);
-      },
-      prefill: {
-        name: userProfile.businessName,
-        email: userProfile.email,
-        contact: userProfile.contact,
-      },
-      notes: {
-        plan_id: selectedPlan.id,
-        user_id: user?.uid,
-        coupon_applied: appliedCoupon?.code || 'None',
-      },
-      theme: {
-        color: "#0f172a"
-      },
-      modal: {
-        ondismiss: function() {
-            setIsSubscribing(false);
-        }
-      }
-    };
-    
-    // @ts-ignore
-    const rzp = new window.Razorpay(options);
+      const { orderId, amountPaise, currency } = orderResult.data;
 
-    rzp.on('payment.failed', function (response: any){
-        toast({ variant: 'destructive', title: 'Payment Failed', description: response.error.description });
-        setIsSubscribing(false);
-    });
+      // 2. Open Razorpay checkout
+      const options = {
+        key: RAZORPAY_KEY_ID,
+        amount: amountPaise,
+        currency,
+        name: selectedPlan.name,
+        description: `QRLive Menu - ${selectedPlan.durationMonths} Month Subscription`,
+        order_id: orderId,
+        handler: async function (response: any) {
+            // 3. Verify payment on the server
+            try {
+                await verifyPayment({
+                    razorpay_payment_id: response.razorpay_payment_id,
+                    razorpay_order_id: response.razorpay_order_id,
+                    razorpay_signature: response.razorpay_signature,
+                    planId: selectedPlan.id,
+                    durationMonths: selectedPlan.durationMonths
+                });
+                toast({ title: 'Payment Successful!', description: 'Your subscription is now active.'});
+                setIsDialogOpen(false);
+            } catch (verifyError: any) {
+                toast({ variant: 'destructive', title: 'Verification Failed', description: verifyError.message });
+            }
+        },
+        prefill: {
+          name: userProfile.businessName,
+          email: userProfile.email,
+          contact: userProfile.contact,
+        },
+        notes: {
+            planId: selectedPlan.id,
+            planName: selectedPlan.name,
+            userId: user.uid,
+        },
+        theme: { color: "#0B2447" },
+        modal: { ondismiss: () => setIsSubscribing(false) }
+      };
+      // @ts-ignore
+      const rzp = new window.Razorpay(options);
+      rzp.on('payment.failed', (response: any) => {
+          toast({ variant: 'destructive', title: 'Payment Failed', description: response.error.description });
+          setIsSubscribing(false);
+      });
+      rzp.open();
 
-    rzp.open();
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Order Creation Failed', description: error.message });
+      setIsSubscribing(false);
+    }
   };
+
 
   const finalPrice = selectedPlan ? selectedPlan.offerPrice - discount : 0;
 

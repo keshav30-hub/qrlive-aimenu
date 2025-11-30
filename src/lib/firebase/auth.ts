@@ -13,6 +13,7 @@ import {
   getDoc,
   setDoc,
   serverTimestamp,
+  writeBatch,
 } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 
@@ -46,20 +47,32 @@ export async function createUserDocument(user: User) {
   const userSnap = await getDoc(userRef);
 
   if (!userSnap.exists()) {
-    // User is new, create the document with onboarding set to false
+    // User is new, create user doc and subscription doc in a batch
     const createdAt = serverTimestamp();
-    try {
-      await setDoc(userRef, {
+    const subRef = doc(firestore, 'subscriptions', user.uid);
+
+    const batch = writeBatch(firestore);
+
+    batch.set(userRef, {
         uid: user.uid,
         email: user.email,
         createdAt: createdAt,
         lastLoginAt: createdAt,
-        onboarding: false, // Set onboarding to false for new users
-        setupFeePaid: false, // Set setupFeePaid to false for new users
-      });
+        onboarding: false,
+        setupFeePaid: false,
+    });
+
+    batch.set(subRef, {
+        createdAt: createdAt,
+        status: 'inactive',
+    });
+
+    try {
+        await batch.commit();
     } catch (e) {
-      console.error("Error creating user document: ", e);
+        console.error("Error creating user and subscription documents: ", e);
     }
+
   } else {
     // User exists, just update last login time
     try {
@@ -69,5 +82,3 @@ export async function createUserDocument(user: User) {
     }
   }
 }
-
-    
