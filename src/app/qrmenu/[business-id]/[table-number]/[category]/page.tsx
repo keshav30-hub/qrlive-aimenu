@@ -307,12 +307,12 @@ export default function CategoryMenuPage() {
                       style={{ objectFit: 'cover' }}
                       data-ai-hint={item.imageHint}
                     />
-                     <Badge className="absolute top-2 left-2" variant={item.type === 'veg' ? 'default' : 'destructive'}>
-                        {item.type}
-                     </Badge>
                   </div>
                   <CardContent className="p-2 flex flex-col flex-grow">
-                    <h3 className="font-semibold text-xs flex-grow leading-tight">{item.name}</h3>
+                    <div className="flex items-center gap-2">
+                        <div className={`h-3 w-3 rounded-full border ${item.type === 'veg' ? 'bg-green-500 border-green-600' : 'bg-red-500 border-red-600'}`}></div>
+                        <h3 className="font-semibold text-xs flex-grow leading-tight">{item.name}</h3>
+                    </div>
                     <div className="flex justify-between items-center mt-1">
                       <span className="font-bold text-sm">
                         {format(Number(item.mrp || item.price))}
