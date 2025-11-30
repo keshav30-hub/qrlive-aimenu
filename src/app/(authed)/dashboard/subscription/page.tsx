@@ -131,17 +131,19 @@ export default function SubscriptionPage() {
               ))
           )}
           {!plansLoading && plans && plans.map(plan => (
-               <Card key={plan.id} className={cn("flex flex-col", plan.recommended && "border-primary border-2 shadow-lg")}>
+               <Card key={plan.id} className={cn("flex flex-col relative overflow-hidden", plan.recommended && "border-primary border-2")}>
                   <CardHeader>
-                  {plan.recommended && (
-                      <Badge className="absolute -top-3 right-4">Recommended</Badge>
-                  )}
-                  <CardTitle className="text-2xl capitalize">{plan.name}</CardTitle>
-                  <div className="flex items-baseline gap-2">
-                      <span className="text-4xl font-bold">{format(plan.offerPrice)}</span>
-                      {plan.priceINR > plan.offerPrice && <span className="text-muted-foreground line-through">{format(plan.priceINR)}</span>}
-                  </div>
-                  <CardDescription>{plan.durationMonths} month access</CardDescription>
+                    <div className="flex justify-between items-center">
+                        <CardTitle className="text-2xl capitalize">{plan.name}</CardTitle>
+                        {plan.recommended && (
+                            <Badge variant="default">Recommended</Badge>
+                        )}
+                    </div>
+                    <div className="flex items-baseline gap-2 pt-2">
+                        <span className="text-4xl font-bold">{format(plan.offerPrice)}</span>
+                        {plan.priceINR > plan.offerPrice && <span className="text-muted-foreground line-through">{format(plan.priceINR)}</span>}
+                    </div>
+                    <CardDescription>{plan.durationMonths} month access</CardDescription>
                   </CardHeader>
                   <CardContent className="flex-grow">
                   <ul className="space-y-3 text-sm text-muted-foreground">
