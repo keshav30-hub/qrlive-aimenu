@@ -18,9 +18,10 @@ import { Textarea } from '@/components/ui/textarea';
 import Link from 'next/link';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFirebase, useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { doc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, updateDoc, collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useFirebaseStorage } from '@/firebase/storage/use-firebase-storage';
+import { format } from 'date-fns';
 
 type BusinessInfo = {
   name: string;
@@ -42,6 +43,11 @@ type StaffMember = {
     accessCode?: string;
 };
 
+type Subscription = {
+    planName: string;
+    expiresAt: Timestamp;
+}
+
 export default function SettingsPage() {
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
@@ -49,9 +55,11 @@ export default function SettingsPage() {
   
   const userRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const staffRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'staff') : null, [firestore, user]);
+  const subscriptionRef = useMemoFirebase(() => (user ? doc(firestore, 'subscriptions', user.uid) : null), [user, firestore]);
 
   const { data: businessInfo, isLoading: isInfoLoading } = useDoc<BusinessInfo>(userRef);
   const { data: staffList } = useCollection<StaffMember>(staffRef);
+  const { data: subscription, isLoading: isSubscriptionLoading } = useDoc<Subscription>(subscriptionRef);
 
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -230,7 +238,16 @@ export default function SettingsPage() {
                 </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-                <p className="font-semibold">Pro Plan <span className="text-xs font-normal text-muted-foreground">(Renews on 24 Dec 2024)</span></p>
+                {isSubscriptionLoading ? (
+                     <div className="space-y-2">
+                        <div className="h-5 w-2/3 bg-gray-200 animate-pulse rounded-md" />
+                        <div className="h-4 w-1/2 bg-gray-200 animate-pulse rounded-md" />
+                    </div>
+                ) : subscription ? (
+                    <p className="font-semibold">{subscription.planName} <span className="text-xs font-normal text-muted-foreground">(Renews on {format(subscription.expiresAt.toDate(), 'dd MMM yyyy')})</span></p>
+                ) : (
+                    <p className="font-semibold">No active subscription</p>
+                )}
                  <Link href="/dashboard/subscription" className="w-full">
                     <Button variant="outline" className="w-full">
                         Manage Subscription

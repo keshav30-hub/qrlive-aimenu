@@ -11,9 +11,9 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Check, Loader2 } from 'lucide-react';
+import { Check, Loader2, RefreshCw, Star } from 'lucide-react';
 import { useFirebase, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, query, orderBy, DocumentData, doc } from 'firebase/firestore';
+import { collection, query, orderBy, DocumentData, doc, Timestamp } from 'firebase/firestore';
 import { useCurrency } from '@/hooks/use-currency';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
@@ -31,6 +31,7 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { RAZORPAY_KEY_ID } from '@/lib/config';
 import { validateCoupon } from '@/lib/firebase/coupons';
+import { format } from 'date-fns';
 
 
 const features = [
@@ -61,13 +62,24 @@ type UserProfile = {
   businessName?: string;
 }
 
+type Subscription = {
+    planName: string;
+    status: 'active' | 'inactive';
+    startedAt: Timestamp;
+    expiresAt: Timestamp;
+    paidAmount: number;
+};
+
 export default function SubscriptionPage() {
   const { firestore, user } = useFirebase();
-  const { format } = useCurrency();
+  const { format: formatCurrency } = useCurrency();
   const { toast } = useToast();
 
   const userRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [user, firestore]);
+  const subscriptionRef = useMemoFirebase(() => (user ? doc(firestore, 'subscriptions', user.uid) : null), [user, firestore]);
+  
   const { data: userProfile } = useDoc<UserProfile>(userRef);
+  const { data: subscription, isLoading: isSubscriptionLoading } = useDoc<Subscription>(subscriptionRef);
 
   const plansRef = useMemoFirebase(
     () => (firestore ? collection(firestore, 'plans') : null),
@@ -111,7 +123,7 @@ export default function SubscriptionPage() {
         }
         setDiscount(calculatedDiscount);
         setAppliedCoupon(coupon);
-        toast({ title: 'Coupon Applied!', description: `You saved ${format(calculatedDiscount)}.` });
+        toast({ title: 'Coupon Applied!', description: `You saved ${formatCurrency(calculatedDiscount)}.` });
       } else {
         toast({ variant: 'destructive', title: 'Invalid Coupon', description: message });
         setDiscount(0);
@@ -130,7 +142,6 @@ export default function SubscriptionPage() {
 
     try {
       const idToken = await user.getIdToken();
-      // 1. Create order via our API route
       const orderResponse = await fetch('/api/create-order', {
           method: 'POST',
           headers: { 
@@ -152,7 +163,6 @@ export default function SubscriptionPage() {
 
       const { orderId, amountPaise, currency } = orderResult;
 
-      // 2. Open Razorpay checkout
       const options = {
         key: RAZORPAY_KEY_ID,
         amount: amountPaise,
@@ -161,7 +171,6 @@ export default function SubscriptionPage() {
         description: `QRLive Menu - ${selectedPlan.durationMonths} Month Subscription`,
         order_id: orderId,
         handler: async function (response: any) {
-            // 3. Verify payment via our API route
             try {
                 const verificationResponse = await fetch('/api/verify-payment', {
                     method: 'POST',
@@ -184,7 +193,6 @@ export default function SubscriptionPage() {
 
                 toast({ title: 'Payment Successful!', description: 'Your subscription is now active.'});
                 setIsDialogOpen(false);
-                // The layout will automatically redirect on subscription status change
             } catch (verifyError: any) {
                 toast({ variant: 'destructive', title: 'Verification Failed', description: verifyError.message });
             }
@@ -218,6 +226,52 @@ export default function SubscriptionPage() {
 
 
   const finalPrice = selectedPlan ? selectedPlan.offerPrice - discount : 0;
+
+  if (isSubscriptionLoading) {
+    return <div className="flex h-screen items-center justify-center">Loading subscription status...</div>
+  }
+  
+  if (subscription?.status === 'active') {
+      return (
+         <div className="space-y-8 max-w-2xl mx-auto">
+            <div className="text-center">
+                <h1 className="text-4xl font-bold">Your Subscription</h1>
+                <p className="text-lg text-muted-foreground mt-2">
+                Here are the details of your current active plan.
+                </p>
+            </div>
+            <Card>
+                <CardHeader>
+                    <div className="flex justify-between items-center">
+                        <CardTitle className="text-2xl">{subscription.planName}</CardTitle>
+                        <Badge variant="default" className="bg-green-600">Active</Badge>
+                    </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Activated On</span>
+                        <span className="font-medium">{format(subscription.startedAt.toDate(), 'dd MMM yyyy')}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Renews On</span>
+                        <span className="font-medium">{format(subscription.expiresAt.toDate(), 'dd MMM yyyy')}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Last Amount Paid</span>
+                        <span className="font-medium">{formatCurrency(subscription.paidAmount)}</span>
+                    </div>
+                </CardContent>
+                <CardFooter className="flex gap-2">
+                    <Button variant="outline" className="w-full">
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Billing History
+                    </Button>
+                     <Button className="w-full" disabled>Upgrade Plan</Button>
+                </CardFooter>
+            </Card>
+        </div>
+      );
+  }
 
   return (
     <div className="space-y-8">
@@ -280,18 +334,18 @@ export default function SubscriptionPage() {
                         {plan.recommended && <Badge>Recommended</Badge>}
                     </div>
                     <div className="flex items-baseline gap-2 pt-2">
-                        <span className="text-4xl font-bold">{format(plan.offerPrice)}</span>
-                        {plan.priceINR > plan.offerPrice && <span className="text-muted-foreground line-through">{format(plan.priceINR)}</span>}
+                        <span className="text-4xl font-bold">{formatCurrency(plan.offerPrice)}</span>
+                        {plan.priceINR > plan.offerPrice && <span className="text-muted-foreground line-through">{formatCurrency(plan.priceINR)}</span>}
                     </div>
                     <CardDescription>{plan.durationMonths} month access</CardDescription>
                   </CardHeader>
                   <CardContent className="flex-grow">
                   <div className='p-3 rounded-md bg-green-50 dark:bg-green-900/20 text-center mb-4'>
-                      <p className='text-lg font-bold text-green-700 dark:text-green-300'>{format(perDayCost)}/day</p>
+                      <p className='text-lg font-bold text-green-700 dark:text-green-300'>{formatCurrency(perDayCost)}/day</p>
                       {plan.offerPrice > 0 && <p className='text-xs text-green-600 dark:text-green-400'>(Based on offer price)</p>}
                   </div>
                   <ul className="space-y-3 text-sm text-muted-foreground">
-                      <li>Renews at {format(plan.offerPrice)} every {plan.durationMonths} months.</li>
+                      <li>Renews at {formatCurrency(plan.offerPrice)} every {plan.durationMonths} months.</li>
                       <li>Cancel anytime.</li>
                   </ul>
                   </CardContent>
@@ -315,12 +369,12 @@ export default function SubscriptionPage() {
                 <div className="space-y-4 py-4">
                     <div className="flex justify-between items-center text-sm">
                         <span className="text-muted-foreground">Base Price</span>
-                        <span className="font-medium">{selectedPlan ? format(selectedPlan.offerPrice) : ''}</span>
+                        <span className="font-medium">{selectedPlan ? formatCurrency(selectedPlan.offerPrice) : ''}</span>
                     </div>
                      {discount > 0 && (
                         <div className="flex justify-between items-center text-sm text-green-600">
                             <span className="text-muted-foreground">Coupon Discount ({appliedCoupon?.code})</span>
-                            <span className="font-medium">- {format(discount)}</span>
+                            <span className="font-medium">- {formatCurrency(discount)}</span>
                         </div>
                     )}
 
@@ -345,7 +399,7 @@ export default function SubscriptionPage() {
 
                     <div className="flex justify-between items-center text-lg font-bold">
                         <span>Total Payable</span>
-                        <span>{format(finalPrice)}</span>
+                        <span>{formatCurrency(finalPrice)}</span>
                     </div>
                 </div>
                 <DialogFooter>
