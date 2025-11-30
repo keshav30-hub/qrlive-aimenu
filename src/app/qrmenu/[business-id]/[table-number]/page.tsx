@@ -468,7 +468,7 @@ export default function QrMenuPage() {
                         toast({variant: 'destructive', title: 'AI Assistant Not Ready', description: 'Please wait a moment and try again.'})
                     }
                 }}>
-                    <Sparkles className="h-7 w-7" />
+                    <Sparkles className="h-7 w-7 animate-sparkle" />
                     <span className="sr-only">AI Food Assistant</span>
                 </Button>
             </Link>
