@@ -24,7 +24,10 @@ export const createOrder = functions.https.onCall(async (data, context) => {
   }
 
   const user = userSnap.data() || {};
-  const setupFee = 499; // INR one-time setup fee, adjust as needed
+  
+  // fetch setupFee from config
+  const cfgSnap = await admin.firestore().collection('config').doc('payments').get();
+  const setupFee = cfgSnap.exists && cfgSnap.data()?.setupFee ? Number(cfgSnap.data()!.setupFee) : 0;
 
   // compute coupon discount (example, adapt to your coupon collection logic)
   let discount = 0;
@@ -65,7 +68,8 @@ export const createOrder = functions.https.onCall(async (data, context) => {
     amount: finalAmountINR,
     amountPaise,
     currency: order.currency,
-    receipt
+    receipt,
+    needsSetupFee
   };
 });
 
@@ -100,6 +104,9 @@ export const verifyPayment = functions.https.onCall(async (data, context) => {
     const amountINR = amountPaise / 100;
   
     const paymentDocRef = admin.firestore().collection('payments').doc(razorpay_payment_id);
+    const userRef = admin.firestore().collection('users').doc(userId);
+    const subRef = admin.firestore().collection('subscriptions').doc(userId);
+
   
     // Use transaction to prevent race conditions and ensure idempotency
     await admin.firestore().runTransaction(async (tx) => {
@@ -117,13 +124,12 @@ export const verifyPayment = functions.https.onCall(async (data, context) => {
         amount: amountINR,
         currency: payment.currency,
         isSetupFee: isSetupFeeExpected,
-        isSubscription: !isSetupFeeExpected, // adjust if both in one payment (see note)
+        isSubscription: true, 
         couponUsed: notes.couponCode || null,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         rawOrderNotes: notes
       });
   
-      const userRef = admin.firestore().collection('users').doc(userId);
       const userSnap = await tx.get(userRef);
       const user = userSnap.exists ? userSnap.data() : {};
   
@@ -136,7 +142,6 @@ export const verifyPayment = functions.https.onCall(async (data, context) => {
       const now = admin.firestore.Timestamp.now();
       const expiresAt = admin.firestore.Timestamp.fromMillis(Date.now() + 30 * 24 * 3600 * 1000);
   
-      const subRef = admin.firestore().collection('subscriptions').doc(userId);
       tx.set(subRef, {
         planId,
         startedAt: now,
@@ -148,5 +153,3 @@ export const verifyPayment = functions.https.onCall(async (data, context) => {
   
     return { success: true };
   });
-
-    
