@@ -13,7 +13,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Check, Loader2 } from 'lucide-react';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, DocumentData } from 'firebase/firestore';
 import { useCurrency } from '@/hooks/use-currency';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
@@ -28,6 +28,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { useToast } from '@/hooks/use-toast';
+import { validateCoupon } from '@/lib/firebase/coupons';
 
 const features = [
   'Unlimited Menu Items & Categories',
@@ -55,6 +57,7 @@ type Plan = {
 export default function SubscriptionPage() {
   const { firestore } = useFirebase();
   const { format } = useCurrency();
+  const { toast } = useToast();
 
   const plansRef = useMemoFirebase(
     () => (firestore ? collection(firestore, 'plans') : null),
@@ -71,14 +74,62 @@ export default function SubscriptionPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [couponCode, setCouponCode] = useState('');
   const [discount, setDiscount] = useState(0);
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+  const [appliedCoupon, setAppliedCoupon] = useState<DocumentData | null>(null);
 
   const handleSelectPlan = (plan: Plan) => {
     setSelectedPlan(plan);
     setCouponCode('');
     setDiscount(0);
+    setAppliedCoupon(null);
     setIsDialogOpen(true);
   };
   
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim() || !selectedPlan) return;
+    setIsApplyingCoupon(true);
+    setDiscount(0);
+    setAppliedCoupon(null);
+
+    try {
+      const result = await validateCoupon(couponCode, selectedPlan.id);
+      
+      if (!result.isValid) {
+        toast({
+          variant: 'destructive',
+          title: 'Invalid Coupon',
+          description: result.message,
+        });
+        return;
+      }
+      
+      let calculatedDiscount = 0;
+      if (result.coupon.type === 'percentage') {
+        calculatedDiscount = (selectedPlan.offerPrice * result.coupon.value) / 100;
+      } else { // flat discount
+        calculatedDiscount = result.coupon.value;
+      }
+
+      setDiscount(calculatedDiscount);
+      setAppliedCoupon(result.coupon);
+
+      toast({
+        title: 'Coupon Applied!',
+        description: `You saved ${format(calculatedDiscount)}.`,
+      });
+
+    } catch (error) {
+      console.error("Coupon application error:", error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Could not apply coupon. Please try again.',
+      });
+    } finally {
+      setIsApplyingCoupon(false);
+    }
+  };
+
   const finalPrice = selectedPlan ? selectedPlan.offerPrice - discount : 0;
 
   return (
@@ -175,7 +226,7 @@ export default function SubscriptionPage() {
                     </div>
                      {discount > 0 && (
                         <div className="flex justify-between items-center text-sm text-green-600">
-                            <span className="text-muted-foreground">Coupon Discount</span>
+                            <span className="text-muted-foreground">Coupon Discount ({appliedCoupon?.code})</span>
                             <span className="font-medium">- {format(discount)}</span>
                         </div>
                     )}
@@ -188,8 +239,12 @@ export default function SubscriptionPage() {
                                 placeholder="Enter coupon code"
                                 value={couponCode}
                                 onChange={(e) => setCouponCode(e.target.value)}
+                                disabled={isApplyingCoupon}
                             />
-                            <Button variant="outline">Apply</Button>
+                            <Button variant="outline" onClick={handleApplyCoupon} disabled={isApplyingCoupon || !couponCode}>
+                               {isApplyingCoupon && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                               Apply
+                            </Button>
                         </div>
                     </div>
 
