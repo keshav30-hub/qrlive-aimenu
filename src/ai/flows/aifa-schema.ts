@@ -21,6 +21,7 @@ export const MenuItemSchema = z.object({
   kcal: z.string(),
   tags: z.array(z.string()),
 });
+export type MenuItemSchema = z.infer<typeof MenuItemSchema>;
 
 export const EventSchema = z.object({
   id: z.string(),

@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import Link from 'next/link';
 import { runAifaFlow } from "@/ai/flows/aifa-flow";
-import { type AIFALowInput } from "@/ai/flows/aifa-schema";
+import { type AIFALowInput, type MenuItemSchema } from "@/ai/flows/aifa-schema";
 import { useCurrency } from "@/hooks/use-currency";
 import { getBusinessDataBySlug, getEvents, getMenuData, type BusinessData, type Event, type Category as MenuCategory, type MenuItem, submitFeedback } from '@/lib/qrmenu';
 import { Star } from 'lucide-react';
@@ -388,13 +388,24 @@ export default function AIFAPage() {
                     organizers: Array.isArray(e.organizers) ? e.organizers : ((e.organizers as any) || '').split(',').map((s: string) => s.trim()).filter(Boolean),
                  }));
 
+                const menuItemsForAI: (typeof MenuItemSchema)[] = menuItems.map((item) => ({
+                    id: item.id,
+                    name: item.name,
+                    category: item.category,
+                    price: (item.mrp || item.price || '0').toString(),
+                    type: item.type,
+                    description: item.description,
+                    kcal: item.kcal || 'N/A',
+                    tags: item.tags || [],
+                }));
+
                  const flowInput: AIFALowInput = {
                     businessName: businessData.name,
                     priceSymbol: format(0).replace(/[\d.,\s]/g, ''),
                     googleReviewLink: businessData.googleReviewLink,
                     instagramLink: businessData.instagramLink,
-                    menuCategories: processDataForServerAction(menuCategories).map((c: any) => ({name: c.name, description: c.description})),
-                    menuItems: processDataForServerAction(menuItems).map((i: any) => ({...i, price: (i.mrp || i.price || '0').toString(), tags: i.tags || [] })),
+                    menuCategories: processDataForServerAction(menuCategories).map((c: any) => ({name: c.name, description: c.description || ''})),
+                    menuItems: processDataForServerAction(menuItemsForAI),
                     events: processDataForServerAction(eventsForAI),
                     history: historyForAI,
                     prompt,
@@ -505,5 +516,3 @@ export default function AIFAPage() {
         </div>
     );
 }
-
-    
