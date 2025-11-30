@@ -23,6 +23,7 @@ import {
   SheetTitle,
   SheetFooter,
   SheetDescription,
+  SheetTrigger,
 } from '@/components/ui/sheet';
 import {
   Dialog,
@@ -50,7 +51,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { getBusinessDataBySlug, getEvents, getMenuData, type BusinessData, type Event, type Category, submitServiceRequest } from '@/lib/qrmenu';
+import { getBusinessDataBySlug, getEvents, getMenuData, type BusinessData, type Event, type Category, submitServiceRequest, type MenuItem } from '@/lib/qrmenu';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import Autoplay from "embla-carousel-autoplay";
@@ -65,6 +66,8 @@ const serviceRequests = [
     { text: 'Get Water', icon: <GlassWater /> },
 ]
 
+type CartItem = MenuItem & { quantity: number };
+
 export default function QrMenuPage() {
   const params = useParams();
   const { 'business-id': businessId, 'table-number': tableNumber } = params;
@@ -72,7 +75,8 @@ export default function QrMenuPage() {
   const { toast } = useToast();
   const router = useRouter();
 
-  const [cart, setCart] = useState<any[]>([]);
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [isCartOpen, setIsCartOpen] = useState(false);
 
   const [businessData, setBusinessData] = useState<BusinessData | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
@@ -81,6 +85,7 @@ export default function QrMenuPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRequestingService, setIsRequestingService] = useState(false);
   const [isServiceRequestDialogOpen, setIsServiceRequestDialogOpen] = useState(false);
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
 
   const [carouselApi, setCarouselApi] = useState<CarouselApi>()
   const [currentSlide, setCurrentSlide] = useState(0)
@@ -167,7 +172,34 @@ export default function QrMenuPage() {
     }
   };
 
-  const addToCart = (item: any) => {
+  const handlePlaceOrder = async () => {
+    if (!userId || typeof tableNumber !== 'string' || cart.length === 0) return;
+
+    setIsPlacingOrder(true);
+    const orderSummary = cart.map(item => `${item.quantity}x ${item.name}`).join(', ');
+    const requestType = `New Order: ${orderSummary}`;
+
+    try {
+      await submitServiceRequest(userId, tableNumber, requestType);
+      toast({
+        title: 'Order Placed!',
+        description: 'Your order has been sent to the kitchen. A staff member will confirm it shortly.',
+      });
+      setCart([]);
+      setIsCartOpen(false);
+    } catch (error) {
+      console.error('Order placement failed:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Order Failed',
+        description: 'We could not place your order. Please call a staff member.',
+      });
+    } finally {
+      setIsPlacingOrder(false);
+    }
+  };
+
+  const addToCart = (item: MenuItem) => {
     setCart((prevCart) => {
       const existingItem = prevCart.find((cartItem) => cartItem.id === item.id);
       if (existingItem) {
@@ -180,10 +212,14 @@ export default function QrMenuPage() {
         return [...prevCart, { ...item, quantity: 1 }];
       }
     });
+    toast({
+        title: `Added to cart!`,
+        description: `${item.name} has been added to your order.`,
+    });
   };
 
   const updateQuantity = (itemId: string, newQuantity: number) => {
-    if (newQuantity === 0) {
+    if (newQuantity <= 0) {
       setCart((prevCart) => prevCart.filter((item) => item.id !== itemId));
     } else {
       setCart((prevCart) =>
@@ -195,7 +231,7 @@ export default function QrMenuPage() {
   };
 
   const cartTotal = cart.reduce(
-    (total, item) => total + Number(item.price) * item.quantity,
+    (total, item) => total + Number(item.mrp || item.price) * item.quantity,
     0
   );
   
@@ -228,30 +264,126 @@ export default function QrMenuPage() {
               </p>
             </div>
           </div>
-          <Dialog open={isServiceRequestDialogOpen} onOpenChange={setIsServiceRequestDialogOpen}>
-            <DialogTrigger asChild>
-                <Button size="icon" className="bg-primary text-primary-foreground">
-                    <Bell className="h-6 w-6" />
-                    <span className="sr-only">Call Waiter</span>
-                </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-xs sm:max-w-sm rounded-lg">
-                 <DialogHeader>
-                    <DialogTitle>Request Assistance</DialogTitle>
-                    <DialogDescription>
-                        Select a service and a staff member will be right with you.
-                    </DialogDescription>
-                 </DialogHeader>
-                 <div className="flex flex-wrap gap-3 py-4">
-                    {serviceRequests.map(req => (
-                        <Button key={req.text} variant="outline" className="flex-grow h-16 flex-col gap-1" onClick={() => handleServiceRequest(req.text)} disabled={isRequestingService}>
-                            {isRequestingService ? <Loader2 className="h-5 w-5 animate-spin"/> : req.icon}
-                            <span>{req.text}</span>
-                        </Button>
+          <div className="flex items-center gap-2">
+            <Sheet open={isCartOpen} onOpenChange={setIsCartOpen}>
+                <SheetTrigger asChild>
+                    <Button size="icon" variant="outline" className="relative">
+                        <ShoppingBag className="h-6 w-6" />
+                        {cart.length > 0 && (
+                            <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center">
+                            {cart.reduce((acc, item) => acc + item.quantity, 0)}
+                            </span>
+                        )}
+                        <span className="sr-only">View Cart</span>
+                    </Button>
+                </SheetTrigger>
+                <SheetContent
+                side="bottom"
+                className="max-w-[480px] mx-auto rounded-t-2xl p-0"
+                >
+                <SheetHeader className="p-4 text-left">
+                    <SheetTitle>Your Order</SheetTitle>
+                    <SheetDescription>
+                    Review items and place your order.
+                    </SheetDescription>
+                </SheetHeader>
+                <ScrollArea className="px-4 h-[40vh]">
+                    <div className="space-y-4">
+                    {cart.map((item) => (
+                        <div key={item.id} className="flex items-center gap-4">
+                        <Image
+                            src={item.imageUrl}
+                            alt={item.name}
+                            width={64}
+                            height={64}
+                            className="rounded-md object-cover"
+                        />
+                        <div className="flex-grow">
+                            <p className="font-medium">{item.name}</p>
+                            <p className="text-sm text-muted-foreground">
+                            {format(Number(item.mrp || item.price))}
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() =>
+                                updateQuantity(item.id, item.quantity - 1)
+                            }
+                            >
+                            <Minus className="h-4 w-4" />
+                            </Button>
+                            <span className="w-6 text-center">{item.quantity}</span>
+                            <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() =>
+                                updateQuantity(item.id, item.quantity + 1)
+                            }
+                            >
+                            <Plus className="h-4 w-4" />
+                            </Button>
+                        </div>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground"
+                            onClick={() => updateQuantity(item.id, 0)}
+                            >
+                            <Trash2 className="h-4 w-4" />
+                            </Button>
+                        </div>
                     ))}
-                 </div>
-            </DialogContent>
-          </Dialog>
+                     {cart.length === 0 && (
+                        <div className="text-center py-10 text-muted-foreground">
+                            <p>Your cart is empty.</p>
+                        </div>
+                     )}
+                    </div>
+                </ScrollArea>
+                <SheetFooter className="p-4 bg-gray-100 dark:bg-gray-900 rounded-b-2xl">
+                    <div className="w-full space-y-4">
+                        <div className="flex justify-between items-center text-lg font-semibold">
+                        <span>To Pay</span>
+                        <span>{format(cartTotal)}</span>
+                        </div>
+                        <Button className="w-full h-12 text-lg" onClick={handlePlaceOrder} disabled={cart.length === 0 || isPlacingOrder}>
+                            {isPlacingOrder ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
+                            {isPlacingOrder ? "Placing Order..." : "Place Order"}
+                        </Button>
+                    </div>
+                </SheetFooter>
+                </SheetContent>
+            </Sheet>
+
+            <Dialog open={isServiceRequestDialogOpen} onOpenChange={setIsServiceRequestDialogOpen}>
+                <DialogTrigger asChild>
+                    <Button size="icon" className="bg-primary text-primary-foreground">
+                        <Bell className="h-6 w-6" />
+                        <span className="sr-only">Call Waiter</span>
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-xs sm:max-w-sm rounded-lg">
+                    <DialogHeader>
+                        <DialogTitle>Request Assistance</DialogTitle>
+                        <DialogDescription>
+                            Select a service and a staff member will be right with you.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex flex-wrap gap-3 py-4">
+                        {serviceRequests.map(req => (
+                            <Button key={req.text} variant="outline" className="flex-grow h-16 flex-col gap-1" onClick={() => handleServiceRequest(req.text)} disabled={isRequestingService}>
+                                {isRequestingService ? <Loader2 className="h-5 w-5 animate-spin"/> : req.icon}
+                                <span>{req.text}</span>
+                            </Button>
+                        ))}
+                    </div>
+                </DialogContent>
+            </Dialog>
+          </div>
         </header>
 
         <ScrollArea className="flex-1 min-h-0">
@@ -326,97 +458,6 @@ export default function QrMenuPage() {
             </div>
           </main>
         </ScrollArea>
-        
-        {cart.length > 0 && (
-          <Sheet>
-            <SheetTrigger asChild>
-              <div className="px-4 py-2 z-10 border-t">
-                <Button className="w-full h-12 text-lg shadow-lg">
-                  <ShoppingBag className="mr-2" />
-                  View Cart ({cart.length})
-                </Button>
-              </div>
-            </SheetTrigger>
-            <SheetContent
-              side="bottom"
-              className="max-w-[480px] mx-auto rounded-t-2xl p-0"
-            >
-              <SheetHeader className="p-4 text-left">
-                <SheetTitle>Your Order</SheetTitle>
-                 <SheetDescription>
-                  Review items and place your order.
-                </SheetDescription>
-              </SheetHeader>
-              <div className="px-4 h-[40vh] overflow-y-auto">
-                <div className="space-y-4">
-                  {cart.map((item) => (
-                    <div key={item.id} className="flex items-center gap-4">
-                      <Image
-                        src={item.imageUrl}
-                        alt={item.name}
-                        width={64}
-                        height={64}
-                        className="rounded-md object-cover"
-                      />
-                      <div className="flex-grow">
-                        <p className="font-medium">{item.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {format(Number(item.price))}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() =>
-                            updateQuantity(item.id, item.quantity - 1)
-                          }
-                        >
-                          <Minus className="h-4 w-4" />
-                        </Button>
-                        <span className="w-6 text-center">{item.quantity}</span>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() =>
-                            updateQuantity(item.id, item.quantity + 1)
-                          }
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </div>
-                       <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-muted-foreground"
-                           onClick={() => updateQuantity(item.id, 0)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <SheetFooter className="p-4 bg-gray-100 dark:bg-gray-900 rounded-b-2xl">
-                 <div className="w-full space-y-4">
-                    <div className="flex items-center gap-2">
-                        <Tag className="h-5 w-5 text-muted-foreground" />
-                        <Input placeholder="Apply Coupon" className="h-9" />
-                        <Button variant="outline" className="h-9">Apply</Button>
-                    </div>
-                    <Separator />
-                    <div className="flex justify-between items-center text-lg font-semibold">
-                      <span>To Pay</span>
-                      <span>{format(cartTotal)}</span>
-                    </div>
-                    <Button className="w-full h-12 text-lg">Place Order</Button>
-                 </div>
-              </SheetFooter>
-            </SheetContent>
-          </Sheet>
-        )}
         
         <div className="fixed bottom-4" style={{ right: 'max(1rem, 50% - 224px + 1rem)'}}>
              <Link href={aifaUrl}>

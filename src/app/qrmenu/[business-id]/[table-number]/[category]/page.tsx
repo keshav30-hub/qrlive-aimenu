@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -33,6 +34,7 @@ import {
   GlassWater,
   SprayCan,
   Loader2,
+  ShoppingBag,
 } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
@@ -118,6 +120,10 @@ export default function CategoryMenuPage() {
   const addToCart = (item: any) => {
     // This is a placeholder. Cart logic would be centralized.
     console.log(`Added ${item.name} to cart.`);
+    toast({
+        title: `Added to cart!`,
+        description: `${item.name} has been added to your order.`,
+    });
   };
 
   const aifaUrl = `/qrmenu/${businessId}/${tableNumber}/aifa`;
@@ -136,30 +142,36 @@ export default function CategoryMenuPage() {
             </Button>
             <h1 className="text-xl font-bold capitalize">{categoryName}</h1>
           </div>
-          <Dialog open={isServiceRequestDialogOpen} onOpenChange={setIsServiceRequestDialogOpen}>
-            <DialogTrigger asChild>
-                <Button size="icon" className="bg-primary text-primary-foreground">
-                    <Bell className="h-6 w-6" />
-                    <span className="sr-only">Call Waiter</span>
-                </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-xs sm:max-w-sm rounded-lg">
-                 <DialogHeader>
-                    <DialogTitle>Request Assistance</DialogTitle>
-                    <DialogDescription>
-                        Select a service and a staff member will be right with you.
-                    </DialogDescription>
-                 </DialogHeader>
-                 <div className="flex flex-wrap gap-3 py-4">
-                    {serviceRequests.map(req => (
-                        <Button key={req.text} variant="outline" className="flex-grow h-16 flex-col gap-1" onClick={() => handleServiceRequest(req.text)} disabled={isRequestingService}>
-                            {isRequestingService ? <Loader2 className="h-5 w-5 animate-spin"/> : req.icon}
-                            <span>{req.text}</span>
-                        </Button>
-                    ))}
-                 </div>
-            </DialogContent>
-          </Dialog>
+           <div className="flex items-center gap-2">
+            <Button size="icon" variant="outline" className="relative">
+                <ShoppingBag className="h-6 w-6" />
+                {cart.length > 0 && <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center">{cart.length}</span>}
+            </Button>
+            <Dialog open={isServiceRequestDialogOpen} onOpenChange={setIsServiceRequestDialogOpen}>
+                <DialogTrigger asChild>
+                    <Button size="icon" className="bg-primary text-primary-foreground">
+                        <Bell className="h-6 w-6" />
+                        <span className="sr-only">Call Waiter</span>
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-xs sm:max-w-sm rounded-lg">
+                    <DialogHeader>
+                        <DialogTitle>Request Assistance</DialogTitle>
+                        <DialogDescription>
+                            Select a service and a staff member will be right with you.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex flex-wrap gap-3 py-4">
+                        {serviceRequests.map(req => (
+                            <Button key={req.text} variant="outline" className="flex-grow h-16 flex-col gap-1" onClick={() => handleServiceRequest(req.text)} disabled={isRequestingService}>
+                                {isRequestingService ? <Loader2 className="h-5 w-5 animate-spin"/> : req.icon}
+                                <span>{req.text}</span>
+                            </Button>
+                        ))}
+                    </div>
+                </DialogContent>
+            </Dialog>
+          </div>
         </header>
 
         <div className="p-4 flex items-center gap-4 sticky top-[72px] bg-white dark:bg-gray-950 z-10 border-b">
