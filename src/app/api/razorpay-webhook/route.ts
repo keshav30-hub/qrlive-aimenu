@@ -5,11 +5,6 @@ import admin from '@/lib/firebase/admin';
 import Razorpay from 'razorpay';
 import { headers } from 'next/headers';
 
-const razorpay = new Razorpay({
-  key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
-  key_secret: process.env.RAZORPAY_KEY_SECRET!,
-});
-
 export async function POST(req: Request) {
   const secret = process.env.RAZORPAY_WEBHOOK_SECRET!;
   const signature = headers().get('x-razorpay-signature');
@@ -34,6 +29,11 @@ export async function POST(req: Request) {
       const event = JSON.parse(body);
       
       if (event.event === 'payment.captured') {
+          const razorpay = new Razorpay({
+            key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
+            key_secret: process.env.RAZORPAY_KEY_SECRET!,
+          });
+
           const paymentEntity = event.payload.payment.entity;
           const orderId = paymentEntity.order_id;
           const paymentId = paymentEntity.id;
