@@ -109,6 +109,9 @@ const ModifierDialog = ({ item, onAddToCart, open, setOpen }: { item: MenuItem; 
         );
     };
 
+    const hasModifiers = item.modifiers && item.modifiers.length > 0 && item.modifiers.some(m => m.name && m.price);
+    const hasAddons = item.addons && item.addons.length > 0 && item.addons.some(a => a.name && a.price);
+
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogContent>
@@ -118,11 +121,12 @@ const ModifierDialog = ({ item, onAddToCart, open, setOpen }: { item: MenuItem; 
                 </DialogHeader>
                 <ScrollArea className="max-h-[60vh] pr-4">
                     <div className="space-y-6">
-                        {item.modifiers && item.modifiers.length > 0 && (
+                        {hasModifiers && (
                             <div className="space-y-4">
                                 <h4 className="font-semibold">Options</h4>
                                 <RadioGroup onValueChange={(value) => setSelectedModifier(item.modifiers?.find(m => m.name === value))}>
-                                    {item.modifiers.map(modifier => (
+                                    {item.modifiers?.map(modifier => (
+                                        modifier.name && modifier.price &&
                                         <div key={modifier.name} className="flex items-center justify-between">
                                             <Label htmlFor={modifier.name} className="flex-1 cursor-pointer">{modifier.name} ({format(Number(modifier.price))})</Label>
                                             <RadioGroupItem value={modifier.name} id={modifier.name} />
@@ -131,10 +135,11 @@ const ModifierDialog = ({ item, onAddToCart, open, setOpen }: { item: MenuItem; 
                                 </RadioGroup>
                             </div>
                         )}
-                        {item.addons && item.addons.length > 0 && (
+                        {hasAddons && (
                             <div className="space-y-4">
                                 <h4 className="font-semibold">Add-ons</h4>
-                                {item.addons.map(addon => (
+                                {item.addons?.map(addon => (
+                                    addon.name && addon.price &&
                                     <div key={addon.name} className="flex items-center justify-between">
                                         <Label htmlFor={addon.name} className="flex-1 cursor-pointer">{addon.name} (+{format(Number(addon.price))})</Label>
                                         <Checkbox id={addon.name} onCheckedChange={(checked) => handleAddonToggle(addon, !!checked)} />
@@ -312,8 +317,10 @@ export default function CategoryMenuPage() {
   }
 
   const handleAddToCartClick = (item: MenuItem) => {
-    const hasOptions = (item.addons && item.addons.length > 0) || (item.modifiers && item.modifiers.length > 0);
-    if (hasOptions) {
+    const hasModifiers = item.modifiers && item.modifiers.length > 0 && item.modifiers.some(m => m.name && m.price);
+    const hasAddons = item.addons && item.addons.length > 0 && item.addons.some(a => a.name && a.price);
+
+    if (hasModifiers || hasAddons) {
         setSelectedItemForDialog(item);
         setIsModifierDialogOpen(true);
     } else {
