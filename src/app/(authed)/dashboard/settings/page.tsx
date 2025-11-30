@@ -231,7 +231,7 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-2">
                 <p className="font-semibold">Pro Plan <span className="text-xs font-normal text-muted-foreground">(Renews on 24 Dec 2024)</span></p>
-                 <Link href="#" className="w-full">
+                 <Link href="/dashboard/subscription" className="w-full">
                     <Button variant="outline" className="w-full">
                         Manage Subscription
                         <ExternalLink className="ml-2 h-4 w-4" />
