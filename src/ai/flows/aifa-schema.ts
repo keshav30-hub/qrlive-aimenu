@@ -35,6 +35,12 @@ export const MenuItemSchema = z.object({
 });
 export type MenuItemSchema = z.infer<typeof MenuItemSchema>;
 
+export const ComboSchema = z.object({
+    name: z.string(),
+    items: z.array(z.string()),
+    price: z.string(),
+});
+
 export const EventSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -52,6 +58,7 @@ export const AIFALowInputSchema = z.object({
   instagramLink: z.string().optional().nullable(),
   menuCategories: z.array(MenuCategorySchema),
   menuItems: z.array(MenuItemSchema),
+  combos: z.array(ComboSchema),
   events: z.array(EventSchema),
   history: z.array(MessageSchema),
   prompt: z.string(),

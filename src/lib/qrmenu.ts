@@ -52,6 +52,14 @@ export type MenuItem = {
   modifiers?: Modifier[];
 };
 
+export type Combo = {
+  id: string;
+  name: string;
+  items: string[];
+  price: string;
+  available: boolean;
+}
+
 export type Event = {
   id: string;
   name: string;
@@ -148,24 +156,27 @@ export async function getBusinessDataBySlug(slug: string): Promise<{ businessDat
     }
 }
 
-export async function getMenuData(userId: string): Promise<{ categories: Category[], items: MenuItem[] }> {
+export async function getMenuData(userId: string): Promise<{ categories: Category[], items: MenuItem[], combos: Combo[] }> {
     const firestore = await getFirestoreInstance();
     const categoriesRef = collection(firestore, 'users', userId, 'menuCategories');
     const itemsRef = collection(firestore, 'users', userId, 'menuItems');
+    const combosRef = collection(firestore, 'users', userId, 'combos');
 
     try {
-        const [categoriesSnapshot, itemsSnapshot] = await Promise.all([
+        const [categoriesSnapshot, itemsSnapshot, combosSnapshot] = await Promise.all([
             getDocs(query(categoriesRef, where('isAvailable', '==', true))),
             getDocs(query(itemsRef, where('available', '==', true))),
+            getDocs(query(combosRef, where('available', '==', true))),
         ]);
 
         const categories = categoriesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
         const items = itemsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MenuItem));
+        const combos = combosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Combo));
         
-        return { categories, items };
+        return { categories, items, combos };
     } catch (error) {
         console.error("Error fetching menu data:", error);
-        return { categories: [], items: [] };
+        return { categories: [], items: [], combos: [] };
     }
 }
 

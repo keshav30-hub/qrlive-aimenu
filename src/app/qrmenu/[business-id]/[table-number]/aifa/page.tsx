@@ -14,9 +14,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import Link from 'next/link';
 import { runAifaFlow } from "@/ai/flows/aifa-flow";
-import { type AIFALowInput, type MenuItemSchema } from "@/ai/flows/aifa-schema";
+import { type AIFALowInput, type MenuItemSchema, type ComboSchema } from "@/ai/flows/aifa-schema";
 import { useCurrency } from "@/hooks/use-currency";
-import { getBusinessDataBySlug, getEvents, getMenuData, type BusinessData, type Event, type Category as MenuCategory, type MenuItem, submitFeedback } from '@/lib/qrmenu';
+import { getBusinessDataBySlug, getEvents, getMenuData, type BusinessData, type Event, type Category as MenuCategory, type MenuItem, type Combo, submitFeedback } from '@/lib/qrmenu';
 import { Star } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { useFirebaseStorage } from "@/firebase/storage/use-firebase-storage";
@@ -193,6 +193,7 @@ export default function AIFAPage() {
     const [events, setEvents] = useState<Event[]>([]);
     const [menuCategories, setMenuCategories] = useState<MenuCategory[]>([]);
     const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+    const [combos, setCombos] = useState<Combo[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
 
@@ -229,6 +230,7 @@ export default function AIFAPage() {
           setEvents(fetchedEvents);
           setMenuCategories(menuData.categories);
           setMenuItems(menuData.items);
+          setCombos(menuData.combos);
         }
         setIsLoading(false);
       }
@@ -402,6 +404,12 @@ export default function AIFAPage() {
                     modifiers: (item.modifiers || []).map(m => ({ name: m.name, price: m.price.toString() })),
                 }));
 
+                const combosForAI: ComboSchema[] = combos.map((combo) => ({
+                    name: combo.name,
+                    items: combo.items,
+                    price: combo.price.toString(),
+                }));
+
                  const flowInput: AIFALowInput = {
                     businessName: businessData.name,
                     priceSymbol: format(0).replace(/[\d.,\s]/g, ''),
@@ -409,6 +417,7 @@ export default function AIFAPage() {
                     instagramLink: businessData.instagramLink,
                     menuCategories: processDataForServerAction(menuCategories).map((c: any) => ({name: c.name, description: c.description || ''})),
                     menuItems: processDataForServerAction(menuItemsForAI),
+                    combos: processDataForServerAction(combosForAI),
                     events: processDataForServerAction(eventsForAI),
                     history: historyForAI,
                     prompt,
