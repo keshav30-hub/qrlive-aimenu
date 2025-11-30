@@ -11,7 +11,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Check, Loader2, RefreshCw, Star } from 'lucide-react';
+import { Check, Loader2, RefreshCw, Star, CircleCheck, Calendar, History } from 'lucide-react';
 import { useFirebase, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, query, orderBy, DocumentData, doc, Timestamp } from 'firebase/firestore';
 import { useCurrency } from '@/hooks/use-currency';
@@ -261,13 +261,38 @@ export default function SubscriptionPage() {
                         <span className="font-medium">{formatCurrency(subscription.paidAmount)}</span>
                     </div>
                 </CardContent>
-                <CardFooter className="flex gap-2">
-                    <Button variant="outline" className="w-full">
-                        <RefreshCw className="mr-2 h-4 w-4" />
-                        Billing History
-                    </Button>
-                     <Button className="w-full" disabled>Upgrade Plan</Button>
-                </CardFooter>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <History className="h-5 w-5" />
+                        Subscription History
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="relative pl-6">
+                        <div className="absolute left-6 top-3 bottom-3 w-0.5 bg-border"></div>
+                        <div className="relative flex items-start gap-6 mb-8">
+                            <div className="h-5 w-5 bg-green-500 rounded-full flex items-center justify-center ring-4 ring-background">
+                                <CircleCheck className="h-3 w-3 text-white" />
+                            </div>
+                            <div>
+                                <p className="font-semibold">Subscription Activated</p>
+                                <p className="text-sm text-muted-foreground">{format(subscription.startedAt.toDate(), 'PPP, p')}</p>
+                            </div>
+                        </div>
+                        <div className="relative flex items-start gap-6">
+                            <div className="h-5 w-5 bg-blue-500 rounded-full flex items-center justify-center ring-4 ring-background">
+                                <Calendar className="h-3 w-3 text-white" />
+                            </div>
+                            <div>
+                                <p className="font-semibold">Next Renewal</p>
+                                <p className="text-sm text-muted-foreground">{format(subscription.expiresAt.toDate(), 'PPP')}</p>
+                            </div>
+                        </div>
+                    </div>
+                </CardContent>
             </Card>
         </div>
       );
