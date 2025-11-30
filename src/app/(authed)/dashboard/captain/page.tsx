@@ -48,7 +48,7 @@ export default function CaptainAccessCodePage() {
       return;
     }
     
-    // Unlock audio on login click
+    // Unlock audio on login click to enable notification sounds
     unlockAudio();
     setIsLoading(true);
 
