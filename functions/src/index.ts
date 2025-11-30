@@ -136,4 +136,3 @@ export const verifyPayment = functions.https.onCall(async (data, context) => {
   
     return { success: true, paymentId: razorpay_payment_id };
   });
-
