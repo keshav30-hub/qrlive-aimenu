@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -13,8 +12,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Check, Loader2 } from 'lucide-react';
 import { useFirebase, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, query, orderBy, DocumentData, doc, getDoc } from 'firebase/firestore';
-import { getFunctions, httpsCallable } from 'firebase/functions';
+import { collection, query, orderBy, DocumentData, doc } from 'firebase/firestore';
 import { useCurrency } from '@/hooks/use-currency';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
@@ -89,10 +87,6 @@ export default function SubscriptionPage() {
   const [appliedCoupon, setAppliedCoupon] = useState<DocumentData | null>(null);
   const [isSubscribing, setIsSubscribing] = useState(false);
 
-  const functions = getFunctions(useFirebase().firebaseApp);
-  const createOrder = httpsCallable(functions, 'createOrder');
-  const verifyPayment = httpsCallable(functions, 'verifyPayment');
-
   const handleSelectPlan = (plan: Plan) => {
     setSelectedPlan(plan);
     setCouponCode('');
@@ -134,14 +128,25 @@ export default function SubscriptionPage() {
     setIsSubscribing(true);
 
     try {
-      // 1. Create order on the server
-      const orderResult: any = await createOrder({
-        planId: selectedPlan.id,
-        baseAmount: selectedPlan.offerPrice,
-        couponCode: appliedCoupon?.code || '',
+      // 1. Create order via our API route
+      const orderResponse = await fetch('/api/create-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+              planId: selectedPlan.id,
+              baseAmount: selectedPlan.offerPrice,
+              couponCode: appliedCoupon?.code || '',
+              userId: user.uid,
+          }),
       });
 
-      const { orderId, amountPaise, currency } = orderResult.data;
+      if (!orderResponse.ok) {
+          throw new Error('Failed to create order.');
+      }
+      
+      const orderResult = await orderResponse.json();
+
+      const { orderId, amountPaise, currency } = orderResult;
 
       // 2. Open Razorpay checkout
       const options = {
@@ -152,15 +157,25 @@ export default function SubscriptionPage() {
         description: `QRLive Menu - ${selectedPlan.durationMonths} Month Subscription`,
         order_id: orderId,
         handler: async function (response: any) {
-            // 3. Verify payment on the server
+            // 3. Verify payment via our API route
             try {
-                await verifyPayment({
-                    razorpay_payment_id: response.razorpay_payment_id,
-                    razorpay_order_id: response.razorpay_order_id,
-                    razorpay_signature: response.razorpay_signature,
-                    planId: selectedPlan.id,
-                    durationMonths: selectedPlan.durationMonths
+                const verificationResponse = await fetch('/api/verify-payment', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        razorpay_payment_id: response.razorpay_payment_id,
+                        razorpay_order_id: response.razorpay_order_id,
+                        razorpay_signature: response.razorpay_signature,
+                        planId: selectedPlan.id,
+                        durationMonths: selectedPlan.durationMonths,
+                        userId: user.uid,
+                    })
                 });
+
+                if (!verificationResponse.ok) throw new Error('Payment verification failed.');
+
+                await verificationResponse.json();
+
                 toast({ title: 'Payment Successful!', description: 'Your subscription is now active.'});
                 setIsDialogOpen(false);
                 // The layout will automatically redirect on subscription status change
