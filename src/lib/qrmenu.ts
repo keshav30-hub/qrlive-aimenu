@@ -29,6 +29,11 @@ export type Category = {
   imageUrl: string;
   imageHint: string;
   isAvailable: boolean;
+  availability?: {
+      days: string[];
+      startTime: string;
+      endTime: string;
+  }
 };
 
 type Addon = { name: string; price: string };
@@ -164,7 +169,7 @@ export async function getMenuData(userId: string): Promise<{ categories: Categor
 
     try {
         const [categoriesSnapshot, itemsSnapshot, combosSnapshot] = await Promise.all([
-            getDocs(query(categoriesRef, where('isAvailable', '==', true))),
+            getDocs(query(categoriesRef)), // Fetch all, filter on client
             getDocs(query(itemsRef, where('available', '==', true))),
             getDocs(query(combosRef, where('available', '==', true))),
         ]);

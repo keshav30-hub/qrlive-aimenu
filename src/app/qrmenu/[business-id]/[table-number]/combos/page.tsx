@@ -52,109 +52,16 @@ const serviceRequests = [
     { text: 'Get Water', icon: <GlassWater /> },
 ]
 
-type CartItem = MenuItem & { quantity: number; selectedModifiers?: any; selectedAddons?: any[]; finalPrice: number };
+type CartItem = (MenuItem | Combo) & { quantity: number; selectedModifiers?: any; selectedAddons?: any[]; finalPrice: number };
 
 
-const ModifierDialog = ({ item, onAddToCart, open, setOpen }: { item: MenuItem; onAddToCart: (item: CartItem) => void; open: boolean; setOpen: (open: boolean) => void; }) => {
-    const { format } = useCurrency();
-    const [selectedModifier, setSelectedModifier] = useState<any>(null);
-    const [selectedAddons, setSelectedAddons] = useState<any[]>([]);
-
-    const basePrice = parseFloat(item.mrp || item.price || '0');
-
-    const handleAddToCart = () => {
-        const finalPrice = calculateTotalPrice();
-        onAddToCart({
-            ...item,
-            quantity: 1, // Always add one at a time from dialog
-            selectedModifier,
-            selectedAddons,
-            finalPrice
-        });
-        setOpen(false);
-    };
-    
-    useEffect(() => {
-        if(open) {
-            setSelectedModifier(null);
-            setSelectedAddons([]);
-        }
-    }, [open]);
-
-    const calculateTotalPrice = () => {
-        let total = basePrice;
-        if (selectedModifier) {
-            total = parseFloat(selectedModifier.price);
-        }
-        selectedAddons.forEach(addon => {
-            total += parseFloat(addon.price);
-        });
-        return total;
-    };
-
-    const handleAddonToggle = (addon: any, checked: boolean) => {
-        setSelectedAddons(prev => 
-            checked ? [...prev, addon] : prev.filter(a => a.name !== addon.name)
-        );
-    };
-
-    return (
-        <Dialog open={open} onOpenChange={setOpen}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>{item.name}</DialogTitle>
-                    <DialogDescription>Customize your item before adding it to the cart.</DialogDescription>
-                </DialogHeader>
-                <ScrollArea className="max-h-[60vh] pr-4">
-                    <div className="space-y-6">
-                        {item.modifiers && item.modifiers.length > 0 && (
-                            <div className="space-y-4">
-                                <h4 className="font-semibold">Options</h4>
-                                <RadioGroup onValueChange={(value) => setSelectedModifier(item.modifiers?.find(m => m.name === value))}>
-                                    {item.modifiers.map(modifier => (
-                                        <div key={modifier.name} className="flex items-center justify-between">
-                                            <Label htmlFor={modifier.name} className="flex-1 cursor-pointer">{modifier.name} ({format(Number(modifier.price))})</Label>
-                                            <RadioGroupItem value={modifier.name} id={modifier.name} />
-                                        </div>
-                                    ))}
-                                </RadioGroup>
-                            </div>
-                        )}
-                        {item.addons && item.addons.length > 0 && (
-                            <div className="space-y-4">
-                                <h4 className="font-semibold">Add-ons</h4>
-                                {item.addons.map(addon => (
-                                    <div key={addon.name} className="flex items-center justify-between">
-                                        <Label htmlFor={addon.name} className="flex-1 cursor-pointer">{addon.name} (+{format(Number(addon.price))})</Label>
-                                        <Checkbox id={addon.name} onCheckedChange={(checked) => handleAddonToggle(addon, !!checked)} />
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                </ScrollArea>
-                <DialogFooter>
-                    <Button onClick={handleAddToCart} className="w-full">
-                        Add to Cart ({format(calculateTotalPrice())})
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
-};
-
-
-export default function CategoryMenuPage() {
+export default function CombosPage() {
   const router = useRouter();
   const params = useParams();
   const { toast } = useToast();
   const { 'business-id': businessId, 'table-number': tableNumber, category: categorySlug } = params as { 'business-id': string, 'table-number': string, category: string };
-  const isComboPage = categorySlug === 'combos';
-  const categoryName = isComboPage ? 'Combos' : categorySlug.replace(/-/g, ' ');
-  
   const { format } = useCurrency();
   const [searchTerm, setSearchTerm] = useState('');
-  const [showVegOnly, setShowVegOnly] = useState(false);
   
   const storageKey = `qrlive-cart-${businessId}-${tableNumber}`;
   const [cart, setCart] = useState<CartItem[]>(() => {
@@ -166,15 +73,11 @@ export default function CategoryMenuPage() {
     }
   });
 
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [combos, setCombos] = useState<Combo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRequestingService, setIsRequestingService] = useState(false);
   const [isServiceRequestDialogOpen, setIsServiceRequestDialogOpen] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
-
-  const [selectedItemForDialog, setSelectedItemForDialog] = useState<MenuItem | null>(null);
-  const [isModifierDialogOpen, setIsModifierDialogOpen] = useState(false);
 
   useEffect(() => {
     localStorage.setItem(storageKey, JSON.stringify(cart));
@@ -188,8 +91,7 @@ export default function CategoryMenuPage() {
       const { userId: fetchedUserId } = await getBusinessDataBySlug(businessId as string);
       if (fetchedUserId) {
         setUserId(fetchedUserId);
-        const { items, combos } = await getMenuData(fetchedUserId);
-        setMenuItems(items);
+        const { combos } = await getMenuData(fetchedUserId);
         setCombos(combos);
       }
       setIsLoading(false);
@@ -221,49 +123,28 @@ export default function CategoryMenuPage() {
   };
 
   const filteredItems = useMemo(() => {
-    if (isComboPage) {
-        return combos.filter(combo => combo.name.toLowerCase().includes(searchTerm.toLowerCase()));
-    }
-    return menuItems.filter(item => {
-      const itemCategory = item.category.toLowerCase();
-      const matchesCategory = itemCategory === categoryName;
-      const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesType = !showVegOnly || item.type === 'veg';
-      return matchesCategory && matchesSearch && matchesType;
-    });
-  }, [menuItems, combos, categoryName, searchTerm, showVegOnly, isComboPage]);
+    return combos.filter(combo => combo.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  }, [combos, searchTerm]);
 
-  const addToCart = (item: MenuItem, quantity = 1) => {
+  const addToCart = (item: Combo, quantity = 1) => {
     setCart(prevCart => {
-        const existingItem = prevCart.find(cartItem => cartItem.id === item.id && !cartItem.selectedModifier && !cartItem.selectedAddons?.length);
-        if (existingItem) {
-            return prevCart.map(cartItem => cartItem.id === item.id ? { ...cartItem, quantity: cartItem.quantity + quantity } : cartItem);
+        const existingItemIndex = prevCart.findIndex(cartItem => cartItem.id === item.id);
+        if (existingItemIndex > -1) {
+            const newCart = [...prevCart];
+            newCart[existingItemIndex].quantity += quantity;
+            return newCart;
         } else {
-            return [...prevCart, { ...item, quantity, finalPrice: parseFloat(item.mrp || item.price || '0') }];
+            return [...prevCart, { ...item, quantity, finalPrice: parseFloat(item.price || '0') }];
         }
     });
     toast({ title: `Added to cart!`, description: `${item.name} has been added to your order.` });
   };
   
-  const addCustomizedToCart = (item: CartItem) => {
-     setCart(prevCart => [...prevCart, item]);
-     toast({ title: `Added to cart!`, description: `${item.name} has been added to your order.` });
-  }
-
-  const handleAddToCartClick = (item: MenuItem) => {
-    const hasOptions = (item.addons && item.addons.length > 0) || (item.modifiers && item.modifiers.length > 0);
-    if (hasOptions) {
-        setSelectedItemForDialog(item);
-        setIsModifierDialogOpen(true);
-    } else {
-        addToCart(item);
-    }
-  };
 
   const aifaUrl = `/qrmenu/${businessId}/${tableNumber}/aifa`;
 
   if (isLoading) {
-    return <div className="flex h-screen items-center justify-center">Loading dishes...</div>
+    return <div className="flex h-screen items-center justify-center">Loading combos...</div>
   }
 
   return (
@@ -274,7 +155,7 @@ export default function CategoryMenuPage() {
             <Button variant="ghost" size="icon" onClick={() => router.back()}>
               <ChevronLeft className="h-6 w-6" />
             </Button>
-            <h1 className="text-xl font-bold capitalize">{categoryName}</h1>
+            <h1 className="text-xl font-bold capitalize">Combos</h1>
           </div>
            <div className="flex items-center gap-2">
             <Link href={`/qrmenu/${businessId}/${tableNumber}`}>
@@ -314,18 +195,12 @@ export default function CategoryMenuPage() {
           <div className="relative flex-grow">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input 
-              placeholder="Search for dishes..." 
+              placeholder="Search for combos..." 
               className="pl-10"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          {!isComboPage && (
-            <div className="flex items-center space-x-2">
-                <Switch id="veg-only" checked={showVegOnly} onCheckedChange={setShowVegOnly} />
-                <Label htmlFor="veg-only">Veg</Label>
-            </div>
-          )}
         </div>
 
         <ScrollArea className="flex-1 min-h-0">
@@ -338,26 +213,23 @@ export default function CategoryMenuPage() {
                 >
                   <div className="relative w-full aspect-[4/3]">
                     <Image
-                      src={(item as MenuItem).imageUrl || "https://picsum.photos/seed/combo/400/300"}
+                      src={"https://picsum.photos/seed/combo/400/300"}
                       alt={item.name}
                       fill
                       style={{ objectFit: 'cover' }}
-                      data-ai-hint={(item as MenuItem).imageHint}
+                      data-ai-hint="food combo"
                     />
                   </div>
                   <CardContent className="p-2 flex flex-col flex-grow">
-                    <div className="flex items-center gap-2">
-                        {!isComboPage && <div className={`h-3 w-3 rounded-full border flex-shrink-0 ${(item as MenuItem).type === 'veg' ? 'bg-green-500 border-green-600' : 'bg-red-500 border-red-600'}`}></div>}
-                        <h3 className="font-semibold text-xs flex-grow leading-tight">{item.name}</h3>
-                    </div>
+                    <h3 className="font-semibold text-xs flex-grow leading-tight">{item.name}</h3>
                     <div className="flex justify-between items-center mt-1">
                       <span className="font-bold text-sm">
-                        {format(Number((item as MenuItem).mrp || item.price))}
+                        {format(Number(item.price))}
                       </span>
                       <Button
                         size="icon"
                         className="h-7 w-7"
-                        onClick={() => handleAddToCartClick(item as MenuItem)}
+                        onClick={() => addToCart(item)}
                       >
                          <Plus className="h-4 w-4" />
                       </Button>
@@ -368,20 +240,11 @@ export default function CategoryMenuPage() {
             </div>
             {filteredItems.length === 0 && (
                 <div className="text-center py-10 text-muted-foreground">
-                    <p>No dishes found that match your search.</p>
+                    <p>No combos found that match your search.</p>
                 </div>
             )}
           </main>
         </ScrollArea>
-        
-        {selectedItemForDialog && (
-            <ModifierDialog 
-                item={selectedItemForDialog} 
-                onAddToCart={addCustomizedToCart}
-                open={isModifierDialogOpen}
-                setOpen={setIsModifierDialogOpen}
-            />
-        )}
         
         <div className="fixed bottom-4" style={{ right: 'max(1rem, 50% - 224px + 1rem)'}}>
              <Link href={aifaUrl}>

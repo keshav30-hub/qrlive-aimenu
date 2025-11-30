@@ -33,15 +33,12 @@ import {
   DialogDescription,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Separator } from '@/components/ui/separator';
-import { Input } from '@/components/ui/input';
 import { useCurrency } from '@/hooks/use-currency';
 import {
   ShoppingBag,
   Plus,
   Minus,
   Trash2,
-  Tag,
   Bell,
   ConciergeBell,
   FileText,
@@ -49,9 +46,10 @@ import {
   GlassWater,
   SprayCan,
   Loader2,
+  Star,
 } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { getBusinessDataBySlug, getEvents, getMenuData, type BusinessData, type Event, type Category, submitServiceRequest, type MenuItem } from '@/lib/qrmenu';
+import { getBusinessDataBySlug, getEvents, getMenuData, type BusinessData, type Event, type Category, submitServiceRequest, type MenuItem, type Combo } from '@/lib/qrmenu';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import Autoplay from "embla-carousel-autoplay";
@@ -70,10 +68,12 @@ type CartItem = MenuItem & { quantity: number };
 
 export default function QrMenuPage() {
   const params = useParams();
-  const { 'business-id': businessId, 'table-number': tableNumber } = params;
+  const { 'business-id': businessId, 'table-number': tableNumber } = params as { 'business-id': string, 'table-number': string };
   const { format } = useCurrency();
   const { toast } = useToast();
   const router = useRouter();
+  const storageKey = `qrlive-cart-${businessId}-${tableNumber}`;
+
 
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -81,6 +81,7 @@ export default function QrMenuPage() {
   const [businessData, setBusinessData] = useState<BusinessData | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [combos, setCombos] = useState<Combo[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRequestingService, setIsRequestingService] = useState(false);
@@ -93,6 +94,22 @@ export default function QrMenuPage() {
   const autoplayPlugin = useRef(
     Autoplay({ delay: 3000, stopOnInteraction: true })
   );
+
+  useEffect(() => {
+      try {
+        const savedCart = localStorage.getItem(storageKey);
+        if(savedCart) {
+            setCart(JSON.parse(savedCart));
+        }
+      } catch (e) {
+          console.error("Failed to parse cart from localStorage", e);
+      }
+  }, [storageKey]);
+
+  useEffect(() => {
+    localStorage.setItem(storageKey, JSON.stringify(cart));
+  }, [cart, storageKey]);
+
 
   useEffect(() => {
     if (!carouselApi) {
@@ -124,6 +141,7 @@ export default function QrMenuPage() {
           getEvents(fetchedUserId),
         ]);
         setCategories(menuData.categories);
+        setCombos(menuData.combos);
         setEvents(eventsData);
       }
       setIsLoading(false);
@@ -199,25 +217,6 @@ export default function QrMenuPage() {
     }
   };
 
-  const addToCart = (item: MenuItem) => {
-    setCart((prevCart) => {
-      const existingItem = prevCart.find((cartItem) => cartItem.id === item.id);
-      if (existingItem) {
-        return prevCart.map((cartItem) =>
-          cartItem.id === item.id
-            ? { ...cartItem, quantity: cartItem.quantity + 1 }
-            : cartItem
-        );
-      } else {
-        return [...prevCart, { ...item, quantity: 1 }];
-      }
-    });
-    toast({
-        title: `Added to cart!`,
-        description: `${item.name} has been added to your order.`,
-    });
-  };
-
   const updateQuantity = (itemId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
       setCart((prevCart) => prevCart.filter((item) => item.id !== itemId));
@@ -236,6 +235,39 @@ export default function QrMenuPage() {
   );
   
   const aifaUrl = `/qrmenu/${businessId}/${tableNumber}/aifa`;
+
+  const availableCategories = useMemo(() => {
+    const now = new Date();
+    const currentDay = now.toLocaleString('en-us', { weekday: 'long' }).toLowerCase();
+    const currentTime = now.getHours() * 60 + now.getMinutes(); // Current time in minutes from midnight
+
+    return categories.filter(category => {
+      if (!category.availability || !category.availability.days || category.availability.days.length === 0) {
+        return true; // Always available if no rules are set
+      }
+
+      const isDayAvailable = category.availability.days.includes(currentDay);
+      if (!isDayAvailable) {
+        return false;
+      }
+      
+      const { startTime, endTime } = category.availability;
+      if (startTime && endTime) {
+        const [startHours, startMinutes] = startTime.split(':').map(Number);
+        const [endHours, endMinutes] = endTime.split(':').map(Number);
+        const startTotalMinutes = startHours * 60 + startMinutes;
+        const endTotalMinutes = endHours * 60 + endMinutes;
+
+        if (startTotalMinutes <= endTotalMinutes) {
+          return currentTime >= startTotalMinutes && currentTime <= endTotalMinutes;
+        } else { // Handles overnight times (e.g., 22:00 to 02:00)
+          return currentTime >= startTotalMinutes || currentTime <= endTotalMinutes;
+        }
+      }
+      
+      return true; // Available if day is set but time is not
+    });
+  }, [categories]);
 
   if (isLoading) {
     return <div className="flex h-screen items-center justify-center">Loading Menu...</div>
@@ -437,7 +469,25 @@ export default function QrMenuPage() {
 
           <main className="p-4">
             <div className="grid grid-cols-2 gap-4">
-              {(categories || []).map((category) => (
+             {combos.length > 0 && (
+                  <Link href={`/qrmenu/${businessId}/${tableNumber}/combos`}>
+                      <Card className="overflow-hidden">
+                          <div className="relative h-24 w-full">
+                              <Image
+                                  src="https://images.unsplash.com/photo-1579887829434-c2a716960492?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=870&q=80"
+                                  alt="Combos"
+                                  fill
+                                  style={{ objectFit: 'cover' }}
+                                  data-ai-hint="food combo"
+                                />
+                          </div>
+                          <CardHeader className="p-3">
+                              <CardTitle className="text-base text-center">Combos</CardTitle>
+                          </CardHeader>
+                      </Card>
+                  </Link>
+             )}
+              {availableCategories.map((category) => (
                   <Link key={category.name} href={`/qrmenu/${businessId}/${tableNumber}/${category.name.toLowerCase().replace(/ /g, '-')}`}>
                       <Card className="overflow-hidden">
                           <div className="relative h-24 w-full">
