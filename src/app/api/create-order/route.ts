@@ -51,7 +51,8 @@ export async function POST(req: Request) {
     const needsSetupFee = user.setupFeePaid !== true;
     const finalAmountINR = Math.max(0, baseAmount - discount + (needsSetupFee ? setupFee : 0));
     const amountPaise = Math.round(finalAmountINR * 100);
-    const receipt = `rcpt_${uid}_${Date.now()}`;
+    // Use a shorter receipt ID to stay within the 40-character limit
+    const receipt = `rcpt_${uid.slice(0, 8)}_${Date.now()}`;
 
     const order = await razorpay.orders.create({
       amount: amountPaise,
@@ -79,6 +80,6 @@ export async function POST(req: Request) {
     if (error.message === 'Unauthorized') {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error.message || error.error?.description }, { status: 500 });
   }
 }
