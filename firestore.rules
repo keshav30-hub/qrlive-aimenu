@@ -39,18 +39,19 @@ service cloud.firestore {
     
     match /subscriptions/{userId} {
       // User can read their own subscription
-      allow get: if request.auth != null && request.auth.uid == userId;
-
-      // Only server can write
-      allow create, update, delete: if false;
+      allow get: if isOwner(userId);
+      // New user can create their own subscription doc, but ONLY with status 'inactive'
+      allow create: if isOwner(userId) && request.resource.data.status == 'inactive';
+      // Only server can update to active or delete
+      allow update, delete: if false;
     }
 
     match /payments/{paymentId} {
       // Owner can read their payment doc
-      allow get: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow get: if isOwner(resource.data.userId);
 
       // Allow listing payments that belong to the signed-in user
-      allow list: if request.auth != null && request.query.userId == request.auth.uid;
+      allow list: if isSignedIn() && request.query.userId == request.auth.uid;
 
       // Only server can write
       allow create, update, delete: if false;
