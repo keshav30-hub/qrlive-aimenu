@@ -85,11 +85,20 @@ const aifaFlow = ai.defineFlow(
     outputSchema: AIFALowOutputSchema,
   },
   async (input) => {
-    const { output } = await prompt(input);
-    return output!;
+    try {
+        const { output } = await prompt(input);
+        return output!;
+    } catch (error) {
+        console.error("AIFA Flow Error:", error);
+        // Instead of crashing, throw a specific, user-friendly error.
+        // This will be caught by the client-side calling function.
+        throw new Error("AIFA is a bit busy right now. Please wait a moment and try again.");
+    }
   }
 );
 
 export async function runAifaFlow(input: AIFALowInput): Promise<AIFALowOutput> {
     return aifaFlow(input);
 }
+
+    

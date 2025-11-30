@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Button } from "@/components/ui/button";
@@ -171,6 +170,7 @@ const processDataForServerAction = (data: any) => {
     return JSON.parse(JSON.stringify(data));
 };
 
+const HISTORY_LIMIT = 12; // Keep the last 12 messages (6 user, 6 AI)
 
 export default function AIFAPage() {
     const router = useRouter();
@@ -275,7 +275,10 @@ export default function AIFAPage() {
         setMessages(prev => {
             const newMessages = [...prev, { id: getUniqueMessageId(), sender, content }];
             try {
-                const serializableMessages = newMessages.filter(msg => typeof msg.content === 'string');
+                // Only store string-based messages for rehydration
+                const serializableMessages = newMessages
+                    .filter(msg => typeof msg.content === 'string')
+                    .slice(-HISTORY_LIMIT); // Also limit history in session storage
                 sessionStorage.setItem('aifa-chat-history', JSON.stringify(serializableMessages));
             } catch (error) {
                 console.error("Failed to save chat history to session storage:", error);
@@ -361,6 +364,7 @@ export default function AIFAPage() {
 
         const historyForAI = messages
             .filter(msg => typeof msg.content === 'string')
+            .slice(-HISTORY_LIMIT) // Truncate history before sending
             .map(msg => ({
                 role: msg.sender === 'user' ? 'user' : 'model' as 'user' | 'model',
                 content: msg.content as string
@@ -398,9 +402,9 @@ export default function AIFAPage() {
                 const response = await runAifaFlow(flowInput);
                 processAIResponse(response);
             }
-        } catch(e) {
+        } catch(e: any) {
             console.error(e);
-            addMessage('aifa', "Oops! My circuits are a bit scrambled. Could you try asking that again?");
+            addMessage('aifa', e.message || "Oops! My circuits are a bit scrambled. Could you try asking that again?");
         } finally {
             setIsThinking(false);
         }
@@ -501,3 +505,5 @@ export default function AIFAPage() {
         </div>
     );
 }
+
+    
