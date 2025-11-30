@@ -211,7 +211,7 @@ export default function CombosPage() {
   return (
     <div className="h-screen w-full bg-gray-100 dark:bg-black">
       <div className="max-w-[480px] mx-auto h-full flex flex-col bg-white dark:bg-gray-950 shadow-lg">
-        <header className="p-4 flex justify-between items-center sticky top-0 bg-white dark:bg-gray-950 z-10">
+        <header className="px-4 py-2 flex justify-between items-center sticky top-0 bg-white dark:bg-gray-950 z-10">
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" onClick={() => router.back()}>
               <ChevronLeft className="h-6 w-6" />
@@ -294,7 +294,7 @@ export default function CombosPage() {
           </div>
         </header>
 
-        <div className="p-4 flex items-center gap-4 sticky top-[72px] bg-white dark:bg-gray-950 z-10 border-b">
+        <div className="p-4 flex items-center gap-4 sticky top-[64px] bg-white dark:bg-gray-950 z-10 border-b">
           <div className="relative flex-grow">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input 
