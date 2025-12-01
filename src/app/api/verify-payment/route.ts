@@ -35,6 +35,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid payment signature' }, { status: 400 });
     }
 
+    // Fetch order and payment details to ensure consistency
     const order = await razorpay.orders.fetch(razorpay_order_id);
     const notes = order.notes || {};
     const payment = await razorpay.payments.fetch(razorpay_payment_id);
@@ -46,10 +47,15 @@ export async function POST(req: Request) {
     const userRef = firestore.collection('users').doc(uid);
     const subRef = firestore.collection('subscriptions').doc(uid);
 
+    // Use a transaction to ensure atomicity
     await firestore.runTransaction(async (tx) => {
       const existingPayment = await tx.get(paymentDocRef);
-      if (existingPayment.exists) return; // Prevent duplicate processing
+      if (existingPayment.exists) {
+        console.log(`Payment ${razorpay_payment_id} already processed.`);
+        return; // Prevent duplicate processing
+      }
 
+      // Record the payment
       tx.set(paymentDocRef, {
         userId: uid,
         razorpayPaymentId: razorpay_payment_id,
@@ -62,17 +68,19 @@ export async function POST(req: Request) {
         planId: planId,
       });
 
+      // Update the setup fee flag if it was part of this payment
       if (notes.isSetupFeeExpected === 'true') {
         tx.update(userRef, { setupFeePaid: true });
       }
 
+      // Create or update the subscription
       const now = admin.firestore.Timestamp.now();
       const expiresAt = new Date();
       expiresAt.setMonth(expiresAt.getMonth() + durationMonths);
 
       const subData = {
         planId: planId,
-        planName: notes.planName,
+        planName: notes.planName, // Assuming planName is passed in notes
         startedAt: now,
         expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
         status: 'active',

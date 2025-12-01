@@ -33,6 +33,7 @@ export async function POST(req: Request) {
     }
     const user = userSnap.data() || {};
 
+    // Fetch the one-time setup fee from a config document
     const cfgSnap = await firestore.collection('config').doc('payments').get();
     const setupFee = cfgSnap.exists && cfgSnap.data()?.setupFee ? Number(cfgSnap.data()!.setupFee) : 0;
 
@@ -41,6 +42,7 @@ export async function POST(req: Request) {
       const cSnap = await firestore.collection('coupons').doc(couponCode).get();
       if (cSnap.exists) {
         const c = cSnap.data();
+        // Ensure coupon is active and valid before applying
         if (c?.isActive) {
           if (c.type === 'percentage') discount = Math.round(baseAmount * (c.value / 100));
           else if (c.type === 'flat') discount = c.value;
@@ -51,7 +53,6 @@ export async function POST(req: Request) {
     const needsSetupFee = user.setupFeePaid !== true;
     const finalAmountINR = Math.max(0, baseAmount - discount + (needsSetupFee ? setupFee : 0));
     const amountPaise = Math.round(finalAmountINR * 100);
-    // Use a shorter receipt ID to stay within the 40-character limit
     const receipt = `rcpt_${uid.slice(0, 8)}_${Date.now()}`;
 
     const order = await razorpay.orders.create({
@@ -61,7 +62,7 @@ export async function POST(req: Request) {
       notes: {
         userId: uid,
         planId,
-        isSetupFeeExpected: String(needsSetupFee),
+        isSetupFeeExpected: String(needsSetupFee), // Pass flag to webhook
         couponCode: couponCode || '',
       }
     });
