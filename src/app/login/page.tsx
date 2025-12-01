@@ -82,6 +82,31 @@ export default function LoginPage() {
       </div>
     );
   }
+  
+  const renderLegalLinks = () => {
+    if (!legalDocs || legalDocs.length === 0) {
+      return 'our terms and conditions';
+    }
+
+    return legalDocs.map((doc, index) => {
+      const isLast = index === legalDocs.length - 1;
+      const isSecondToLast = index === legalDocs.length - 2;
+
+      let separator = ', ';
+      if (isLast) separator = '';
+      if (isSecondToLast && legalDocs.length > 1) separator = ' & ';
+
+      return (
+        <React.Fragment key={doc.id}>
+          <Link href={doc.url} target="_blank" className="underline hover:text-primary">
+            {doc.title}
+          </Link>
+          {separator}
+        </React.Fragment>
+      );
+    });
+  };
+
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-100 p-4">
@@ -89,7 +114,7 @@ export default function LoginPage() {
         <CardHeader className="text-center">
           <CardTitle className="text-2xl text-gray-900">Welcome to QRLive Menu</CardTitle>
           <CardDescription className="text-gray-600">
-            Sign in to manage your restaurant's digital presence.
+            India's First AI-Powered Digital Waiter for Restaurants.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -113,16 +138,7 @@ export default function LoginPage() {
                 Accept terms and conditions
               </label>
               <p className="text-sm text-muted-foreground">
-                By creating an account, you agree to our&nbsp;
-                 {legalDocs && legalDocs.map((doc, index) => (
-                    <React.Fragment key={doc.id}>
-                        <Link href={doc.url} target="_blank" className="underline hover:text-primary">
-                            {doc.title}
-                        </Link>
-                        {index < legalDocs.length - 2 ? ', ' : (index === legalDocs.length - 2 ? ' & ' : '')}
-                    </React.Fragment>
-                ))}
-                .
+                By creating an account, you agree to {renderLegalLinks()}.
               </p>
             </div>
           </div>
