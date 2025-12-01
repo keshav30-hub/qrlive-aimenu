@@ -28,7 +28,6 @@ export async function POST(req: Request) {
 
       const event = JSON.parse(body);
       
-      // Process only successful payment events
       if (event.event === 'payment.captured') {
           const razorpay = new Razorpay({
             key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
@@ -41,7 +40,6 @@ export async function POST(req: Request) {
           const amountPaise = paymentEntity.amount;
           const amountINR = amountPaise / 100;
           
-          // Fetch the order to get our custom notes
           const order = await razorpay.orders.fetch(orderId);
           const { userId, planId, isSetupFeeExpected, couponCode } = order.notes || {};
 
@@ -63,15 +61,13 @@ export async function POST(req: Request) {
           const subRef = firestore.collection('subscriptions').doc(userId);
           const paymentDocRef = firestore.collection('payments').doc(paymentId);
           
-           // Use a transaction for atomic updates
            await firestore.runTransaction(async (tx) => {
               const existingPayment = await tx.get(paymentDocRef);
               if (existingPayment.exists) {
                   console.log(`Payment ${paymentId} already processed.`);
-                  return; // Exit if payment is already recorded
+                  return;
               }
       
-              // 1. Record the payment
               tx.set(paymentDocRef, {
                   userId,
                   razorpayPaymentId: paymentId,
@@ -85,12 +81,10 @@ export async function POST(req: Request) {
                   processedBy: 'webhook'
               });
       
-              // 2. Update user's setup fee status if applicable
               if (isSetupFeeExpected === 'true') {
                   tx.update(userRef, { setupFeePaid: true });
               }
       
-              // 3. Create or update the subscription
               const now = admin.firestore.Timestamp.now();
               const expiresAt = new Date();
               expiresAt.setMonth(expiresAt.getMonth() + durationMonths);

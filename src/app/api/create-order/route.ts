@@ -33,16 +33,15 @@ export async function POST(req: Request) {
     }
     const user = userSnap.data() || {};
 
-    // Fetch the one-time setup fee from a config document
-    const cfgSnap = await firestore.collection('config').doc('payments').get();
-    const setupFee = cfgSnap.exists && cfgSnap.data()?.setupFee ? Number(cfgSnap.data()!.setupFee) : 0;
+    // For this example, we'll hardcode the setup fee.
+    // In a real app, this should come from a config collection in Firestore.
+    const setupFee = 500; 
 
     let discount = 0;
     if (couponCode) {
       const cSnap = await firestore.collection('coupons').doc(couponCode).get();
       if (cSnap.exists) {
         const c = cSnap.data();
-        // Ensure coupon is active and valid before applying
         if (c?.isActive) {
           if (c.type === 'percentage') discount = Math.round(baseAmount * (c.value / 100));
           else if (c.type === 'flat') discount = c.value;
@@ -62,7 +61,7 @@ export async function POST(req: Request) {
       notes: {
         userId: uid,
         planId,
-        isSetupFeeExpected: String(needsSetupFee), // Pass flag to webhook
+        isSetupFeeExpected: String(needsSetupFee),
         couponCode: couponCode || '',
       }
     });
