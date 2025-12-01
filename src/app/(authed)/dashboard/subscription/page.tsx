@@ -115,7 +115,7 @@ export default function SubscriptionPage() {
         const configRef = doc(firestore, 'config', 'payments');
         const configSnap = await getDoc(configRef);
         if (configSnap.exists()) {
-            const fee = configSnap.data()?.setupFee || 0;
+            const fee = configSnap.data()?.setupfee || 0;
             setSetupFee(fee);
             setNeedsSetupFee(true);
         }
