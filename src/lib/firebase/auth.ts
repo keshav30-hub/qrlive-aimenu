@@ -59,44 +59,62 @@ export async function createUserDocument(user: User) {
 
   const deviceId = await generateDeviceId(navigator.userAgent);
   const deviceRef = doc(firestore, `users/${user.uid}/devices`, deviceId);
-
-  const batch = writeBatch(firestore);
-
-  if (!userSnap.exists()) {
-    // User is new, create user, subscription, and device docs in a batch
-    const subscriptionRef = doc(firestore, 'subscriptions', user.uid);
-    const createdAt = serverTimestamp();
-    
-    batch.set(userRef, {
-        uid: user.uid,
-        email: user.email,
-        createdAt: createdAt,
-        lastLoginAt: createdAt,
-        onboarding: false,
-        setupFeePaid: false, // Set the initial setup fee status
-    });
-
-    batch.set(subscriptionRef, {
-        createdAt: createdAt,
-        status: 'inactive',
-    });
-
-  } else {
-    // User exists, just update last login time
-    batch.update(userRef, { lastLoginAt: serverTimestamp() });
-  }
-
-  // Add device information to the batch
-  batch.set(deviceRef, {
-      id: deviceId,
-      userAgent: navigator.userAgent,
-      lastLoginAt: serverTimestamp(),
-      status: 'active',
-  }, { merge: true });
-
+  
   try {
-    await batch.commit();
+    // Only write device info if it's a new device
+    const deviceSnap = await getDoc(deviceRef);
+    const batch = writeBatch(firestore);
+
+    if (!userSnap.exists()) {
+      // User is new, create user, subscription, and device docs in a batch
+      const subscriptionRef = doc(firestore, 'subscriptions', user.uid);
+      const createdAt = serverTimestamp();
+      
+      batch.set(userRef, {
+          uid: user.uid,
+          email: user.email,
+          createdAt: createdAt,
+          lastLoginAt: createdAt,
+          onboarding: false,
+          setupFeePaid: false,
+      });
+
+      batch.set(subscriptionRef, {
+          createdAt: createdAt,
+          status: 'inactive',
+      });
+      
+      // Since it's a new user, the device is also new
+      batch.set(deviceRef, {
+          id: deviceId,
+          userAgent: navigator.userAgent,
+          lastLoginAt: serverTimestamp(),
+          status: 'active',
+      });
+
+    } else {
+      // User exists, just update last login time
+      batch.update(userRef, { lastLoginAt: serverTimestamp() });
+      
+      // For existing users, only write device data if the device is not yet registered
+      if (!deviceSnap.exists()) {
+         batch.set(deviceRef, {
+            id: deviceId,
+            userAgent: navigator.userAgent,
+            lastLoginAt: serverTimestamp(),
+            status: 'active',
+        }, { merge: true });
+      }
+    }
+    
+    // Commit the batch only if there are writes
+    if (batch['_mutations'].length > 0) {
+       await batch.commit();
+    }
+    
   } catch (e) {
     console.error("Error writing user/device documents: ", e);
+    // Re-throw the error to be caught by the caller if needed
+    throw e;
   }
 }

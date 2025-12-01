@@ -37,28 +37,18 @@ service cloud.firestore {
     }
     
     match /plans/{planId} {
-      // Allow reading one document and listing all documents.
       allow get, list: if true;
-      // Allow only admins to create, update, or delete plans.
       allow write: if isAdmin();
     }
 
     match /subscriptions/{userId} {
-      // User can read their own subscription
       allow get: if request.auth != null && request.auth.uid == userId;
-
-      // Only server can write
       allow create, update, delete: if false;
     }
 
     match /payments/{paymentId} {
-      // Owner can read their payment doc
       allow get: if request.auth != null && request.auth.uid == resource.data.userId;
-
-      // Allow listing payments that belong to the signed-in user
       allow list: if request.auth != null && request.query.userId == request.auth.uid;
-
-      // Only server can write
       allow create, update, delete: if false;
     }
 
@@ -96,7 +86,6 @@ service cloud.firestore {
       allow write: if isOwner(userId);
     }
     
-    // New rule to allow public querying of a single event by its unique ID
     match /{path=**}/events/{eventId} {
       allow list: if request.query.keys.hasOnly(['id']) && request.query.id == resource.data.id;
     }
@@ -150,7 +139,6 @@ service cloud.firestore {
       allow read, write: if isOwner(userId);
     }
 
-    // Rule for the attendance subcollection
     match /users/{userId}/staff/{staffId}/attendance/{attendanceId} {
       allow read, write: if isOwner(userId);
       allow create: if true;
