@@ -32,26 +32,31 @@ service cloud.firestore {
       allow create: if isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
     }
     
-    match /plans/{planId} {
-      allow get, list: if isSignedIn();
-      allow write: if isAdmin();
+    match /config/{docId} {
+      allow get: if isSignedIn();
     }
     
+    match /plans/{planId} {
+      // Allow reading one document and listing all documents.
+      allow get, list: if true;
+      // Allow only admins to create, update, or delete plans.
+      allow write: if isAdmin();
+    }
+
     match /subscriptions/{userId} {
       // User can read their own subscription
-      allow get: if isOwner(userId);
-      // New user can create their own subscription doc, but ONLY with status 'inactive'
-      allow create: if isOwner(userId) && request.resource.data.status == 'inactive';
-      // Only server can update to active or delete
-      allow update, delete: if false;
+      allow get: if request.auth != null && request.auth.uid == userId;
+
+      // Only server can write
+      allow create, update, delete: if false;
     }
 
     match /payments/{paymentId} {
       // Owner can read their payment doc
-      allow get: if isOwner(resource.data.userId);
+      allow get: if request.auth != null && request.auth.uid == resource.data.userId;
 
       // Allow listing payments that belong to the signed-in user
-      allow list: if isSignedIn() && request.query.userId == request.auth.uid;
+      allow list: if request.auth != null && request.query.userId == request.auth.uid;
 
       // Only server can write
       allow create, update, delete: if false;
@@ -148,11 +153,7 @@ service cloud.firestore {
     // Rule for the attendance subcollection
     match /users/{userId}/staff/{staffId}/attendance/{attendanceId} {
       allow read, write: if isOwner(userId);
-    }
-    
-    // Rule for public attendance creation via QR scan
-    match /users/{userId}/staff/{staffId}/attendance/{attendanceId} {
-        allow create: if true;
+      allow create: if true;
     }
     
     match /users/{userId}/staff/{staffId}/payroll/{payrollId} {
@@ -178,5 +179,3 @@ service cloud.firestore {
     }
   }
 }
-
-    
