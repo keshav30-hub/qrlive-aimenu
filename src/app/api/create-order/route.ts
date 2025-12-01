@@ -26,16 +26,17 @@ export async function POST(req: Request) {
 
     const firestore = admin.firestore();
     const userRef = firestore.collection('users').doc(uid);
-    const userSnap = await userRef.get();
+    const configRef = firestore.collection('config').doc('payments');
+    
+    const [userSnap, configSnap] = await Promise.all([userRef.get(), configRef.get()]);
+
 
     if (!userSnap.exists) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
     const user = userSnap.data() || {};
 
-    // For this example, we'll hardcode the setup fee.
-    // In a real app, this should come from a config collection in Firestore.
-    const setupFee = 500; 
+    const setupFee = configSnap.exists() ? configSnap.data()?.setupFee || 0 : 0;
 
     let discount = 0;
     if (couponCode) {

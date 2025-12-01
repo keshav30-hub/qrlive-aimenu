@@ -13,7 +13,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Check, Loader2, RefreshCw, Star, CircleCheck, Calendar, History } from 'lucide-react';
 import { useFirebase, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, query, orderBy, DocumentData, doc, Timestamp } from 'firebase/firestore';
+import { collection, query, orderBy, DocumentData, doc, Timestamp, getDoc } from 'firebase/firestore';
 import { useCurrency } from '@/hooks/use-currency';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
@@ -60,6 +60,7 @@ type UserProfile = {
   email?: string;
   contact?: string;
   businessName?: string;
+  setupFeePaid?: boolean;
 }
 
 type Subscription = {
@@ -99,12 +100,27 @@ export default function SubscriptionPage() {
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState<DocumentData | null>(null);
   const [isSubscribing, setIsSubscribing] = useState(false);
+  const [setupFee, setSetupFee] = useState(0);
+  const [needsSetupFee, setNeedsSetupFee] = useState(false);
 
-  const handleSelectPlan = (plan: Plan) => {
+  const handleSelectPlan = async (plan: Plan) => {
     setSelectedPlan(plan);
     setCouponCode('');
     setDiscount(0);
     setAppliedCoupon(null);
+    setNeedsSetupFee(false);
+    setSetupFee(0);
+    
+    if (userProfile && userProfile.setupFeePaid === false) {
+        const configRef = doc(firestore, 'config', 'payments');
+        const configSnap = await getDoc(configRef);
+        if (configSnap.exists()) {
+            const fee = configSnap.data()?.setupFee || 0;
+            setSetupFee(fee);
+            setNeedsSetupFee(true);
+        }
+    }
+
     setIsDialogOpen(true);
   };
   
@@ -225,7 +241,7 @@ export default function SubscriptionPage() {
   };
 
 
-  const finalPrice = selectedPlan ? selectedPlan.offerPrice - discount : 0;
+  const finalPrice = selectedPlan ? (selectedPlan.offerPrice - discount) + (needsSetupFee ? setupFee : 0) : 0;
 
   if (isSubscriptionLoading) {
     return <div className="flex h-screen items-center justify-center">Loading subscription status...</div>
@@ -396,6 +412,12 @@ export default function SubscriptionPage() {
                         <span className="text-muted-foreground">Base Price</span>
                         <span className="font-medium">{selectedPlan ? formatCurrency(selectedPlan.offerPrice) : ''}</span>
                     </div>
+                    {needsSetupFee && (
+                        <div className="flex justify-between items-center text-sm">
+                            <span className="text-muted-foreground">One-time Setup Fee</span>
+                            <span className="font-medium">{formatCurrency(setupFee)}</span>
+                        </div>
+                    )}
                      {discount > 0 && (
                         <div className="flex justify-between items-center text-sm text-green-600">
                             <span className="text-muted-foreground">Coupon Discount ({appliedCoupon?.code})</span>
