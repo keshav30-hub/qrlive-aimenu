@@ -1,6 +1,7 @@
 
 'use client';
 
+import React from 'react';
 import { FcGoogle } from 'react-icons/fc';
 import { Button } from '@/components/ui/button';
 import {
@@ -129,7 +130,7 @@ export default function LoginPage() {
         </CardContent>
         <CardFooter className="flex justify-center items-center text-xs text-gray-500 gap-4">
             {legalDocs?.map(doc => (
-                <Link key={doc.id} href={doc.url} target="_blank" className="hover:text-primary hidden">
+                <Link key={doc.id} href={doc.url} target="_blank" className="hover:text-primary">
                     {doc.title}
                 </Link>
             ))}
