@@ -35,15 +35,15 @@ import { format } from 'date-fns';
 
 
 const features = [
-  'Unlimited Menu Items & Categories',
-  'Advanced QR Menu Analytics',
-  'AI Food Assistant (AIFA)',
-  'Staff Management & Attendance',
-  'Dedicated Captain App',
-  'Task & Service Request Management',
-  'Events & RSVP System',
-  'Customer Feedback Tools',
-  '24/7 Support',
+  '🚀 AI-Powered Technology',
+  '🤖 Powerful AIFA Assistant',
+  '📈 Built to Increase Sales',
+  '🛎 Smart Service Automation',
+  '📣 Real-Time Feedback Engine',
+  '👨‍🍳 Staff Attendance Control',
+  '💰 Salary & Payroll Automation',
+  '🔐 Secure Cloud Platform',
+  '🌍 Works on Any Device',
 ];
 
 type Plan = {
@@ -108,8 +108,6 @@ export default function SubscriptionPage() {
     setCouponCode('');
     setDiscount(0);
     setAppliedCoupon(null);
-    setNeedsSetupFee(false);
-    setSetupFee(0);
     
     if (userProfile && userProfile.setupFeePaid === false) {
         const configRef = doc(firestore, 'config', 'payments');
@@ -119,6 +117,9 @@ export default function SubscriptionPage() {
             setSetupFee(fee);
             setNeedsSetupFee(true);
         }
+    } else {
+        setNeedsSetupFee(false);
+        setSetupFee(0);
     }
 
     setIsDialogOpen(true);
@@ -172,7 +173,8 @@ export default function SubscriptionPage() {
       });
 
       if (!orderResponse.ok) {
-          throw new Error('Failed to create order.');
+          const errorResult = await orderResponse.json();
+          throw new Error(errorResult.error || 'Failed to create order.');
       }
       
       const orderResult = await orderResponse.json();
@@ -325,17 +327,17 @@ export default function SubscriptionPage() {
 
        <Card className="bg-gray-50 dark:bg-gray-800/50">
         <CardHeader>
-          <CardTitle className="text-2xl text-center">All Features Included</CardTitle>
+          <CardTitle className="text-2xl text-center">🏆 Why Choose QRlive?</CardTitle>
           <CardDescription className="text-center">
-            Every plan unlocks the full power of QRLive Menu.
+            Unlock the full potential of your business with our powerful features.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4">
             {features.map((feature) => (
-              <div key={feature} className="flex items-center gap-2">
-                <Check className="h-5 w-5 text-green-500 flex-shrink-0" />
-                <span className="text-sm font-medium">{feature}</span>
+              <div key={feature} className="flex items-start gap-2">
+                <span className="text-lg leading-none mt-1">{feature.split(' ')[0]}</span>
+                <span className="text-sm font-medium">{feature.substring(feature.indexOf(' ') + 1)}</span>
               </div>
             ))}
           </div>
@@ -461,3 +463,5 @@ export default function SubscriptionPage() {
     </div>
   );
 }
+
+    
