@@ -44,6 +44,9 @@ const features = [
   '💰 Salary & Payroll Automation',
   '🔐 Secure Cloud Platform',
   '🌍 Works on Any Device',
+  '🔍 Free Google Review Scanner',
+  '🤝 White-Glove Setup & Onboarding',
+  '🎓 Free Personalized Staff Training',
 ];
 
 type Plan = {
@@ -463,5 +466,3 @@ export default function SubscriptionPage() {
     </div>
   );
 }
-
-    
