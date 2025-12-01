@@ -18,7 +18,7 @@ import { Textarea } from '@/components/ui/textarea';
 import Link from 'next/link';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFirebase, useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { doc, updateDoc, collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
+import { doc, updateDoc, collection, query, where, getDocs, Timestamp, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useFirebaseStorage } from '@/firebase/storage/use-firebase-storage';
 import { format } from 'date-fns';
@@ -56,6 +56,8 @@ export default function SettingsPage() {
   const userRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const staffRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'staff') : null, [firestore, user]);
   const subscriptionRef = useMemoFirebase(() => (user ? doc(firestore, 'subscriptions', user.uid) : null), [user, firestore]);
+  const ticketsRef = useMemoFirebase(() => user ? collection(firestore, 'supportTickets') : null, [firestore, user]);
+
 
   const { data: businessInfo, isLoading: isInfoLoading } = useDoc<BusinessInfo>(userRef);
   const { data: staffList } = useCollection<StaffMember>(staffRef);
@@ -67,6 +69,11 @@ export default function SettingsPage() {
   const [showAccessCode, setShowAccessCode] = useState(false);
   const [accessCodeError, setAccessCodeError] = useState<string | null>(null);
   
+  // Support Ticket State
+  const [ticketType, setTicketType] = useState('');
+  const [ticketDescription, setTicketDescription] = useState('');
+  const [isSubmittingTicket, setIsSubmittingTicket] = useState(false);
+
   useEffect(() => {
     if (businessInfo) {
       setEditedInfo(businessInfo);
@@ -154,6 +161,35 @@ export default function SettingsPage() {
       } else {
         toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload new logo.' });
       }
+    }
+  };
+
+  const handleTicketSubmit = async () => {
+    if (!ticketsRef || !user || !ticketType || !ticketDescription) {
+        toast({ variant: "destructive", title: "Missing Information", description: "Please select a ticket type and provide a description." });
+        return;
+    }
+    
+    setIsSubmittingTicket(true);
+    try {
+      await addDoc(ticketsRef, {
+        submittedBy: user.uid,
+        type: ticketType,
+        description: ticketDescription,
+        status: 'open',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      
+      toast({ title: 'Ticket Submitted', description: 'Our team will get back to you shortly.'});
+      setTicketType('');
+      setTicketDescription('');
+
+    } catch (e) {
+      console.error("Error submitting ticket: ", e);
+      toast({ variant: "destructive", title: "Submission Failed", description: "Could not submit your ticket. Please try again." });
+    } finally {
+      setIsSubmittingTicket(false);
     }
   };
   
@@ -435,7 +471,7 @@ export default function SettingsPage() {
           <CardContent className="space-y-4">
              <div className="space-y-2">
               <Label htmlFor="ticket-type">Support Ticket Type</Label>
-              <Select>
+              <Select value={ticketType} onValueChange={setTicketType}>
                 <SelectTrigger id="ticket-type">
                   <SelectValue placeholder="Select a ticket type" />
                 </SelectTrigger>
@@ -449,9 +485,18 @@ export default function SettingsPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="ticket-description">Description</Label>
-              <Textarea id="ticket-description" placeholder="Please describe your issue in detail..." rows={5} />
+              <Textarea 
+                id="ticket-description" 
+                placeholder="Please describe your issue in detail..." 
+                rows={5}
+                value={ticketDescription}
+                onChange={(e) => setTicketDescription(e.target.value)}
+              />
             </div>
-            <Button className="w-full">Submit Ticket</Button>
+            <Button className="w-full" onClick={handleTicketSubmit} disabled={isSubmittingTicket || !ticketType || !ticketDescription}>
+                {isSubmittingTicket && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                {isSubmittingTicket ? 'Submitting...' : 'Submit Ticket'}
+            </Button>
           </CardContent>
         </Card>
         
