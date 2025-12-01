@@ -7,19 +7,34 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
 import { signInWithGoogle } from '@/lib/firebase/auth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { useUser } from '@/firebase';
-import { useEffect } from 'react';
+import { useUser, useFirebase, useCollection, useMemoFirebase } from '@/firebase';
+import { useEffect, useMemo } from 'react';
+import { collection, query, orderBy } from 'firebase/firestore';
+import Link from 'next/link';
+
+type LegalDoc = {
+    id: string;
+    title: string;
+    url: string;
+    order: number;
+}
 
 export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { user, isUserLoading } = useUser();
+  const { firestore } = useFirebase();
+  
+  const legalRef = useMemoFirebase(() => firestore ? collection(firestore, 'legal') : null, [firestore]);
+  const legalQuery = useMemoFirebase(() => legalRef ? query(legalRef, orderBy('order')) : null, [legalRef]);
+  const { data: legalDocs } = useCollection<LegalDoc>(legalQuery);
 
   useEffect(() => {
     // If user is already logged in, redirect to dashboard
@@ -74,6 +89,13 @@ export default function LoginPage() {
             Sign in with Google
           </Button>
         </CardContent>
+        <CardFooter className="flex justify-center items-center text-xs text-gray-500 gap-4">
+            {legalDocs?.map(doc => (
+                <Link key={doc.id} href={doc.url} target="_blank" className="hover:text-primary">
+                    {doc.title}
+                </Link>
+            ))}
+        </CardFooter>
       </Card>
     </div>
   );

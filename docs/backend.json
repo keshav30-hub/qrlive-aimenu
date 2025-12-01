@@ -753,6 +753,28 @@
         }
       },
       "required": ["ticketId", "submittedBy", "type", "description", "status", "createdAt"]
+    },
+    "LegalDocument": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Legal Document",
+      "type": "object",
+      "description": "Represents a legal document like Privacy Policy or Terms of Service.",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "The title of the document (e.g., 'Privacy Policy')."
+        },
+        "url": {
+          "type": "string",
+          "description": "The URL where the document is hosted.",
+          "format": "uri"
+        },
+        "order": {
+            "type": "number",
+            "description": "A number to sort the documents."
+        }
+      },
+      "required": ["title", "url", "order"]
     }
   },
   "auth": {
@@ -892,6 +914,12 @@
         "$ref": "#/entities/SupportTicket"
       },
       "description": "Stores support tickets submitted by users."
+    },
+    "/legal/{docId}": {
+      "schema": {
+        "$ref": "#/entities/LegalDocument"
+      },
+      "description": "Stores public legal documents like Privacy Policy."
     }
   }
 }

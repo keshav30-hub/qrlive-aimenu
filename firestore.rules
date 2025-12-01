@@ -165,5 +165,10 @@ service cloud.firestore {
       allow create: if true;
       allow read, delete: if request.auth != null;
     }
+
+    match /legal/{docId} {
+      allow get, list: if true;
+      allow write: if isAdmin();
+    }
   }
 }
