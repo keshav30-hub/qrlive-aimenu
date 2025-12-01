@@ -216,12 +216,12 @@ export default function SettingsPage() {
   };
 
   const handleDownloadAttendanceQr = () => {
-    const attendanceUrl = `https://qrlive-aimenu.vercel.app/dashboard/attendance`;
+    const attendanceUrl = `${window.location.origin}/dashboard/attendance`;
     generateAndDownloadQr(attendanceUrl, 'attendance-qr-code.png');
   };
 
   const handleDownloadCaptainQr = () => {
-    const captainUrl = `https://qrlive-aimenu.vercel.app/dashboard/captain`;
+    const captainUrl = `${window.location.origin}/dashboard/captain`;
     generateAndDownloadQr(captainUrl, 'captain-login-qr-code.png');
   };
 
