@@ -36,7 +36,7 @@ export async function POST(req: Request) {
     }
     const user = userSnap.data() || {};
 
-    const setupFee = configSnap.exists() ? configSnap.data()?.setupfee || 0 : 0;
+    const setupFee = configSnap.exists ? configSnap.data()?.setupfee || 0 : 0;
 
     let discount = 0;
     if (couponCode) {
