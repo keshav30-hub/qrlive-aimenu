@@ -17,6 +17,17 @@ import {
 } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 
+// Simple hash function for creating a device ID
+const generateDeviceId = async (userAgent: string): Promise<string> => {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(userAgent);
+    const hashBuffer = await crypto.subtle.digest('SHA-1', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return hashHex.slice(0, 20); // Use a portion of the hash as the ID
+};
+
+
 export async function signInWithGoogle(): Promise<User | null> {
   const { auth } = initializeFirebase();
   const provider = new GoogleAuthProvider();
@@ -46,40 +57,46 @@ export async function createUserDocument(user: User) {
   const userRef = doc(firestore, 'users', user.uid);
   const userSnap = await getDoc(userRef);
 
+  const deviceId = await generateDeviceId(navigator.userAgent);
+  const deviceRef = doc(firestore, `users/${user.uid}/devices`, deviceId);
+
+  const batch = writeBatch(firestore);
+
   if (!userSnap.exists()) {
-    // User is new, create user and subscription docs in a batch
+    // User is new, create user, subscription, and device docs in a batch
     const subscriptionRef = doc(firestore, 'subscriptions', user.uid);
     const createdAt = serverTimestamp();
     
-    try {
-        const batch = writeBatch(firestore);
+    batch.set(userRef, {
+        uid: user.uid,
+        email: user.email,
+        createdAt: createdAt,
+        lastLoginAt: createdAt,
+        onboarding: false,
+        setupFeePaid: false, // Set the initial setup fee status
+    });
 
-        batch.set(userRef, {
-            uid: user.uid,
-            email: user.email,
-            createdAt: createdAt,
-            lastLoginAt: createdAt,
-            onboarding: false,
-            setupFeePaid: false, // Set the initial setup fee status
-        });
-
-        batch.set(subscriptionRef, {
-            createdAt: createdAt,
-            status: 'inactive',
-        });
-
-        await batch.commit();
-
-    } catch (e) {
-        console.error("Error creating user and subscription documents: ", e);
-    }
+    batch.set(subscriptionRef, {
+        createdAt: createdAt,
+        status: 'inactive',
+    });
 
   } else {
     // User exists, just update last login time
-    try {
-      await setDoc(userRef, { lastLoginAt: serverTimestamp() }, { merge: true });
-    } catch (e) {
-      console.error("Error updating last login time: ", e);
-    }
+    batch.update(userRef, { lastLoginAt: serverTimestamp() });
+  }
+
+  // Add device information to the batch
+  batch.set(deviceRef, {
+      id: deviceId,
+      userAgent: navigator.userAgent,
+      lastLoginAt: serverTimestamp(),
+      status: 'active',
+  }, { merge: true });
+
+  try {
+    await batch.commit();
+  } catch (e) {
+    console.error("Error writing user/device documents: ", e);
   }
 }
