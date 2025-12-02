@@ -22,6 +22,9 @@ import { doc, updateDoc, collection, query, where, getDocs, Timestamp, addDoc, s
 import { useToast } from '@/hooks/use-toast';
 import { useFirebaseStorage } from '@/firebase/storage/use-firebase-storage';
 import { format } from 'date-fns';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 type BusinessInfo = {
   name: string;
@@ -48,6 +51,41 @@ type Subscription = {
     expiresAt: Timestamp;
 }
 
+type SupportTicket = {
+    id: string;
+    type: 'technical' | 'billing' | 'feedback' | 'other';
+    description: string;
+    status: 'open' | 'in_progress' | 'resolved' | 'closed';
+    createdAt: Timestamp;
+}
+
+const statusVariant = (status: SupportTicket['status']) => {
+  switch (status) {
+    case 'open':
+      return 'secondary';
+    case 'in_progress':
+      return 'default';
+    case 'resolved':
+      return 'default';
+    case 'closed':
+        return 'outline';
+    default:
+      return 'outline';
+  }
+};
+
+const statusColor = (status: SupportTicket['status']) => {
+    switch(status) {
+        case 'in_progress':
+            return 'bg-blue-500 hover:bg-blue-500';
+        case 'resolved':
+            return 'bg-green-500 hover:bg-green-500';
+        default:
+            return '';
+    }
+}
+
+
 export default function SettingsPage() {
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
@@ -58,10 +96,12 @@ export default function SettingsPage() {
   const subscriptionRef = useMemoFirebase(() => (user ? doc(firestore, 'subscriptions', user.uid) : null), [user, firestore]);
   const ticketsRef = useMemoFirebase(() => user ? collection(firestore, 'supportTickets') : null, [firestore, user]);
 
+  const userTicketsQuery = useMemoFirebase(() => ticketsRef ? query(ticketsRef, where('submittedBy', '==', user?.uid || '')) : null, [ticketsRef, user]);
 
   const { data: businessInfo, isLoading: isInfoLoading } = useDoc<BusinessInfo>(userRef);
   const { data: staffList } = useCollection<StaffMember>(staffRef);
   const { data: subscription, isLoading: isSubscriptionLoading } = useDoc<Subscription>(subscriptionRef);
+  const { data: userTickets, isLoading: isTicketsLoading } = useCollection<SupportTicket>(userTicketsQuery);
 
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -500,36 +540,52 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
         
-        <Card>
-          <CardHeader>
-            <CardTitle>Customer Support</CardTitle>
-            <CardDescription>Contact us directly for immediate assistance.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Email ID</Label>
-              <p className="font-medium">support@qrlive.menu</p>
-            </div>
-            <div className="space-y-2">
-              <Label>Mobile Number</Label>
-              <p className="font-medium">+91 12345 67890</p>
-            </div>
-            <div className="flex gap-2 pt-2">
-                <Button variant="outline" size="icon" asChild>
-                    <Link href={businessInfo?.instagramLink || '#'} target="_blank">
-                        <Instagram className="h-5 w-5" />
-                    </Link>
-                </Button>
-                 <Button variant="outline" size="icon" asChild>
-                    <Link href="#" target="_blank">
-                        <Globe className="h-5 w-5" />
-                    </Link>
-                </Button>
-            </div>
-          </CardContent>
+        <Card className="md:col-span-2">
+            <CardHeader>
+                <CardTitle>Your Support Tickets</CardTitle>
+                <CardDescription>Track the status of your submitted tickets.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Created</TableHead>
+                            <TableHead>Type</TableHead>
+                            <TableHead>Description</TableHead>
+                            <TableHead className="text-right">Status</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {isTicketsLoading ? (
+                            <TableRow>
+                                <TableCell colSpan={4} className="text-center">Loading tickets...</TableCell>
+                            </TableRow>
+                        ) : userTickets && userTickets.length > 0 ? (
+                           userTickets.map(ticket => (
+                            <TableRow key={ticket.id}>
+                                <TableCell>{format(ticket.createdAt.toDate(), 'dd MMM yyyy')}</TableCell>
+                                <TableCell className="capitalize">{ticket.type}</TableCell>
+                                <TableCell className="max-w-[200px] truncate">{ticket.description}</TableCell>
+                                <TableCell className="text-right">
+                                    <Badge variant={statusVariant(ticket.status)} className={cn('capitalize', statusColor(ticket.status))}>
+                                        {ticket.status.replace('_', ' ')}
+                                    </Badge>
+                                </TableCell>
+                            </TableRow>
+                           ))
+                        ) : (
+                             <TableRow>
+                                <TableCell colSpan={4} className="text-center h-24">You have not submitted any tickets yet.</TableCell>
+                            </TableRow>
+                        )}
+                    </TableBody>
+                </Table>
+            </CardContent>
         </Card>
       </div>
 
     </div>
   );
 }
+
+    
