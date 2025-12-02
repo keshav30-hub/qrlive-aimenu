@@ -289,16 +289,16 @@ export default function QrMenuPage() {
       </div>
       <div className="max-w-[480px] mx-auto h-full flex flex-col bg-white dark:bg-gray-950 shadow-lg pt-12">
         <header className="p-2 flex justify-between items-center flex-shrink-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <Image
               src={businessData.logo}
               alt={`${businessData.name} logo`}
-              width={40}
+              width={60}
               height={40}
-              className="rounded-full"
+              className="rounded-md object-contain"
             />
             <div>
-              <h1 className="text-lg font-bold leading-tight">{businessData.name}</h1>
+              <h1 className="text-base font-bold leading-tight">{businessData.name}</h1>
               <p className="text-xs text-muted-foreground">
                 Table {tableNumber}
               </p>
