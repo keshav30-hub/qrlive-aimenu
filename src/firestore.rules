@@ -26,22 +26,28 @@ service cloud.firestore {
       allow update, delete: if isOwner(userId);
       allow create: if isSignedIn();
     }
+    
+    // This single rule grants a user full access to all documents in all subcollections
+    // under their own user document. This is more secure and scalable than individual rules.
+    match /users/{userId}/{document=**} {
+      allow read, write: if isOwner(userId);
+    }
 
     match /businesses/{businessId} {
       allow get: if true;
       allow create: if isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
     }
     
-   match /config/{docId} {
-    allow get: if isSignedIn();
-    allow write: if isAdmin();
+    match /config/{docId} {
+      allow get: if isSignedIn();
+      allow write: if isAdmin();
     }
 
-   match /admin_events/{eventId} {
-  allow read: if true;
-  allow write, delete: if isAdmin();
-}
-
+    match /admin_events/{eventId} {
+      allow read: if true;
+      allow write, delete: if isAdmin();
+    }
+    
     match /plans/{planId} {
       allow get, list: if true;
       allow write: if isAdmin();
@@ -66,6 +72,7 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Public notifications can be read by anyone, but only created by admin
     match /notifications/{notificationId} {
       allow get: if isSignedIn();
       allow write: if isAdmin();
@@ -75,51 +82,7 @@ service cloud.firestore {
         allow list: if isSignedIn();
     }
 
-    match /users/{userId}/notifications/{notificationId} {
-      allow read, write: if isOwner(userId);
-    }
-
-    match /users/{userId}/menuItems/{itemId} {
-      allow read: if true;
-      allow write: if isOwner(userId);
-    }
-    
-    match /users/{userId}/menuCategories/{categoryId} {
-      allow read: if true;
-      allow write: if isOwner(userId);
-    }
-    
-    match /users/{userId}/combos/{comboId} {
-      allow read: if true;
-      allow write: if isOwner(userId);
-    }
-    
-    match /users/{userId}/events/{eventId} {
-      allow read: if true;
-      allow write: if isOwner(userId);
-    }
-    
-    match /{path=**}/events/{eventId} {
-      allow list: if request.query.keys.hasOnly(['id']) && request.query.id == resource.data.id;
-    }
-
-    match /users/{userId}/events/{eventId}/rsvps/{rsvpId} {
-      allow read: if isOwner(userId);
-      allow create: if true;
-      allow write: if isOwner(userId);
-    }
-    
-    match /users/{userId}/tasks/live {
-      allow read: if isOwner(userId);
-      allow write: if isOwner(userId) || request.resource.data.pendingCalls.size() > resource.data.pendingCalls.size();
-    }
-    
-    match /users/{userId}/feedback/{feedbackId} {
-      allow create: if true;
-      allow read, write, delete: if isOwner(userId);
-    }
-    
-    match /users/{userId}/urgent_feedback/{feedbackId} {
+    match /urgent_feedback/{feedbackId} {
       allow create: if true;
       allow read, delete: if isOwner(userId);
     }
@@ -132,7 +95,7 @@ service cloud.firestore {
     match /supportTickets/{ticketId} {
       allow create: if isSignedIn() && request.auth.uid == request.resource.data.submittedBy;
       allow get: if isOwner(request.resource.data.submittedBy) || isAdmin();
-      allow list: if (isSignedIn() && request.query.where.submittedBy == request.auth.uid) || isAdmin();
+      allow list: if (isSignedIn() && request.query.where[0][2] == request.auth.uid) || isAdmin();
       allow update: if isAdmin() && request.resource.data.keys().hasOnly(['status']);
       allow delete: if isAdmin();
     }
@@ -147,38 +110,6 @@ service cloud.firestore {
       allow read: if isOwner(request.resource.data.userId) || isAdmin();
       allow update, delete: if false;
     }
-
-    match /users/{userId}/staff/{staffId} {
-      allow read, write: if isOwner(userId);
-    }
-
-    match /users/{userId}/staff/{staffId}/attendance/{attendanceId} {
-      allow read, write: if isOwner(userId);
-      allow create: if true;
-    }
-    
-    match /users/{userId}/staff/{staffId}/payroll/{payrollId} {
-        allow read, write: if isOwner(userId);
-    }
-    
-    match /users/{userId}/shifts/{shiftId} {
-      allow read, write: if isOwner(userId);
-    }
-    
-    match /users/{userId}/devices/{deviceId} {
-      // Allow a user to create their own device document.
-      allow create: if isOwner(userId);
-      allow read, write: if isOwner(userId);
-    }
-    
-    match /users/{userId}/tables/{tableId} {
-      allow read, write: if isOwner(userId);
-    }
-
-    match /users/{userId}/activity/{activityId} {
-       allow read, write: if isOwner(userId);
-       allow delete: if request.time > resource.data.timestamp + duration.value(60, 'd');
-    }
     
     match /mobileVerifications/{verificationId} {
       allow create: if true;
@@ -188,6 +119,11 @@ service cloud.firestore {
     match /legal/{docId} {
       allow get, list: if true;
       allow write: if isAdmin();
+    }
+    
+    match /qrlive_contact/{contactId} {
+        allow get, list: if isSignedIn();
+        allow write: if isAdmin();
     }
   }
 }
