@@ -112,31 +112,7 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
   }, []);
 
   useEffect(() => {
-    const audio = audioRef.current;
-    
-    const stopNotifications = () => {
-      if (audio) {
-        audio.pause();
-        audio.currentTime = 0;
-      }
-      if (navigator.vibrate) {
-        navigator.vibrate(0); // Stop vibration
-      }
-    };
-
-    if (unattendedTaskCount > 0 && !isMuted && !dialogsDisabled && audioUnlockedRef.current) {
-      audio?.play().catch(error => console.error("Audio playback failed:", error));
-      if (navigator.vibrate) {
-        navigator.vibrate([200, 100, 200, 100, 200, 100, 200]);
-      }
-    } else {
-      stopNotifications();
-    }
-    
-    return stopNotifications;
-  }, [unattendedTaskCount, isMuted, dialogsDisabled]);
-
-  useEffect(() => {
+    // This effect is now only responsible for the pop-up dialog, not audio.
     if (isDialogOpen && notifiedTask) {
         const isUrgentFeedback = 'type' in notifiedTask;
         
