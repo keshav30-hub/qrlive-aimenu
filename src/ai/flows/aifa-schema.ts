@@ -32,6 +32,7 @@ export const MenuItemSchema = z.object({
   tags: z.array(z.string()),
   addons: z.array(AddonSchema).optional(),
   modifiers: z.array(ModifierSchema).optional(),
+  serves: z.string().optional(),
 });
 export type MenuItemSchema = z.infer<typeof MenuItemSchema>;
 
@@ -67,3 +68,5 @@ export type AIFALowInput = z.infer<typeof AIFALowInputSchema>;
 
 export const AIFALowOutputSchema = z.string();
 export type AIFALowOutput = z.infer<typeof AIFALowOutputSchema>;
+
+    

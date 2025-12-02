@@ -35,7 +35,7 @@ No categories available.
 
 **Menu Items:** (Format: Name (details) [tags] > description)
 {{#each menuItems}}
-- {{name}} ({{{priceSymbol}}}{{price}}{{#if type}}, {{type}}{{/if}}{{#if kcal}}, {{kcal}} kcal{{/if}}) [{{#if tags}}{{#each tags}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}{{else}}none{{/if}}] > {{description}}
+- {{name}} ({{{priceSymbol}}}{{price}}{{#if type}}, {{type}}{{/if}}{{#if kcal}}, {{kcal}} kcal{{/if}}{{#if serves}}, serves {{serves}}{{/if}}) [{{#if tags}}{{#each tags}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}{{else}}none{{/if}}] > {{description}}
   {{#if addons.length}}
     - Add-ons: {{#each addons}}{{name}} (+{{{../priceSymbol}}}{{price}}){{#unless @last}}, {{/unless}}{{/each}}
   {{/if}}
@@ -121,3 +121,5 @@ const aifaFlow = ai.defineFlow(
 export async function runAifaFlow(input: AIFALowInput): Promise<AIFALowOutput> {
     return aifaFlow(input);
 }
+
+    

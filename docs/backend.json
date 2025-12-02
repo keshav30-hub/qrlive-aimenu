@@ -245,6 +245,10 @@
         "imageUrl": {
           "type": "string",
           "description": "URL of the image for the menu item."
+        },
+        "serves": {
+          "type": "string",
+          "description": "Indicates how many people the menu item serves (e.g., '3' or '2-3 people')."
         }
       },
       "required": [

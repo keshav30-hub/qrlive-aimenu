@@ -87,6 +87,7 @@ type MenuItem = {
   available: boolean;
   imageUrl?: string;
   imageStoragePath?: string;
+  serves?: string;
 };
 
 const initialItemState: Omit<MenuItem, 'id'> = {
@@ -101,6 +102,7 @@ const initialItemState: Omit<MenuItem, 'id'> = {
   addons: [{ name: '', price: '' }],
   modifiers: [{ name: '', price: '' }],
   available: true,
+  serves: '',
 };
 
 
@@ -721,9 +723,15 @@ const handleCategoryDayChange = (dayId: string, checked: boolean) => {
                             <Input id="kcal" name="kcal" type="number" value={currentItem.kcal} onChange={handleInputChange} placeholder="e.g. 500" />
                         </div>
                      </div>
-                     <div className="space-y-2">
-                         <Label htmlFor="duration">Preparation Duration (in mins)</Label>
-                         <Input id="duration" name="duration" type="number" value={currentItem.duration} onChange={handleInputChange} placeholder="e.g. 15" />
+                     <div className="grid grid-cols-2 gap-4">
+                         <div className="space-y-2">
+                             <Label htmlFor="duration">Preparation Duration (in mins)</Label>
+                             <Input id="duration" name="duration" type="number" value={currentItem.duration} onChange={handleInputChange} placeholder="e.g. 15" />
+                         </div>
+                         <div className="space-y-2">
+                            <Label htmlFor="serves">Serves (Optional)</Label>
+                            <Input id="serves" name="serves" value={currentItem.serves} onChange={handleInputChange} placeholder="e.g., 2 or 2-3 people" />
+                         </div>
                      </div>
                     <Accordion type="multiple" className="w-full">
                       <AccordionItem value="add-ons">
