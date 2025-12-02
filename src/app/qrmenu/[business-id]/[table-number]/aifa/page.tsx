@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { Button } from "@/components/ui/button";
@@ -22,6 +21,7 @@ import { Star } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { useFirebaseStorage } from "@/firebase/storage/use-firebase-storage";
 import { useFirebase } from "@/firebase";
+import { trackAifaMessage, trackAifaOpen, trackFeedbackSubmission } from "@/lib/gtag";
 
 
 type Message = {
@@ -96,6 +96,7 @@ const FeedbackForm = ({ target, onSubmit }: { target: string, onSubmit: (feedbac
              return;
         }
         setIsSubmitting(true);
+        trackFeedbackSubmission(rating);
         await onSubmit({
             target,
             rating,
@@ -261,6 +262,7 @@ export default function AIFAPage() {
     }, [businessId]);
 
     useEffect(() => {
+        trackAifaOpen();
         if (isLoading) return;
 
         try {
@@ -412,7 +414,7 @@ export default function AIFAPage() {
     const getAIResponse = async (prompt: string) => {
         if (!businessData) return;
         setIsThinking(true);
-
+        trackAifaMessage();
         const historyForAI = messages
             .filter(msg => typeof msg.content === 'string')
             .slice(-HISTORY_LIMIT) // Truncate history before sending
