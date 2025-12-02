@@ -54,6 +54,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import Autoplay from "embla-carousel-autoplay";
 import { cn } from '@/lib/utils';
+import { trackQrScan, trackWaiterCall } from '@/lib/gtag';
 
 
 const serviceRequests = [
@@ -131,6 +132,7 @@ export default function QrMenuPage() {
       }
       
       setIsLoading(true);
+      trackQrScan(businessId, tableNumber); // Track QR Scan event
       const { businessData: bd, userId: fetchedUserId } = await getBusinessDataBySlug(businessId as string);
       
       if (bd && fetchedUserId) {
@@ -148,7 +150,7 @@ export default function QrMenuPage() {
     }
 
     fetchData();
-  }, [businessId]);
+  }, [businessId, tableNumber]);
 
   const handleServiceRequest = async (requestType: string) => {
     if (!userId || typeof tableNumber !== 'string' || typeof businessId !== 'string') return;
@@ -170,6 +172,7 @@ export default function QrMenuPage() {
 
 
     setIsRequestingService(true);
+    trackWaiterCall(requestType); // Track Waiter Call event
     try {
         await submitServiceRequest(userId, tableNumber, requestType);
         localStorage.setItem(cooldownKey, now.toString());
@@ -196,7 +199,7 @@ export default function QrMenuPage() {
     setIsPlacingOrder(true);
     const orderSummary = cart.map(item => `${item.quantity}x ${item.name}`).join(', ');
     const requestType = `New Order: ${orderSummary}`;
-
+    trackWaiterCall('Place Order'); // Track Place Order event
     try {
       await submitServiceRequest(userId, tableNumber, requestType);
       toast({
@@ -527,5 +530,3 @@ export default function QrMenuPage() {
     </div>
   );
 }
-
-    

@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -54,6 +53,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
+import { trackMenuItemView, trackWaiterCall } from '@/lib/gtag';
 
 
 const serviceRequests = [
@@ -88,10 +88,11 @@ const ModifierDialog = ({ item, onAddToCart, open, setOpen }: { item: MenuItem; 
     
     useEffect(() => {
         if(open) {
+            trackMenuItemView(item.name);
             setSelectedModifier(null);
             setSelectedAddons([]);
         }
-    }, [open]);
+    }, [open, item.name]);
 
     const calculateTotalPrice = () => {
         let total = basePrice;
@@ -224,6 +225,7 @@ export default function CategoryMenuPage() {
     if (!userId || typeof tableNumber !== 'string') return;
 
     setIsRequestingService(true);
+    trackWaiterCall(requestType);
     try {
         await submitServiceRequest(userId, tableNumber, requestType);
         toast({
@@ -249,7 +251,7 @@ export default function CategoryMenuPage() {
     setIsPlacingOrder(true);
     const orderSummary = cart.map(item => `${item.quantity}x ${item.name}`).join(', ');
     const requestType = `New Order: ${orderSummary}`;
-
+    trackWaiterCall('Place Order');
     try {
       await submitServiceRequest(userId, tableNumber, requestType);
       toast({
@@ -421,7 +423,7 @@ export default function CategoryMenuPage() {
           </div>
         </header>
 
-        <div className="px-4 flex items-center gap-4 sticky top-[64px] bg-white dark:bg-gray-950 z-10 border-b">
+        <div className="px-4 py-2 flex items-center gap-4 sticky top-[64px] bg-white dark:bg-gray-950 z-10 border-b">
           <div className="relative flex-grow">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input 

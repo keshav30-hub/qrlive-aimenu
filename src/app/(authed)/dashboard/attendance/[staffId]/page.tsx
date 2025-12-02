@@ -12,6 +12,7 @@ import { useFirebaseStorage } from '@/firebase/storage/use-firebase-storage';
 import { doc, addDoc, collection, serverTimestamp, query, where, Timestamp } from 'firebase/firestore';
 import { addMinutes, parse, isAfter, format } from 'date-fns';
 import { useFirebase, useDoc, useCollection, useMemoFirebase } from '@/firebase';
+import { trackAttendanceMarked } from '@/lib/gtag';
 
 type StaffMember = {
   id: string;
@@ -162,7 +163,7 @@ export default function StaffAttendancePage() {
                 status: status,
                 date: dateString,
             });
-
+            trackAttendanceMarked(staffMember.name, status);
             toast({ title: 'Success!', description: `You have been marked as ${status}.`});
 
         } catch (e: any) {
@@ -269,5 +270,3 @@ export default function StaffAttendancePage() {
     </div>
   );
 }
-
-    

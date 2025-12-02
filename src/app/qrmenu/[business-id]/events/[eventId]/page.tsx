@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { getEventById, submitRsvp, type Event } from '@/lib/qrmenu';
 import { useToast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { trackEventRsvp } from '@/lib/gtag';
 
 export default function PublicEventPage() {
   const router = useRouter();
@@ -66,6 +67,7 @@ export default function PublicEventPage() {
         ...rsvpData,
         people: parseInt(rsvpData.people, 10) || 1
       });
+      trackEventRsvp(event.name);
       toast({ title: 'RSVP Submitted!', description: "Thank you for joining our event." });
       setRsvpData({ name: '', email: '', mobile: '', people: '' });
     } catch (error) {

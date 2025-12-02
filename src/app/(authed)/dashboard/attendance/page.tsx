@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Card,
@@ -16,6 +16,7 @@ import { Loader2, Fingerprint } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { trackStaffLogin, trackStaffQrScan } from '@/lib/gtag';
 
 type StaffMember = {
     id: string;
@@ -30,6 +31,10 @@ export default function AccessCodePage() {
   const { firestore, user } = useFirebase();
 
   const staffRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'staff') : null, [firestore, user]);
+
+  useEffect(() => {
+    trackStaffQrScan();
+  }, []);
 
   const handleNumpadClick = (value: string) => {
     if (accessCode.length < 6) {
@@ -58,6 +63,7 @@ export default function AccessCodePage() {
 
       if (!staffSnapshot.empty) {
         const staffDoc = staffSnapshot.docs[0];
+        trackStaffLogin(staffDoc.id);
         router.push(`/dashboard/attendance/${staffDoc.id}`);
       } else {
         toast({
@@ -121,5 +127,3 @@ export default function AccessCodePage() {
     </div>
   );
 }
-
-    
