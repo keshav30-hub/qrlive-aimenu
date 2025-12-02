@@ -53,6 +53,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 
 const serviceRequests = [
@@ -351,12 +352,21 @@ export default function CombosPage() {
         </ScrollArea>
         
         <div className="fixed bottom-4" style={{ right: 'max(1rem, 50% - 224px + 1rem)'}}>
-             <Link href={aifaUrl}>
-                <Button size="icon" className="h-14 w-14 rounded-full shadow-lg bg-primary text-primary-foreground">
-                    <Sparkles className="h-7 w-7 animate-sparkle" />
-                    <span className="sr-only">AI Food Assistant</span>
-                </Button>
-            </Link>
+            <TooltipProvider>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <Link href={aifaUrl}>
+                            <Button size="icon" className="h-14 w-14 rounded-full shadow-lg bg-primary text-primary-foreground">
+                                <Sparkles className="h-7 w-7 animate-sparkle" />
+                                <span className="sr-only">AI Food Assistant</span>
+                            </Button>
+                        </Link>
+                    </TooltipTrigger>
+                    <TooltipContent side="left" className="bg-background/30 backdrop-blur-md border-border/20 text-foreground">
+                        <p>Hi, I'm AIFA! Ask me for suggestions.</p>
+                    </TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
         </div>
       </div>
     </div>
