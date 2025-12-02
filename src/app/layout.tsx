@@ -1,9 +1,12 @@
+
 import type {Metadata} from 'next';
 import {Inter} from 'next/font/google';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { FirebaseClientProvider } from '@/firebase';
 import Script from 'next/script';
+import { GoogleAnalytics } from '@/components/GoogleAnalytics';
+import { GA_TRACKING_ID } from '@/lib/gtag';
 
 const inter = Inter({subsets: ['latin'], variable: '--font-inter'});
 
@@ -20,8 +23,29 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+       <head>
+        {/* Google Analytics */}
+        <Script
+          async
+          src={`https://www.googletagmanager.com/gtag/js?id=${GA_TRACKING_ID}`}
+        ></Script>
+        <Script
+          id="gtag-init"
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', '${GA_TRACKING_ID}', {
+                page_path: window.location.pathname,
+              });
+            `,
+          }}
+        />
+      </head>
       <body className={`${inter.variable}`}>
         <FirebaseClientProvider>
+          <GoogleAnalytics />
           {children}
         </FirebaseClientProvider>
         <Toaster />
