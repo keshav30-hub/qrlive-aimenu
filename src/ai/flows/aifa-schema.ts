@@ -33,6 +33,7 @@ export const MenuItemSchema = z.object({
   addons: z.array(AddonSchema).optional(),
   modifiers: z.array(ModifierSchema).optional(),
   serves: z.string().optional(),
+  ingredients: z.string().optional(),
 });
 export type MenuItemSchema = z.infer<typeof MenuItemSchema>;
 
@@ -40,6 +41,7 @@ export const ComboSchema = z.object({
     name: z.string(),
     items: z.array(z.string()),
     price: z.string(),
+    serves: z.string().optional(),
 });
 
 export const EventSchema = z.object({
@@ -68,5 +70,3 @@ export type AIFALowInput = z.infer<typeof AIFALowInputSchema>;
 
 export const AIFALowOutputSchema = z.string();
 export type AIFALowOutput = z.infer<typeof AIFALowOutputSchema>;
-
-    

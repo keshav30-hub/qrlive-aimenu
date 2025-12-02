@@ -452,12 +452,15 @@ export default function AIFAPage() {
                     tags: item.tags || [],
                     addons: (item.addons || []).map(a => ({ name: a.name, price: a.price.toString() })),
                     modifiers: (item.modifiers || []).map(m => ({ name: m.name, price: m.price.toString() })),
+                    serves: item.serves,
+                    ingredients: (item as any).ingredients || '',
                 }));
 
                 const combosForAI: ComboSchema[] = combos.map((combo) => ({
                     name: combo.name,
                     items: combo.items,
                     price: combo.price.toString(),
+                    serves: combo.serves,
                 }));
 
                  const flowInput: AIFALowInput = {

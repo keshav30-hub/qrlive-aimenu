@@ -49,7 +49,7 @@ import {
   Star,
 } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { getBusinessDataBySlug, getEvents, getMenuData, type BusinessData, type Event, type Category, submitServiceRequest, type MenuItem, type Combo } from '@/lib/qrmenu';
+import { getBusinessDataBySlug, getEvents, getMenuData, type BusinessData, type Event, type Category, submitServiceRequest, type MenuItem, type Combo, getQrliveContact, type QrliveContact } from '@/lib/qrmenu';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import Autoplay from "embla-carousel-autoplay";
@@ -84,6 +84,7 @@ export default function QrMenuPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [combos, setCombos] = useState<Combo[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
+  const [qrliveContact, setQrliveContact] = useState<QrliveContact | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRequestingService, setIsRequestingService] = useState(false);
   const [isServiceRequestDialogOpen, setIsServiceRequestDialogOpen] = useState(false);
@@ -138,13 +139,15 @@ export default function QrMenuPage() {
       if (bd && fetchedUserId) {
         setBusinessData(bd);
         setUserId(fetchedUserId);
-        const [menuData, eventsData] = await Promise.all([
+        const [menuData, eventsData, contactData] = await Promise.all([
           getMenuData(fetchedUserId),
           getEvents(fetchedUserId),
+          getQrliveContact(),
         ]);
         setCategories(menuData.categories);
         setCombos(menuData.combos);
         setEvents(eventsData);
+        setQrliveContact(contactData);
       }
       setIsLoading(false);
     }
@@ -282,11 +285,21 @@ export default function QrMenuPage() {
 
   return (
     <div className="h-screen w-full bg-gray-100 dark:bg-black">
-      <div
-        className="fixed top-4 left-1/2 -translate-x-1/2 z-20 px-3 py-1 bg-primary text-primary-foreground rounded-full shadow-lg text-sm font-bold"
-      >
-        QRLIVE
-      </div>
+        {qrliveContact?.website ? (
+             <a href={qrliveContact.website} target="_blank" rel="noopener noreferrer">
+                <div
+                    className="fixed top-4 left-1/2 -translate-x-1/2 z-20 px-3 py-1 bg-primary text-primary-foreground rounded-full shadow-lg text-sm font-bold"
+                >
+                    QRLIVE
+                </div>
+            </a>
+        ) : (
+            <div
+                className="fixed top-4 left-1/2 -translate-x-1/2 z-20 px-3 py-1 bg-primary text-primary-foreground rounded-full shadow-lg text-sm font-bold"
+            >
+                QRLIVE
+            </div>
+        )}
       <div className="max-w-[480px] mx-auto h-full flex flex-col bg-white dark:bg-gray-950 shadow-lg pt-12">
         <header className="p-2 flex justify-between items-center flex-shrink-0">
           <div className="flex items-center gap-3">

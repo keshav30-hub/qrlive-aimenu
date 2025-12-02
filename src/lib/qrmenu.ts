@@ -55,6 +55,7 @@ export type MenuItem = {
   mrp?: string;
   addons?: Addon[];
   modifiers?: Modifier[];
+  serves?: string;
 };
 
 export type Combo = {
@@ -65,6 +66,7 @@ export type Combo = {
   available: boolean;
   imageUrl?: string;
   imageStoragePath?: string;
+  serves?: string;
 }
 
 export type Event = {
@@ -95,6 +97,10 @@ export type BusinessData = {
     googleReviewLink?: string;
     instagramLink?: string;
 };
+
+export type QrliveContact = {
+    website?: string;
+}
 
 export type Shift = {
     id: string;
@@ -232,6 +238,21 @@ export async function getEventById(businessId: string, eventId: string): Promise
     }
 }
 
+export async function getQrliveContact(): Promise<QrliveContact | null> {
+    const firestore = await getFirestoreInstance();
+    const contactRef = collection(firestore, 'qrlive_contact');
+    try {
+        const snapshot = await getDocs(query(contactRef, limit(1)));
+        if (snapshot.empty) {
+            return null;
+        }
+        return snapshot.docs[0].data() as QrliveContact;
+    } catch (error) {
+        console.error("Error fetching QRLive contact:", error);
+        return null;
+    }
+}
+
 
 export async function submitRsvp(userId: string, eventId: string, rsvpData: RsvpData) {
     const firestore = await getFirestoreInstance();
@@ -302,5 +323,3 @@ export async function submitServiceRequest(userId: string, table: string, reques
       pendingCalls: arrayUnion(newCall)
   }, { merge: true });
 }
-
-    
