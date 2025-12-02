@@ -128,30 +128,10 @@ export default function TasksPage() {
     }
   };
   
-  const simulateTask = async () => {
-    if (!tasksLiveRef) return;
-    const sampleTask = {
-        table: `Table ${(Math.floor(Math.random() * 10) + 1)} (Sim)`,
-        request: 'Call Captain',
-        time: new Date().toISOString(),
-        status: 'unattended' as const
-    };
-    try {
-      await updateDoc(tasksLiveRef, {
-        pendingCalls: arrayUnion(sampleTask)
-      });
-    } catch(e) {
-      console.error(e);
-      toast({ variant: "destructive", title: "Error", description: "Could not simulate task. Make sure tasks document exists." });
-    }
-  };
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Tasks</h1>
-        <Button onClick={simulateTask} variant="secondary">Simulate New Task</Button>
-      </div>
+      <h1 className="text-3xl font-bold">Tasks</h1>
 
        <div className="grid gap-6 md:grid-cols-3">
           <Card>
