@@ -82,8 +82,7 @@ service cloud.firestore {
         allow list: if isSignedIn();
     }
 
-    // Urgent feedback can be created by anyone, but only owners can read/delete.
-    match /users/{userId}/urgent_feedback/{feedbackId} {
+    match /urgent_feedback/{feedbackId} {
       allow create: if true;
       allow read, delete: if isOwner(userId);
     }
@@ -123,8 +122,8 @@ service cloud.firestore {
     }
     
     match /qrlive_contact/{contactId} {
-        allow read, list: if isSignedIn();
-        allow write: if isAdmin();
+      allow read, list: if isSignedIn();
+      allow write: if isAdmin();
     }
   }
 }
