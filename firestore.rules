@@ -70,12 +70,8 @@ service cloud.firestore {
 
     // Public notifications can be read by anyone, but only created by admin
     match /notifications/{notificationId} {
-      allow get: if isSignedIn();
+      allow read: if isSignedIn();
       allow write: if isAdmin();
-    }
-    
-    match /notifications {
-        allow list: if isSignedIn();
     }
 
     match /aifa_feedback/{feedbackId} {
