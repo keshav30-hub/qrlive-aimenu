@@ -288,19 +288,19 @@ export default function QrMenuPage() {
         QRLIVE
       </div>
       <div className="max-w-[480px] mx-auto h-full flex flex-col bg-white dark:bg-gray-950 shadow-lg pt-12">
-        <header className="p-4 flex justify-between items-center flex-shrink-0">
-          <div className="flex items-center gap-4">
+        <header className="p-2 flex justify-between items-center flex-shrink-0">
+          <div className="flex items-center gap-2">
             <Image
               src={businessData.logo}
               alt={`${businessData.name} logo`}
-              width={48}
-              height={48}
+              width={40}
+              height={40}
               className="rounded-full"
             />
             <div>
-              <h1 className="text-xl font-bold">{businessData.name}</h1>
-              <p className="text-sm text-muted-foreground">
-                You are at Table {tableNumber}
+              <h1 className="text-lg font-bold leading-tight">{businessData.name}</h1>
+              <p className="text-xs text-muted-foreground">
+                Table {tableNumber}
               </p>
             </div>
           </div>
