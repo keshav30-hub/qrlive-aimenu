@@ -151,6 +151,7 @@ type Combo = {
   available: boolean;
   imageUrl?: string;
   imageStoragePath?: string;
+  serves?: string;
 }
 
 const initialComboState: Partial<Combo> = {
@@ -161,6 +162,7 @@ const initialComboState: Partial<Combo> = {
   available: true,
   imageUrl: '',
   imageStoragePath: '',
+  serves: '',
 }
 
 const ITEMS_PER_PAGE = 15;
@@ -542,6 +544,7 @@ const handleCategoryDayChange = (dayId: string, checked: boolean) => {
             available: currentCombo.id ? currentCombo.available : true,
             imageUrl: currentCombo.imageUrl || `https://picsum.photos/seed/combo${Date.now()}/400/300`,
             imageStoragePath: currentCombo.imageStoragePath,
+            serves: currentCombo.serves,
         };
 
         if (isEditingCombo && currentCombo.id) {
@@ -1067,6 +1070,10 @@ const handleCategoryDayChange = (dayId: string, checked: boolean) => {
                                       <Input id="combo-price" type="number" placeholder="e.g. 299" value={currentCombo.price} onChange={e => setCurrentCombo(p => ({...p, price: e.target.value}))} />
                                   </div>
                               </div>
+                               <div className="space-y-2">
+                                    <Label htmlFor="serves">Serves (Optional)</Label>
+                                    <Input id="serves" name="serves" value={currentCombo.serves} onChange={e => setCurrentCombo(p => ({...p, serves: e.target.value}))} placeholder="e.g., 2 or 2-3 people" />
+                                </div>
                               <div className="space-y-2">
                                   <div className="flex justify-between items-center">
                                       <Label htmlFor="combo-description">Description</Label>
@@ -1195,5 +1202,3 @@ const handleCategoryDayChange = (dayId: string, checked: boolean) => {
     </div>
   );
 }
-
-    
