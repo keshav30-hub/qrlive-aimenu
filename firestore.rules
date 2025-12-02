@@ -123,8 +123,8 @@ service cloud.firestore {
     }
     
     match /qrlive_contact/{contactId} {
-      allow read, list: if isSignedIn();
-      allow write: if isAdmin();
+        allow read, list: if isSignedIn();
+        allow write: if isAdmin();
     }
   }
 }

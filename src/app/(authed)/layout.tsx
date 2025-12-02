@@ -1,8 +1,9 @@
+
 'use client';
 
 import { useUser, useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import { useRouter, usePathname } from 'next/navigation';
-import { collection, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, updateDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { AppSidebar } from '@/components/layout/sidebar';
 import { SidebarProvider } from '@/components/ui/sidebar';
@@ -32,8 +33,9 @@ type Subscription = {
 
 type Notification = {
     id: string;
-    message: string;
-    timestamp: any;
+    title: string;
+    description: string; // Changed from message
+    sentAt: Timestamp; // Changed from timestamp
     read: boolean;
     link?: string;
 };
@@ -112,25 +114,31 @@ function NotificationPanel() {
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
 
   const notificationsRef = useMemoFirebase(
-    () => (user ? collection(firestore, 'users', user.uid, 'notifications') : null),
+    () => (user ? collection(firestore, 'notifications') : null),
     [firestore, user]
   );
 
   const { data: notifications, isLoading } = useCollection<Notification>(notificationsRef);
 
-  const sortedNotifications = (notifications || []).sort((a, b) => b.timestamp?.toMillis() - a.timestamp?.toMillis());
-  const unreadCount = (notifications || []).filter(n => !n.read).length;
+  const sortedNotifications = (notifications || []).sort((a, b) => b.sentAt?.toMillis() - a.sentAt?.toMillis());
   
-  const handleNotificationClick = async (notification: Notification) => {
-    setSelectedNotification(notification);
-    if (!notification.read && notificationsRef) {
-      try {
-        const notifDoc = doc(notificationsRef, notification.id);
-        await updateDoc(notifDoc, { read: true });
-      } catch (error) {
-        console.error("Failed to mark notification as read:", error);
-        toast({ variant: "destructive", title: "Error", description: "Could not update notification status." });
+  // We need a separate way to track read status, since it's not user-specific in the DB
+  const [readNotifications, setReadNotifications] = useState<string[]>([]);
+  useEffect(() => {
+      const storedReadIds = localStorage.getItem(`readNotifications_${user?.uid}`);
+      if (storedReadIds) {
+          setReadNotifications(JSON.parse(storedReadIds));
       }
+  }, [user]);
+
+  const unreadCount = (notifications || []).filter(n => !readNotifications.includes(n.id)).length;
+  
+  const handleNotificationClick = (notification: Notification) => {
+    setSelectedNotification(notification);
+    if (!readNotifications.includes(notification.id)) {
+        const newReadIds = [...readNotifications, notification.id];
+        setReadNotifications(newReadIds);
+        localStorage.setItem(`readNotifications_${user?.uid}`, JSON.stringify(newReadIds));
     }
   };
 
@@ -161,16 +169,17 @@ function NotificationPanel() {
                   onClick={() => handleNotificationClick(notification)}
                   className={cn(
                     "flex items-start gap-3 rounded-lg border p-3 cursor-pointer transition-colors hover:bg-accent",
-                    !notification.read && "bg-blue-50 dark:bg-blue-900/20"
+                    !readNotifications.includes(notification.id) && "bg-blue-50 dark:bg-blue-900/20"
                   )}
                 >
-                  {!notification.read && (
+                  {!readNotifications.includes(notification.id) && (
                     <span className="mt-1.5 h-2 w-2 rounded-full bg-blue-500 flex-shrink-0" />
                   )}
                   <div className="flex-1">
-                    <p className="text-sm font-medium line-clamp-2">{notification.message}</p>
+                    <p className="font-semibold">{notification.title}</p>
+                    <p className="text-sm text-muted-foreground line-clamp-2">{notification.description}</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {notification.timestamp?.toDate().toLocaleString()}
+                      {notification.sentAt?.toDate().toLocaleString()}
                     </p>
                   </div>
                 </div>
@@ -185,13 +194,13 @@ function NotificationPanel() {
       <Dialog open={!!selectedNotification} onOpenChange={(isOpen) => !isOpen && setSelectedNotification(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Notification Details</DialogTitle>
+            <DialogTitle>{selectedNotification?.title}</DialogTitle>
              <DialogDescription>
-                {selectedNotification?.timestamp?.toDate().toLocaleString()}
+                {selectedNotification?.sentAt?.toDate().toLocaleString()}
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-             <p className="text-sm">{selectedNotification?.message}</p>
+             <p className="text-sm">{selectedNotification?.description}</p>
              {selectedNotification?.link && (
                  <a href={selectedNotification.link} target="_blank" rel="noopener noreferrer">
                     <Button variant="outline" className="mt-4 w-full">
