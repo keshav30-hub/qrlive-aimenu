@@ -15,10 +15,6 @@ service cloud.firestore {
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
-
-    match /{document=**} {
-      allow read, write: if false;
-    }
     
     match /users/{userId} {
       allow get: if true;
@@ -82,11 +78,6 @@ service cloud.firestore {
         allow list: if isSignedIn();
     }
 
-    match /urgent_feedback/{feedbackId} {
-      allow create: if true;
-      allow read, delete: if isOwner(userId);
-    }
-
     match /aifa_feedback/{feedbackId} {
         allow create: if true;
         allow read, write, delete: if isAdmin();
@@ -122,8 +113,13 @@ service cloud.firestore {
     }
     
     match /qrlive_contact/{contactId} {
-      allow read, list: if isSignedIn();
+      allow get, list: if isSignedIn();
       allow write: if isAdmin();
+    }
+
+    // This must be the last rule, as it's a catch-all
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
