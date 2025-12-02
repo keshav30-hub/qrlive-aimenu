@@ -66,6 +66,10 @@ service cloud.firestore {
         allow list: if isSignedIn();
     }
 
+    match /users/{userId}/notifications/{notificationId} {
+      allow read, write: if isOwner(userId);
+    }
+
     match /users/{userId}/menuItems/{itemId} {
       allow read: if true;
       allow write: if isOwner(userId);
