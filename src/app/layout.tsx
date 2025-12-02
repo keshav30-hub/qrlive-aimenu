@@ -4,9 +4,8 @@ import {Inter} from 'next/font/google';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { FirebaseClientProvider } from '@/firebase';
-import Script from 'next/script';
 import { GoogleAnalytics } from '@/components/GoogleAnalytics';
-import { GA_TRACKING_ID } from '@/lib/gtag';
+import { Suspense } from 'react';
 
 const inter = Inter({subsets: ['latin'], variable: '--font-inter'});
 
@@ -24,35 +23,19 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
        <head>
-        {/* Google Analytics */}
-        <Script
-          async
-          src={`https://www.googletagmanager.com/gtag/js?id=${GA_TRACKING_ID}`}
-        ></Script>
-        <Script
-          id="gtag-init"
-          dangerouslySetInnerHTML={{
-            __html: `
-              window.dataLayer = window.dataLayer || [];
-              function gtag(){dataLayer.push(arguments);}
-              gtag('js', new Date());
-              gtag('config', '${GA_TRACKING_ID}', {
-                page_path: window.location.pathname,
-              });
-            `,
-          }}
-        />
       </head>
       <body className={`${inter.variable}`}>
         <FirebaseClientProvider>
-          <GoogleAnalytics />
+          <Suspense>
+            <GoogleAnalytics />
+          </Suspense>
           {children}
         </FirebaseClientProvider>
         <Toaster />
-        <Script
+        <script
           id="razorpay-checkout-js"
           src="https://checkout.razorpay.com/v1/checkout.js"
-        />
+        ></script>
       </body>
     </html>
   );
