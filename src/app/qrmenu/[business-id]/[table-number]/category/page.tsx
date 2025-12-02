@@ -499,7 +499,7 @@ export default function CategoryMenuPage() {
         
         <div className="fixed bottom-4" style={{ right: 'max(1rem, 50% - 224px + 1rem)'}}>
             <TooltipProvider>
-                <Tooltip>
+                <Tooltip defaultOpen>
                     <TooltipTrigger asChild>
                         <Link href={aifaUrl}>
                             <Button size="icon" className="h-14 w-14 rounded-full shadow-lg bg-primary text-primary-foreground">
