@@ -287,7 +287,7 @@ export default function QrMenuPage() {
       >
         QRLIVE
       </div>
-      <div className="max-w-[480px] mx-auto h-full flex flex-col bg-white dark:bg-gray-950 shadow-lg">
+      <div className="max-w-[480px] mx-auto h-full flex flex-col bg-white dark:bg-gray-950 shadow-lg pt-12">
         <header className="p-4 flex justify-between items-center flex-shrink-0">
           <div className="flex items-center gap-4">
             <Image
@@ -538,5 +538,3 @@ export default function QrMenuPage() {
     </div>
   );
 }
-
-    
