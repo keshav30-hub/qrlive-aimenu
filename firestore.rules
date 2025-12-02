@@ -96,7 +96,7 @@ service cloud.firestore {
     match /supportTickets/{ticketId} {
       allow create: if isSignedIn() && request.auth.uid == request.resource.data.submittedBy;
       allow get: if isOwner(request.resource.data.submittedBy) || isAdmin();
-      allow list: if (isSignedIn() && request.query.where[0][2] == request.auth.uid) || isAdmin();
+      allow list: if (isSignedIn() && request.query.filters.size() == 1 && request.query.filters[0].field.string_value == 'submittedBy' && request.query.filters[0].value.string_value == request.auth.uid) || isAdmin();
       allow update: if isAdmin() && request.resource.data.keys().hasOnly(['status']);
       allow delete: if isAdmin();
     }
@@ -123,7 +123,7 @@ service cloud.firestore {
     }
     
     match /qrlive_contact/{contactId} {
-      allow read: if isSignedIn();
+      allow read, list: if isSignedIn();
       allow write: if isAdmin();
     }
   }
