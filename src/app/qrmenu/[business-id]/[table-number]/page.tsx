@@ -55,7 +55,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import Autoplay from "embla-carousel-autoplay";
 import { cn } from '@/lib/utils';
 import { trackQrScan, trackWaiterCall } from '@/lib/gtag';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 
 const serviceRequests = [
@@ -513,28 +512,22 @@ export default function QrMenuPage() {
           </main>
         </ScrollArea>
         
-        <div className="fixed bottom-4" style={{ right: 'max(1rem, 50% - 224px + 1rem)'}}>
-            <TooltipProvider>
-                <Tooltip defaultOpen>
-                    <TooltipTrigger asChild>
-                         <Link href={aifaUrl}>
-                            <Button size="icon" className="h-14 w-14 rounded-full shadow-lg bg-primary text-primary-foreground"
-                            onClick={(e) => {
-                                if(!userId) {
-                                    e.preventDefault();
-                                    toast({variant: 'destructive', title: 'AI Assistant Not Ready', description: 'Please wait a moment and try again.'})
-                                }
-                            }}>
-                                <Sparkles className="h-7 w-7 animate-sparkle" />
-                                <span className="sr-only">AI Food Assistant</span>
-                            </Button>
-                        </Link>
-                    </TooltipTrigger>
-                    <TooltipContent side="left" className="bg-background/30 backdrop-blur-md border-border/20 text-foreground">
-                        <p>Hi, I'm AIFA! Ask me for suggestions.</p>
-                    </TooltipContent>
-                </Tooltip>
-            </TooltipProvider>
+        <div className="fixed bottom-4 right-4 flex items-center gap-2">
+            <div className="z-50 overflow-hidden rounded-md border bg-background/30 backdrop-blur-md px-3 py-1.5 text-sm text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95">
+                <p>Hi, I'm AIFA! Ask me for suggestions.</p>
+            </div>
+            <Link href={aifaUrl}>
+                <Button size="icon" className="h-14 w-14 rounded-full shadow-lg bg-primary text-primary-foreground"
+                onClick={(e) => {
+                    if(!userId) {
+                        e.preventDefault();
+                        toast({variant: 'destructive', title: 'AI Assistant Not Ready', description: 'Please wait a moment and try again.'})
+                    }
+                }}>
+                    <Sparkles className="h-7 w-7 animate-sparkle" />
+                    <span className="sr-only">AI Food Assistant</span>
+                </Button>
+            </Link>
         </div>
       </div>
     </div>
