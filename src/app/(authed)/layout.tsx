@@ -3,7 +3,7 @@
 
 import { useUser, useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import { useRouter, usePathname } from 'next/navigation';
-import { collection, doc, updateDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { collection, doc, updateDoc, serverTimestamp, Timestamp, query, where, orderBy } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { AppSidebar } from '@/components/layout/sidebar';
 import { SidebarProvider } from '@/components/ui/sidebar';
@@ -25,6 +25,7 @@ import { useToast } from '@/hooks/use-toast';
 type UserProfile = {
     onboarding: boolean;
     adminAccessCode?: string;
+    createdAt?: Timestamp;
 };
 
 type Subscription = {
@@ -34,8 +35,8 @@ type Subscription = {
 type Notification = {
     id: string;
     title: string;
-    description: string; // Changed from message
-    sentAt: Timestamp; // Changed from timestamp
+    description: string; 
+    sentAt: Timestamp; 
     read: boolean;
     link?: string;
 };
@@ -109,25 +110,33 @@ function AuthRedirect({ children }: { children: React.ReactNode }) {
 
 function NotificationPanel() {
   const { firestore, user } = useFirebase();
-  const { toast } = useToast();
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
 
-  const notificationsRef = useMemoFirebase(
-    () => (user ? collection(firestore, 'notifications') : null),
-    [firestore, user]
-  );
+  const userDocRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [user, firestore]);
+  const { data: userProfile } = useDoc<UserProfile>(userDocRef);
 
-  const { data: notifications, isLoading } = useCollection<Notification>(notificationsRef);
-
-  const sortedNotifications = (notifications || []).sort((a, b) => b.sentAt?.toMillis() - a.sentAt?.toMillis());
+  const notificationsRef = useMemoFirebase(() => collection(firestore, 'notifications'), [firestore]);
   
-  // We need a separate way to track read status, since it's not user-specific in the DB
+  const notificationsQuery = useMemoFirebase(() => {
+    if (!notificationsRef || !userProfile?.createdAt) return null;
+    return query(
+      notificationsRef,
+      where('sentAt', '>', userProfile.createdAt),
+      orderBy('sentAt', 'desc')
+    );
+  }, [notificationsRef, userProfile?.createdAt]);
+
+  const { data: notifications, isLoading } = useCollection<Notification>(notificationsQuery);
+  
   const [readNotifications, setReadNotifications] = useState<string[]>([]);
+
   useEffect(() => {
-      const storedReadIds = localStorage.getItem(`readNotifications_${user?.uid}`);
-      if (storedReadIds) {
-          setReadNotifications(JSON.parse(storedReadIds));
+      if (user?.uid) {
+        const storedReadIds = localStorage.getItem(`readNotifications_${user.uid}`);
+        if (storedReadIds) {
+            setReadNotifications(JSON.parse(storedReadIds));
+        }
       }
   }, [user]);
 
@@ -135,10 +144,10 @@ function NotificationPanel() {
   
   const handleNotificationClick = (notification: Notification) => {
     setSelectedNotification(notification);
-    if (!readNotifications.includes(notification.id)) {
+    if (user && !readNotifications.includes(notification.id)) {
         const newReadIds = [...readNotifications, notification.id];
         setReadNotifications(newReadIds);
-        localStorage.setItem(`readNotifications_${user?.uid}`, JSON.stringify(newReadIds));
+        localStorage.setItem(`readNotifications_${user.uid}`, JSON.stringify(newReadIds));
     }
   };
 
@@ -162,8 +171,8 @@ function NotificationPanel() {
           <div className="mt-4 space-y-2">
             {isLoading ? (
               <p>Loading notifications...</p>
-            ) : sortedNotifications.length > 0 ? (
-              sortedNotifications.map((notification) => (
+            ) : notifications && notifications.length > 0 ? (
+              notifications.map((notification) => (
                 <div
                   key={notification.id}
                   onClick={() => handleNotificationClick(notification)}
@@ -185,7 +194,7 @@ function NotificationPanel() {
                 </div>
               ))
             ) : (
-              <p className="text-sm text-muted-foreground text-center py-10">No notifications yet.</p>
+              <p className="text-sm text-muted-foreground text-center py-10">No new notifications.</p>
             )}
           </div>
         </SheetContent>
