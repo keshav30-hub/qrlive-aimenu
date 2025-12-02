@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Edit, Save, X, Upload, Fingerprint, RefreshCw, Crown, ExternalLink, Instagram, Globe, Eye, EyeOff, Loader2, Download, QrCode } from 'lucide-react';
+import { Edit, Save, X, Upload, Fingerprint, RefreshCw, Crown, ExternalLink, Instagram, Globe, Eye, EyeOff, Loader2, Download, QrCode, Mail, Phone } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -25,6 +25,7 @@ import { format } from 'date-fns';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { Separator } from '@/components/ui/separator';
 
 type BusinessInfo = {
   name: string;
@@ -57,6 +58,13 @@ type SupportTicket = {
     description: string;
     status: 'open' | 'in_progress' | 'resolved' | 'closed';
     createdAt: Timestamp;
+}
+
+type ContactInfo = {
+    email: string;
+    mobile: string;
+    website: string;
+    instagram: string;
 }
 
 const statusVariant = (status: SupportTicket['status']) => {
@@ -95,9 +103,11 @@ export default function SettingsPage() {
   const staffRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'staff') : null, [firestore, user]);
   const subscriptionRef = useMemoFirebase(() => (user ? doc(firestore, 'subscriptions', user.uid) : null), [user, firestore]);
   const ticketsRef = useMemoFirebase(() => user ? collection(firestore, 'supportTickets') : null, [firestore, user]);
+  const contactRef = useMemoFirebase(() => collection(firestore, 'qrlive_contact'), [firestore]);
 
   const userTicketsQuery = useMemoFirebase(() => ticketsRef ? query(ticketsRef, where('submittedBy', '==', user?.uid || '')) : null, [ticketsRef, user]);
-
+  
+  const { data: contactData, isLoading: isContactLoading } = useCollection<ContactInfo>(contactRef);
   const { data: businessInfo, isLoading: isInfoLoading } = useDoc<BusinessInfo>(userRef);
   const { data: staffList } = useCollection<StaffMember>(staffRef);
   const { data: subscription, isLoading: isSubscriptionLoading } = useDoc<Subscription>(subscriptionRef);
@@ -113,6 +123,8 @@ export default function SettingsPage() {
   const [ticketType, setTicketType] = useState('');
   const [ticketDescription, setTicketDescription] = useState('');
   const [isSubmittingTicket, setIsSubmittingTicket] = useState(false);
+
+  const contactInfo = contactData?.[0];
 
   useEffect(() => {
     if (businessInfo) {
@@ -580,6 +592,42 @@ export default function SettingsPage() {
                         )}
                     </TableBody>
                 </Table>
+            </CardContent>
+        </Card>
+
+        <Card className="md:col-span-2">
+            <CardHeader>
+                <CardTitle>Contact Us</CardTitle>
+                <CardDescription>Get in touch with our team for any support or inquiries.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                {isContactLoading ? (
+                    <p>Loading contact info...</p>
+                ) : contactInfo ? (
+                    <>
+                        <div className="flex items-center gap-4">
+                            <Mail className="h-5 w-5 text-muted-foreground" />
+                            <a href={`mailto:${contactInfo.email}`} className="font-medium hover:underline">{contactInfo.email}</a>
+                        </div>
+                        <Separator />
+                        <div className="flex items-center gap-4">
+                            <Phone className="h-5 w-5 text-muted-foreground" />
+                            <a href={`tel:${contactInfo.mobile}`} className="font-medium hover:underline">{contactInfo.mobile}</a>
+                        </div>
+                        <Separator />
+                        <div className="flex items-center gap-4">
+                            <Globe className="h-5 w-5 text-muted-foreground" />
+                            <a href={contactInfo.website} target="_blank" rel="noopener noreferrer" className="font-medium hover:underline">{contactInfo.website}</a>
+                        </div>
+                        <Separator />
+                         <div className="flex items-center gap-4">
+                            <Instagram className="h-5 w-5 text-muted-foreground" />
+                            <a href={contactInfo.instagram} target="_blank" rel="noopener noreferrer" className="font-medium hover:underline">Follow us on Instagram</a>
+                        </div>
+                    </>
+                ) : (
+                    <p className="text-muted-foreground">Contact information is not available at the moment.</p>
+                )}
             </CardContent>
         </Card>
       </div>

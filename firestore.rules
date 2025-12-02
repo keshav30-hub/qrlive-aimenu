@@ -127,5 +127,12 @@ service cloud.firestore {
       allow get, list: if true;
       allow write: if isAdmin();
     }
+    
+    match /qrlive_contact/{contactId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
   }
 }
+
+    
