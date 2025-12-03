@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -122,3 +123,12 @@ export {
   DialogTitle,
   DialogDescription,
 }
+export {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogContent,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogDescription,
+} from '@/components/ui/alert-dialog'

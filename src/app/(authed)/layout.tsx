@@ -18,9 +18,18 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+
 
 type UserProfile = {
     onboarding: boolean;
@@ -30,6 +39,7 @@ type UserProfile = {
 
 type Subscription = {
     status: 'active' | 'inactive';
+    expiresAt?: Timestamp;
 }
 
 type Notification = {
@@ -68,12 +78,25 @@ function AuthRedirect({ children }: { children: React.ReactNode }) {
             return;
         }
         
-        if (subscription && subscription.status === 'inactive' && pathname !== '/dashboard/subscription') {
+        // --- START: Robust Subscription Check ---
+        const now = new Date();
+        const isSubscriptionActive = subscription?.status === 'active' && subscription.expiresAt && subscription.expiresAt.toDate() > now;
+
+        // If subscription has expired but status is still 'active', update it in the background.
+        if (subscription?.status === 'active' && subscription.expiresAt && subscription.expiresAt.toDate() <= now) {
+            if(subscriptionRef) {
+                // This is a non-blocking write. It won't slow down the redirect.
+                updateDocumentNonBlocking(subscriptionRef, { status: 'inactive' });
+            }
+        }
+        
+        if (!isSubscriptionActive && pathname !== '/dashboard/subscription') {
             router.replace('/dashboard/subscription');
             return;
         }
+        // --- END: Robust Subscription Check ---
 
-    }, [user, userProfile, subscription, isDataLoading, router, pathname]);
+    }, [user, userProfile, subscription, isDataLoading, router, pathname, subscriptionRef]);
 
     const isLoading = isUserLoading || (user && (isProfileLoading || isSubscriptionLoading));
 
@@ -85,21 +108,27 @@ function AuthRedirect({ children }: { children: React.ReactNode }) {
         );
     }
     
-    if (user && userProfile?.onboarding && subscription?.status === 'active') {
-        return (
-            <TaskNotificationProvider>
-                {children}
-            </TaskNotificationProvider>
-        );
-    }
+    // --- START: Modified Access Control ---
+    const hasActiveSubscription = subscription?.status === 'active' && subscription.expiresAt && subscription.expiresAt.toDate() > new Date();
 
-    if (pathname === '/dashboard/subscription' && subscription?.status === 'inactive') {
-        return (
-            <TaskNotificationProvider>
-                {children}
-            </TaskNotificationProvider>
-        );
+    if (user && userProfile?.onboarding) {
+        if (hasActiveSubscription) {
+             return (
+                <TaskNotificationProvider>
+                    {children}
+                </TaskNotificationProvider>
+            );
+        }
+        // Allow access to subscription page even if inactive
+        if (pathname === '/dashboard/subscription') {
+            return (
+                <TaskNotificationProvider>
+                    {children}
+                </TaskNotificationProvider>
+            );
+        }
     }
+    // --- END: Modified Access Control ---
 
     return (
         <div className="flex h-screen items-center justify-center">
