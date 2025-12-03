@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Button } from "@/components/ui/button";
@@ -36,11 +35,17 @@ const getUniqueMessageId = () => {
     return `${Date.now()}-${messageIdCounter++}`;
 };
 
+const ChipButton = ({ text, onSelect }: { text: string; onSelect: (text: string) => void }) => (
+    <Button variant="outline" size="sm" className="h-auto py-1 px-3" onClick={() => onSelect(text)}>
+        {text}
+    </Button>
+);
+
 const InitialActions = ({ onSelect, showEventsButton }: { onSelect: (action: string) => void, showEventsButton: boolean }) => (
     <div className="flex flex-wrap gap-2 justify-center py-2">
-        <Button variant="outline" onClick={() => onSelect('Menu')}>Menu</Button>
-        <Button variant="outline" onClick={() => onSelect('Give Feedback')}>Give Feedback</Button>
-        {showEventsButton && <Button variant="outline" onClick={() => onSelect('Events')}>Events</Button>}
+        <ChipButton text="Menu" onSelect={onSelect} />
+        <ChipButton text="Give Feedback" onSelect={onSelect} />
+        {showEventsButton && <ChipButton text="Events" onSelect={onSelect} />}
     </div>
 );
 
@@ -66,8 +71,8 @@ const EventCard = ({ event, businessId }: { event: Event, businessId: string }) 
 const FeedbackTargetSelection = ({ onSelect }: { onSelect: (target: string) => void }) => {
     return (
         <div className="flex flex-wrap gap-2 justify-center py-2">
-            <Button variant="outline" onClick={() => onSelect('Business')}>Business</Button>
-            <Button variant="outline" onClick={() => onSelect('AIFA')}>AIFA</Button>
+            <ChipButton text="Business" onSelect={onSelect} />
+            <ChipButton text="AIFA" onSelect={onSelect} />
         </div>
     );
 };
@@ -208,7 +213,6 @@ export default function AIFAPage() {
     
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputValue, setInputValue] = useState('');
-    const [showInitialActions, setShowInitialActions] = useState(true);
     const [isThinking, setIsThinking] = useState(false);
     const scrollViewportRef = useRef<HTMLDivElement>(null);
 
@@ -233,7 +237,6 @@ export default function AIFAPage() {
         setMessages([initialMessage]);
         sessionStorage.removeItem('aifa-chat-history');
         sessionStorage.setItem('aifa-chat-history', JSON.stringify([initialMessage]));
-        setShowInitialActions(true);
         toast({ title: 'Chat cleared', description: 'Your conversation has been restarted.' });
     };
 
@@ -273,7 +276,6 @@ export default function AIFAPage() {
               const textMessages = savedMessages.filter((msg: any) => typeof msg.content === 'string');
               if (textMessages.length > 1) { 
                 setMessages(textMessages);
-                setShowInitialActions(false);
                 return;
               }
             }
@@ -376,14 +378,27 @@ export default function AIFAPage() {
         }
     };
 
-    const handleInitialAction = async (action: string) => {
+    const handleChipSelect = (action: string) => {
         addMessage('user', action);
-        setShowInitialActions(false);
-        await getAIResponse(action);
+        getAIResponse(action);
     };
-    
+
     const processAIResponse = (response: string) => {
-        if (response.includes('[SUGGEST_FEEDBACK]')) {
+        if (response.includes('[CHIP:')) {
+            const parts = response.split(/(\[CHIP:[^\]]+\])/).filter(part => part);
+            const content = (
+                <div className="space-y-3">
+                    <p>{parts.find(p => !p.startsWith('[CHIP:'))}</p>
+                    <div className="flex flex-wrap gap-2">
+                        {parts.filter(p => p.startsWith('[CHIP:')).map((chip, index) => {
+                            const text = chip.replace('[CHIP:', '').replace(']', '');
+                            return <ChipButton key={index} text={text} onSelect={handleChipSelect} />;
+                        })}
+                    </div>
+                </div>
+            );
+            addMessage('aifa', content);
+        } else if (response.includes('[SUGGEST_FEEDBACK]')) {
             const cleanResponse = response.replace('[SUGGEST_FEEDBACK]', '').trim();
             if (cleanResponse) addMessage('aifa', cleanResponse);
             addMessage('aifa', <div><p>I can help with that. Who is this feedback for?</p><FeedbackTargetSelection onSelect={handleFeedbackTarget} /></div>);
@@ -492,7 +507,6 @@ export default function AIFAPage() {
             const userMessage = inputValue.trim();
             addMessage('user', userMessage);
             setInputValue('');
-            setShowInitialActions(false);
             await getAIResponse(userMessage);
         }
     };
@@ -506,6 +520,9 @@ export default function AIFAPage() {
             </div>
         );
     }
+    
+    // Determine if the initial actions should be shown
+    const showInitialActions = messages.length <= 1;
 
     return (
         <div className="h-screen w-full bg-gray-100 dark:bg-black">
@@ -554,7 +571,7 @@ export default function AIFAPage() {
                                  </div>
                             </div>
                         )}
-                         {showInitialActions && <InitialActions onSelect={handleInitialAction} showEventsButton={activeEvents.length > 0} />}
+                         {showInitialActions && <InitialActions onSelect={handleChipSelect} showEventsButton={activeEvents.length > 0} />}
                     </div>
                 </ScrollArea>
 
