@@ -26,7 +26,7 @@ export const MenuItemSchema = z.object({
   name: z.string(),
   category: z.string(),
   price: z.string(),
-  type: z.enum(['veg', 'non-veg']),
+  type: z.enum(['veg', 'non-veg', 'na']),
   description: z.string(),
   kcal: z.string(),
   tags: z.array(z.string()),

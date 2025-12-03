@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -297,7 +296,7 @@ export default function CategoryMenuPage() {
       const itemCategory = item.category.toLowerCase();
       const matchesCategory = itemCategory === categoryName;
       const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesType = !showVegOnly || item.type === 'veg';
+      const matchesType = !showVegOnly || item.type === 'veg' || item.type === 'na';
       return matchesCategory && matchesSearch && matchesType;
     });
   }, [menuItems, combos, categoryName, searchTerm, showVegOnly, isComboPage]);
@@ -461,7 +460,7 @@ export default function CategoryMenuPage() {
                   </div>
                   <CardContent className="p-2 flex flex-col flex-grow">
                     <div className="flex items-center gap-2">
-                        {!isComboPage && <div className={`h-3 w-3 rounded-full border flex-shrink-0 ${(item as MenuItem).type === 'veg' ? 'bg-green-500 border-green-600' : 'bg-red-500 border-red-600'}`}></div>}
+                        {!isComboPage && (item as MenuItem).type !== 'na' && <div className={`h-3 w-3 rounded-full border flex-shrink-0 ${(item as MenuItem).type === 'veg' ? 'bg-green-500 border-green-600' : 'bg-red-500 border-red-600'}`}></div>}
                         <h3 className="font-semibold text-xs flex-grow leading-tight">{item.name}</h3>
                     </div>
                     <div className="flex justify-between items-center mt-1">
@@ -497,18 +496,9 @@ export default function CategoryMenuPage() {
             />
         )}
         
-        <div className="fixed bottom-4 right-4 flex items-center gap-2">
-            <div className="z-50 overflow-hidden rounded-md border bg-background/30 backdrop-blur-md px-3 py-1.5 text-sm text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95">
-                <p>Hi, I'm AIFA! Ask me for suggestions.</p>
-            </div>
-            <Link href={aifaUrl}>
-                <Button size="icon" className="h-14 w-14 rounded-full shadow-lg bg-primary text-primary-foreground"
-                onClick={(e) => {
-                    if(!userId) {
-                        e.preventDefault();
-                        toast({variant: 'destructive', title: 'AI Assistant Not Ready', description: 'Please wait a moment and try again.'})
-                    }
-                }}>
+        <div className="fixed bottom-4" style={{ right: 'max(1rem, 50% - 224px + 1rem)'}}>
+             <Link href={aifaUrl}>
+                <Button size="icon" className="h-14 w-14 rounded-full shadow-lg bg-primary text-primary-foreground">
                     <Sparkles className="h-7 w-7 animate-sparkle" />
                     <span className="sr-only">AI Food Assistant</span>
                 </Button>

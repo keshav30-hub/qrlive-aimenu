@@ -81,7 +81,7 @@ type MenuItem = {
   mrp: string;
   kcal: string;
   duration: string;
-  type: 'veg' | 'non-veg';
+  type: 'veg' | 'non-veg' | 'na';
   addons: Addon[];
   modifiers: Modifier[];
   available: boolean;
@@ -271,7 +271,7 @@ export default function MenuPage() {
   };
   
   const handleRadioChange = (value: string) => {
-    setCurrentItem(prev => ({ ...prev, type: value as 'veg' | 'non-veg' }));
+    setCurrentItem(prev => ({ ...prev, type: value as 'veg' | 'non-veg' | 'na' }));
   };
   
   const handleCategorySelectChange = (value: string) => {
@@ -692,6 +692,10 @@ const handleCategoryDayChange = (dayId: string, checked: boolean) => {
                           <RadioGroupItem value="non-veg" id="non-veg" />
                           <Label htmlFor="non-veg" className="font-normal">Non-Veg</Label>
                         </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="na" id="na" />
+                          <Label htmlFor="na" className="font-normal">N/A</Label>
+                        </div>
                       </RadioGroup>
                     </div>
                     <div className="space-y-2">
@@ -826,6 +830,7 @@ const handleCategoryDayChange = (dayId: string, checked: boolean) => {
                                 <SelectItem value="all">All Types</SelectItem>
                                 <SelectItem value="veg">Veg</SelectItem>
                                 <SelectItem value="non-veg">Non-Veg</SelectItem>
+                                <SelectItem value="na">N/A</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
