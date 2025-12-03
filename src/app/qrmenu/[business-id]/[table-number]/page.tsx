@@ -39,7 +39,6 @@ import {
   Plus,
   Minus,
   Trash2,
-  Bell,
   ConciergeBell,
   FileText,
   Sparkles,
@@ -438,7 +437,7 @@ export default function QrMenuPage() {
             <Dialog open={isServiceRequestDialogOpen} onOpenChange={setIsServiceRequestDialogOpen}>
                 <DialogTrigger asChild>
                     <Button size="icon" className="bg-primary text-primary-foreground">
-                        <Bell className="h-6 w-6" />
+                        <ConciergeBell className="h-6 w-6" />
                         <span className="sr-only">Call Waiter</span>
                     </Button>
                 </DialogTrigger>

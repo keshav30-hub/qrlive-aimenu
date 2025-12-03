@@ -33,7 +33,6 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useCurrency } from '@/hooks/use-currency';
 import {
-  Bell,
   ChevronLeft,
   Search,
   ConciergeBell,
@@ -400,7 +399,7 @@ export default function CategoryMenuPage() {
             <Dialog open={isServiceRequestDialogOpen} onOpenChange={setIsServiceRequestDialogOpen}>
                 <DialogTrigger asChild>
                     <Button size="icon" className="bg-primary text-primary-foreground">
-                        <Bell className="h-6 w-6" />
+                        <ConciergeBell className="h-6 w-6" />
                         <span className="sr-only">Call Waiter</span>
                     </Button>
                 </DialogTrigger>
