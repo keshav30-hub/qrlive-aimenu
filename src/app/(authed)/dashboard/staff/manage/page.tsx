@@ -304,6 +304,8 @@ export default function StaffManagementPage() {
   const { toast } = useToast();
   const router = useRouter();
   
+  const [isVerified, setIsVerified] = useState(false);
+  
   const userRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const staffRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'staff') : null, [firestore, user]);
   const shiftsRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'shifts') : null, [firestore, user]);
@@ -337,6 +339,8 @@ export default function StaffManagementPage() {
   useEffect(() => {
     if (sessionStorage.getItem('staff_access_granted') !== 'true') {
         router.replace('/dashboard/staff');
+    } else {
+        setIsVerified(true);
     }
   }, [router]);
 
@@ -464,6 +468,9 @@ export default function StaffManagementPage() {
     }
   }
 
+  if (!isVerified) {
+    return <div className="flex h-screen w-full items-center justify-center">Verifying access...</div>;
+  }
 
   return (
     <div className="space-y-6">

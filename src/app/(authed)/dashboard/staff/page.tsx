@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -33,11 +34,10 @@ export default function StaffAccessCodePage() {
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userRef);
 
   useEffect(() => {
-    // Check if access is already granted via session storage
-    if (sessionStorage.getItem('staff_access_granted') === 'true') {
-      router.replace('/dashboard/staff/manage');
-    }
-  }, [router]);
+    // When the component mounts or the user navigates away and back,
+    // ensure any previous access grant is cleared.
+    sessionStorage.removeItem('staff_access_granted');
+  }, []);
 
   const handleNumpadClick = (value: string) => {
     if (accessCode.length < 6) {
@@ -65,6 +65,8 @@ export default function StaffAccessCodePage() {
         title: 'Access Granted',
         description: 'Redirecting to staff management...',
       });
+      // Set a flag in session storage to grant access for this session only.
+      // The management page will check for this flag.
       sessionStorage.setItem('staff_access_granted', 'true');
       router.push('/dashboard/staff/manage');
     } else {
