@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from "@/components/ui/button";
@@ -384,15 +385,16 @@ export default function AIFAPage() {
     };
 
     const processAIResponse = (response: string) => {
-        if (response.includes('[CHIP:')) {
-            const parts = response.split(/(\[CHIP:[^\]]+\])/).filter(part => part);
+        const chipRegex = /\[(CHIP|ADDON|MODIFIER):([^\]]+)\]/g;
+        
+        if (chipRegex.test(response)) {
+            const parts = response.split(chipRegex).filter(part => part && !['CHIP', 'ADDON', 'MODIFIER'].includes(part));
             const content = (
                 <div className="space-y-3">
-                    <p>{parts.find(p => !p.startsWith('[CHIP:'))}</p>
+                    <p>{parts.find(p => !p.startsWith('CHIP:') && !p.startsWith('ADDON:') && !p.startsWith('MODIFIER:'))}</p>
                     <div className="flex flex-wrap gap-2">
-                        {parts.filter(p => p.startsWith('[CHIP:')).map((chip, index) => {
-                            const text = chip.replace('[CHIP:', '').replace(']', '');
-                            return <ChipButton key={index} text={text} onSelect={handleChipSelect} />;
+                        {parts.filter(p => !/^\s*$/.test(p) && p.length > 1).map((chipText, index) => {
+                           return <ChipButton key={index} text={chipText} onSelect={handleChipSelect} />;
                         })}
                     </div>
                 </div>
@@ -416,7 +418,7 @@ export default function AIFAPage() {
             }
         } else if (response.includes('[CONFIRM_ORDER]')) {
             const cleanResponse = response.replace('[CONFIRM_ORDER]', '').trim();
-            const orderSummaryMatch = cleanResponse.match(/Here's your order so far:\s*(.*)/is);
+            const orderSummaryMatch = cleanResponse.match(/Here's the order so far:\s*(.*)/is);
             const orderSummary = orderSummaryMatch ? orderSummaryMatch[1].trim() : "Your confirmed order.";
             addMessage('aifa', <ConfirmOrder orderText={cleanResponse} onConfirm={() => handleConfirmOrder(orderSummary)} />);
         }
