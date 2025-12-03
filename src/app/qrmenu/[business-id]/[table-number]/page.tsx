@@ -501,19 +501,10 @@ export default function QrMenuPage() {
             <div className="grid grid-cols-2 gap-4">
              {combos.length > 0 && (
                   <Link href={`/qrmenu/${businessId}/${tableNumber}/combos`}>
-                      <Card className="overflow-hidden">
-                          <div className="relative h-24 w-full">
-                              <Image
-                                  src="https://images.unsplash.com/photo-1579887829434-c2a716960492?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxmb29kJTIwY29tYm98ZW58MHx8fHwxNzE3MDQ5MjMyfDA&ixlib=rb-4.1.0&q=80&w=1080"
-                                  alt="Combos"
-                                  fill
-                                  style={{ objectFit: 'cover' }}
-                                  data-ai-hint="food combo"
-                                />
-                          </div>
-                          <CardHeader className="p-3">
+                      <Card className="overflow-hidden h-full flex flex-col">
+                           <div className="flex-grow flex items-center justify-center h-24">
                               <CardTitle className="text-base text-center">Combos</CardTitle>
-                          </CardHeader>
+                          </div>
                       </Card>
                   </Link>
              )}
@@ -560,5 +551,3 @@ export default function QrMenuPage() {
     </div>
   );
 }
-
-    
