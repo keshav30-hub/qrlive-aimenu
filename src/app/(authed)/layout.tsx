@@ -86,6 +86,7 @@ function AuthRedirect({ children }: { children: React.ReactNode }) {
         if (subscription?.status === 'active' && subscription.expiresAt && subscription.expiresAt.toDate() <= now) {
             if(subscriptionRef) {
                 // This is a non-blocking write. It won't slow down the redirect.
+                // Explicitly send only the 'status' field to comply with security rules.
                 updateDocumentNonBlocking(subscriptionRef, { status: 'inactive' });
             }
         }
