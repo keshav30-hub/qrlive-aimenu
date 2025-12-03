@@ -28,8 +28,8 @@ import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 
 type BusinessInfo = {
-  name: string;
-  owner: string;
+  businessName: string;
+  ownerName: string;
   contact: string;
   email: string;
   address: string;
@@ -376,7 +376,7 @@ export default function SettingsPage() {
               <Avatar className="h-24 w-24">
                 <AvatarImage src={editedInfo.logo || 'https://picsum.photos/seed/logo/100/100'} alt="Business Logo" />
                 <AvatarFallback>
-                  {businessInfo.name ? businessInfo.name.charAt(0) : 'B'}
+                  {businessInfo.businessName ? businessInfo.businessName.charAt(0) : 'B'}
                 </AvatarFallback>
               </Avatar>
               {isEditing && (
@@ -393,19 +393,19 @@ export default function SettingsPage() {
             <div className="grid gap-1 flex-1">
               <Label className="text-sm text-muted-foreground">Business Name</Label>
               {isEditing ? (
-                <Input name="name" value={editedInfo.name} onChange={handleInputChange} className="text-2xl font-bold p-0 border-0 shadow-none focus-visible:ring-0" />
+                <Input name="businessName" value={editedInfo.businessName} onChange={handleInputChange} className="text-2xl font-bold p-0 border-0 shadow-none focus-visible:ring-0" />
               ) : (
-                <p className="text-2xl font-bold">{businessInfo.name}</p>
+                <p className="text-2xl font-bold">{businessInfo.businessName}</p>
               )}
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-1">
-              <Label htmlFor="owner">Owner Name</Label>
+              <Label htmlFor="ownerName">Owner Name</Label>
               {isEditing ? (
-                <Input id="owner" name="owner" value={editedInfo.owner} onChange={handleInputChange} />
+                <Input id="ownerName" name="ownerName" value={editedInfo.ownerName} onChange={handleInputChange} />
               ) : (
-                <p className="font-medium">{businessInfo.owner}</p>
+                <p className="font-medium">{businessInfo.ownerName}</p>
               )}
             </div>
              <div className="space-y-1">
@@ -635,5 +635,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-
-    
