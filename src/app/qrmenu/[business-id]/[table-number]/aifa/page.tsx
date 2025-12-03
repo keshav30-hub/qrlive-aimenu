@@ -69,10 +69,10 @@ const EventCard = ({ event, businessId }: { event: Event, businessId: string }) 
     </Card>
 );
 
-const FeedbackTargetSelection = ({ onSelect }: { onSelect: (target: string) => void }) => {
+const FeedbackTargetSelection = ({ onSelect, businessName }: { onSelect: (target: string) => void; businessName: string; }) => {
     return (
         <div className="flex flex-wrap gap-2 justify-center py-2">
-            <ChipButton text="Business" onSelect={onSelect} />
+            <ChipButton text={businessName} onSelect={onSelect} />
             <ChipButton text="AIFA" onSelect={onSelect} />
         </div>
     );
@@ -336,9 +336,14 @@ export default function AIFAPage() {
         try {
             await submitFeedback(businessData.id, { ...feedback, imageUrl }, tableNumber);
             
-            const feedbackMessage = `submitted-${feedback.rating} star rating and ${feedback.comment || 'no description'}`;
+            let feedbackMessage = `submitted-${feedback.rating} star rating`;
+            if (feedback.comment) {
+                feedbackMessage += ` and comment: ${feedback.comment}`;
+            }
 
+            // Add a user message that the AI can process
             addMessage('user', feedbackMessage);
+            // Get AI's response to the feedback submission
             await getAIResponse(feedbackMessage);
 
             toast({ title: "Feedback submitted successfully!" });
@@ -354,7 +359,8 @@ export default function AIFAPage() {
         addMessage('user', `Feedback for ${target}`);
         setIsThinking(true);
         setTimeout(() => {
-            addMessage('aifa', <FeedbackForm target={target} onSubmit={handleFeedbackSubmit} />);
+            const feedbackTarget = target === 'AIFA' ? 'AIFA' : businessData?.name || 'the business';
+            addMessage('aifa', <FeedbackForm target={feedbackTarget} onSubmit={handleFeedbackSubmit} />);
             setIsThinking(false);
         }, 300);
     }
@@ -409,7 +415,7 @@ export default function AIFAPage() {
         } else if (response.includes('[SUGGEST_FEEDBACK]')) {
             const cleanResponse = response.replace('[SUGGEST_FEEDBACK]', '').trim();
             if (cleanResponse) addMessage('aifa', cleanResponse);
-            addMessage('aifa', <div><p>I can help with that. Who is this feedback for?</p><FeedbackTargetSelection onSelect={handleFeedbackTarget} /></div>);
+            addMessage('aifa', <div><p>I can help with that. Who is this feedback for?</p><FeedbackTargetSelection onSelect={handleFeedbackTarget} businessName={businessData?.name || 'Business'} /></div>);
         } else if (response.includes('[GOOGLE_REVIEW_LINK]')) {
             const cleanResponse = response.replace('[GOOGLE_REVIEW_LINK]', '').trim();
             addMessage('aifa', cleanResponse);
@@ -457,7 +463,7 @@ export default function AIFAPage() {
                     addMessage('aifa', <EventCard event={event} businessId={businessId} />);
                 })
             } else if (prompt === "Give Feedback") {
-                addMessage('aifa', <div><p>I appreciate you taking the time! Who is this feedback for?</p><FeedbackTargetSelection onSelect={handleFeedbackTarget} /></div>);
+                addMessage('aifa', <div><p>I appreciate you taking the time! Who is this feedback for?</p><FeedbackTargetSelection onSelect={handleFeedbackTarget} businessName={businessData?.name || 'Business'} /></div>);
             }
             else {
                  const eventsForAI = activeEvents.map(e => ({
