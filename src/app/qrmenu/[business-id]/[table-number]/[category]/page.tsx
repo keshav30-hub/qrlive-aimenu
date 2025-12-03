@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -53,6 +54,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
+import { trackMenuItemView, trackWaiterCall } from '@/lib/gtag';
 
 
 const serviceRequests = [
@@ -87,10 +89,11 @@ const ModifierDialog = ({ item, onAddToCart, open, setOpen }: { item: MenuItem; 
     
     useEffect(() => {
         if(open) {
+            trackMenuItemView(item.name);
             setSelectedModifier(null);
             setSelectedAddons([]);
         }
-    }, [open]);
+    }, [open, item.name]);
 
     const calculateTotalPrice = () => {
         let total = basePrice;
@@ -223,6 +226,7 @@ export default function CategoryMenuPage() {
     if (!userId || typeof tableNumber !== 'string') return;
 
     setIsRequestingService(true);
+    trackWaiterCall(requestType);
     try {
         await submitServiceRequest(userId, tableNumber, requestType);
         toast({
@@ -248,7 +252,7 @@ export default function CategoryMenuPage() {
     setIsPlacingOrder(true);
     const orderSummary = cart.map(item => `${item.quantity}x ${item.name}`).join(', ');
     const requestType = `New Order: ${orderSummary}`;
-
+    trackWaiterCall('Place Order');
     try {
       await submitServiceRequest(userId, tableNumber, requestType);
       toast({
@@ -293,7 +297,7 @@ export default function CategoryMenuPage() {
       const itemCategory = item.category.toLowerCase();
       const matchesCategory = itemCategory === categoryName;
       const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesType = !showVegOnly || item.type === 'veg';
+      const matchesType = !showVegOnly || item.type === 'veg' || item.type === 'na';
       return matchesCategory && matchesSearch && matchesType;
     });
   }, [menuItems, combos, categoryName, searchTerm, showVegOnly, isComboPage]);
@@ -339,7 +343,7 @@ export default function CategoryMenuPage() {
       <div className="max-w-[480px] mx-auto h-full flex flex-col bg-white dark:bg-gray-950 shadow-lg">
         <header className="px-4 py-2 flex justify-between items-center sticky top-0 bg-white dark:bg-gray-950 z-10">
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={() => router.back()}>
+            <Button size="icon" onClick={() => router.back()} className="bg-primary text-primary-foreground">
               <ChevronLeft className="h-6 w-6" />
             </Button>
             <h1 className="text-xl font-bold capitalize">{categoryName}</h1>
@@ -457,8 +461,8 @@ export default function CategoryMenuPage() {
                   </div>
                   <CardContent className="p-2 flex flex-col flex-grow">
                     <div className="flex items-center gap-2">
-                        {!isComboPage && <div className={`h-3 w-3 rounded-full border flex-shrink-0 ${(item as MenuItem).type === 'veg' ? 'bg-green-500 border-green-600' : 'bg-red-500 border-red-600'}`}></div>}
-                        <h3 className="font-semibold text-xs flex-grow leading-tight">{item.name}</h3>
+                        {!isComboPage && (item as MenuItem).type !== 'na' && <div className={`h-3 w-3 rounded-full border flex-shrink-0 ${(item as MenuItem).type === 'veg' ? 'bg-green-500 border-green-600' : 'bg-red-500 border-red-600'}`}></div>}
+                        <h3 className="font-semibold text-sm flex-grow leading-tight">{item.name}</h3>
                     </div>
                     <div className="flex justify-between items-center mt-1">
                       <span className="font-bold text-sm">
