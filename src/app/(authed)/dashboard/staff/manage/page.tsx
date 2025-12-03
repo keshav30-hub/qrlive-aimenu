@@ -105,17 +105,6 @@ type Shift = {
     to: string;
 };
 
-const pageAccessOptions = [
-    { id: 'dashboard', label: 'Dashboard' },
-    { id: 'menu', label: 'Menu' },
-    { id: 'tasks', label: 'Tasks' },
-    { id: 'feedback', label: 'Feedback' },
-    { id: 'qr-menu', label: 'QR Menu' },
-    { id: 'events', label: 'Events' },
-    { id: 'staff', label: 'Staff' },
-    { id: 'settings', label: 'Settings' },
-];
-
 const getStatusVariant = (status: AttendanceRecord['status']) => {
   switch (status) {
     case 'Present':
@@ -746,19 +735,6 @@ export default function StaffManagementPage() {
                                     ))}
                                 </SelectContent>
                             </Select>
-                        </div>
-                        <div className="space-y-3">
-                            <Label>Page Access</Label>
-                            <div className="space-y-2 rounded-md border p-4">
-                                {pageAccessOptions.map((item) => (
-                                    <div key={item.id} className="flex flex-row items-center space-x-3">
-                                        <Checkbox id={`access-${item.id}`} />
-                                        <Label htmlFor={`access-${item.id}`} className="font-normal">
-                                            {item.label}
-                                        </Label>
-                                    </div>
-                                ))}
-                            </div>
                         </div>
                     </div>
                   </ScrollArea>
