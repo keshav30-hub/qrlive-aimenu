@@ -386,20 +386,25 @@ export default function AIFAPage() {
 
     const processAIResponse = (response: string) => {
         const chipRegex = /\[(CHIP|ADDON|MODIFIER):([^\]]+)\]/g;
-        
-        if (chipRegex.test(response)) {
-            const parts = response.split(chipRegex).filter(part => part && !['CHIP', 'ADDON', 'MODIFIER'].includes(part));
-            const content = (
-                <div className="space-y-3">
-                    <p>{parts.find(p => !p.startsWith('CHIP:') && !p.startsWith('ADDON:') && !p.startsWith('MODIFIER:'))}</p>
-                    <div className="flex flex-wrap gap-2">
-                        {parts.filter(p => !/^\s*$/.test(p) && p.length > 1).map((chipText, index) => {
-                           return <ChipButton key={index} text={chipText} onSelect={handleChipSelect} />;
-                        })}
-                    </div>
-                </div>
-            );
-            addMessage('aifa', content);
+        const matches = Array.from(response.matchAll(chipRegex));
+
+        // Get the main text by removing all chip patterns
+        const mainText = response.replace(chipRegex, '').trim();
+
+        if (matches.length > 0) {
+            // Render main text first if it exists
+            if (mainText) {
+                addMessage('aifa', mainText);
+            }
+
+            // Then render the chips
+            const chips = matches.map((match, index) => {
+                // match[2] is the chip text, e.g., "By Category"
+                const chipText = match[2];
+                return <ChipButton key={`${chipText}-${index}`} text={chipText} onSelect={handleChipSelect} />;
+            });
+            addMessage('aifa', <div className="flex flex-wrap gap-2">{chips}</div>);
+
         } else if (response.includes('[SUGGEST_FEEDBACK]')) {
             const cleanResponse = response.replace('[SUGGEST_FEEDBACK]', '').trim();
             if (cleanResponse) addMessage('aifa', cleanResponse);
@@ -423,7 +428,9 @@ export default function AIFAPage() {
             addMessage('aifa', <ConfirmOrder orderText={cleanResponse} onConfirm={() => handleConfirmOrder(orderSummary)} />);
         }
         else {
-            addMessage('aifa', response);
+             if (mainText) {
+                addMessage('aifa', mainText);
+             }
         }
     };
 
@@ -600,3 +607,5 @@ export default function AIFAPage() {
         </div>
     );
 }
+
+    
