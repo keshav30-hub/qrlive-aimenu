@@ -4,7 +4,6 @@
 import React, { createContext, useContext, useState, useRef, ReactNode, useEffect, useCallback } from 'react';
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -74,7 +73,7 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
   const [unattendedTaskCount, setUnattendedTaskCount] = useState(0);
   const [dialogsDisabled, setDialogsDisabled] = useState(false);
   
-  const [notifiedTask, setNotifiedTask] = useState<Task | UrgentFeedback | null>(null);
+  const [notifiedTaskId, setNotifiedTaskId] = useState<string | null>(null);
   const previouslyNotifiedIds = useRef(new Set<string>());
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -106,14 +105,39 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
       audioRef.current.loop = true;
       audioRef.current.preload = 'auto';
     }
+
+    const unlockAudio = () => {
+      if (audioRef.current && !audioUnlockedRef.current) {
+        audioRef.current.play().then(() => {
+          audioRef.current?.pause();
+          audioUnlockedRef.current = true;
+          console.log("Audio context unlocked.");
+          // Clean up the event listener after it has run once
+          window.removeEventListener('click', unlockAudio);
+          window.removeEventListener('keydown', unlockAudio);
+        }).catch(err => console.error("Audio unlock failed:", err));
+      }
+    };
+
+    window.addEventListener('click', unlockAudio);
+    window.addEventListener('keydown', unlockAudio);
+
+    return () => {
+      window.removeEventListener('click', unlockAudio);
+      window.removeEventListener('keydown', unlockAudio);
+    };
   }, []);
 
+
   const unlockAudio = useCallback(() => {
+    // This function is now just a placeholder for explicit calls,
+    // as the primary unlock is handled by the global event listener.
     if (audioRef.current && !audioUnlockedRef.current) {
+        console.log("Attempting explicit audio unlock.");
         audioRef.current.play().then(() => {
             audioRef.current?.pause();
             audioUnlockedRef.current = true;
-        }).catch(err => console.error("Audio unlock failed:", err));
+        }).catch(err => console.error("Explicit audio unlock failed:", err));
     }
   }, []);
 
@@ -132,8 +156,8 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
     if (dialogsDisabled || isDialogOpen) return;
 
     const allUnattended = [
-        ...(unattendedTasks || []).map(t => ({...t, id: t.time})), // Use time as a pseudo-id for tasks
-        ...(urgentFeedbacks || [])
+        ...(unattendedTasks || []).map(t => ({...t, id: t.time, isFeedback: false})),
+        ...(urgentFeedbacks || []).map(fb => ({...fb, request: fb.comment, isFeedback: true}))
     ].sort((a,b) => new Date(a.time).getTime() - new Date(b.time).getTime());
 
     const latestNotification = allUnattended.find(
@@ -143,28 +167,30 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
     if (latestNotification) {
         previouslyNotifiedIds.current.add(latestNotification.id);
         
-        const isFeedback = 'type' in latestNotification;
-        const data = isFeedback
-          ? { Table: latestNotification.table, Comment: latestNotification.comment, Time: new Date(latestNotification.time).toLocaleTimeString() }
-          : { Table: latestNotification.table, Request: (latestNotification as Task).request, Time: new Date(latestNotification.time).toLocaleTimeString() };
+        const data = latestNotification.isFeedback
+          ? { Table: latestNotification.table, Comment: latestNotification.request, Time: new Date(latestNotification.time).toLocaleTimeString() }
+          : { Table: latestNotification.table, Request: latestNotification.request, Time: new Date(latestNotification.time).toLocaleTimeString() };
         
-        setNotifiedTask(latestNotification);
+        setNotifiedTaskId(latestNotification.id);
         setNotification({
-            title: isFeedback ? "Urgent Feedback Received!" : "New Task Received!",
-            description: isFeedback ? `A ${(latestNotification as UrgentFeedback).type} was submitted.` : "A new service request has been received.",
+            title: latestNotification.isFeedback ? "Urgent Feedback Received!" : "New Task Received!",
+            description: latestNotification.isFeedback ? `A ${(latestNotification as UrgentFeedback).type} was submitted.` : "A new service request has been received.",
             data,
             onAcknowledge: async (status: 'attended' | 'ignored') => {
                  setIsAcknowledging(true);
                  try {
-                     if (isFeedback) {
+                     if (latestNotification.isFeedback) {
                         if (urgentFeedbackRef) await deleteDoc(doc(urgentFeedbackRef, latestNotification.id));
                      } else {
                         if (tasksLiveRef) {
-                            const updatedTask = { ...(latestNotification as Task), status, time: new Date().toISOString(), handledBy: 'Admin' };
-                            await updateDoc(tasksLiveRef, { 
-                                pendingCalls: arrayRemove(latestNotification),
-                                attendedCalls: arrayUnion(updatedTask)
-                            });
+                            const originalTask = (unattendedTasks || []).find(t => t.time === latestNotification.id);
+                            if (originalTask) {
+                                const updatedTask = { ...originalTask, status, time: new Date().toISOString(), handledBy: 'Admin' };
+                                await updateDoc(tasksLiveRef, { 
+                                    pendingCalls: arrayRemove(originalTask),
+                                    attendedCalls: arrayUnion(updatedTask)
+                                });
+                            }
                         }
                      }
                  } catch(e) {
@@ -182,33 +208,27 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
                 navigator.vibrate([200, 100, 200, 100, 200]); // Vibrate pattern
             }
         }
-    } else {
-       // This handles the case where all tasks are acknowledged.
-       // The dialog closes, and we should stop the sound.
-       if (!isDialogOpen && totalUnattendedCount === 0) {
-           stopNotifications();
-       }
     }
 
-  }, [unattendedTasks, urgentFeedbacks, isMuted, dialogsDisabled, isDialogOpen, stopNotifications, tasksLiveRef, urgentFeedbackRef]);
+  }, [unattendedTasks, urgentFeedbacks, isMuted, dialogsDisabled, isDialogOpen, tasksLiveRef, urgentFeedbackRef]);
 
   // Effect to close the dialog if the task disappears from the list
   useEffect(() => {
-    if (isDialogOpen && notifiedTask) {
-        const isUrgentFeedback = 'type' in notifiedTask;
-        
-        const taskStillPending = isUrgentFeedback
-          ? (urgentFeedbacks || []).some(fb => fb.id === (notifiedTask as UrgentFeedback).id)
-          : (unattendedTasks || []).some(task => task.time === (notifiedTask as Task).time);
+    if (isDialogOpen && notifiedTaskId) {
+        const allPendingIds = new Set([
+            ...(unattendedTasks || []).map(t => t.time),
+            ...(urgentFeedbacks || []).map(fb => fb.id)
+        ]);
 
-        if (!taskStillPending) {
+        if (!allPendingIds.has(notifiedTaskId)) {
             closeDialog();
         }
     }
-  }, [unattendedTasks, urgentFeedbacks, isDialogOpen, notifiedTask]);
+  }, [unattendedTasks, urgentFeedbacks, isDialogOpen, notifiedTaskId]);
 
 
   const toggleMute = () => {
+    unlockAudio();
     const newMuteState = !isMuted;
     setIsMuted(newMuteState);
     localStorage.setItem('qrlive-mute-state', JSON.stringify(newMuteState));
@@ -221,7 +241,7 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
     stopNotifications();
     setIsDialogOpen(false);
     setNotification(null);
-    setNotifiedTask(null); 
+    setNotifiedTaskId(null); 
   };
 
   const handleAcknowledge = async (status: 'attended' | 'ignored') => {
