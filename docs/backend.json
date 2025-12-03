@@ -363,6 +363,16 @@
         "location": {
           "type": "string",
           "description": "Location of the event."
+        },
+        "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Optional external URL for event registration or details."
+        },
+        "collectRsvp": {
+            "type": "boolean",
+            "description": "If true, use the built-in RSVP system. If false, redirect to the external URL.",
+            "default": true
         }
       },
       "required": [

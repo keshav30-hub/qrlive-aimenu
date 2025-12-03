@@ -283,6 +283,29 @@ export default function QrMenuPage() {
      return <div className="flex h-screen items-center justify-center">Business not found.</div>
   }
 
+  const renderEventLink = (event: Event) => {
+    const eventUrl = event.collectRsvp === false && event.url ? event.url : `/qrmenu/${businessId}/events/${event.id}`;
+    const isExternal = event.collectRsvp === false && event.url;
+    
+    return (
+        <Link href={eventUrl} target={isExternal ? '_blank' : '_self'} rel={isExternal ? 'noopener noreferrer' : ''}>
+            <div className="relative h-40 w-full rounded-lg overflow-hidden">
+                <Image
+                    src={event.imageUrl}
+                    alt={event.name}
+                    fill
+                    style={{ objectFit: 'cover' }}
+                    data-ai-hint={event.imageHint}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                <div className="absolute bottom-0 left-0 p-4">
+                    <h3 className="text-white font-bold text-lg">{event.name}</h3>
+                </div>
+            </div>
+        </Link>
+    );
+  };
+
   return (
     <div className="h-screen w-full bg-gray-100 dark:bg-black">
         {qrliveContact?.website ? (
@@ -455,21 +478,7 @@ export default function QrMenuPage() {
               <CarouselContent>
                 {events.map((event) => (
                   <CarouselItem key={event.id}>
-                    <Link href={`/qrmenu/${businessId}/events/${event.id}`}>
-                      <div className="relative h-40 w-full rounded-lg overflow-hidden">
-                        <Image
-                          src={event.imageUrl}
-                          alt={event.name}
-                          fill
-                          style={{ objectFit: 'cover' }}
-                          data-ai-hint={event.imageHint}
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                        <div className="absolute bottom-0 left-0 p-4">
-                          <h3 className="text-white font-bold text-lg">{event.name}</h3>
-                        </div>
-                      </div>
-                    </Link>
+                    {renderEventLink(event)}
                   </CarouselItem>
                 ))}
               </CarouselContent>
@@ -551,3 +560,5 @@ export default function QrMenuPage() {
     </div>
   );
 }
+
+    

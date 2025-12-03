@@ -17,6 +17,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Switch } from '@/components/ui/switch';
 import { Calendar as CalendarIcon, MoreVertical, PlusCircle, Save, Loader2 } from 'lucide-react';
@@ -52,15 +53,19 @@ type Event = {
   imageStoragePath?: string;
   imageHint: string;
   active: boolean;
+  collectRsvp?: boolean;
+  url?: string;
   organizers: string[];
   terms: string;
 };
 
-const defaultEvent: Omit<Event, 'id' | 'imageUrl' | 'imageHint' > = {
+const defaultEvent: Partial<Event> = {
     name: '',
     description: '',
     datetime: new Date().toISOString(),
     active: true,
+    collectRsvp: true,
+    url: '',
     organizers: [],
     terms: '',
 };
@@ -98,6 +103,17 @@ export default function EventsPage() {
   
   const handleSave = async () => {
     if (!eventsRef || !user) return;
+    
+    // Validation
+    if (currentEvent.collectRsvp === false && !currentEvent.url) {
+        toast({
+            variant: "destructive",
+            title: "URL Required",
+            description: "Please provide a redirect URL if you are not collecting RSVPs internally.",
+        });
+        return;
+    }
+
     setIsSaving(true);
     try {
       const eventData = {
@@ -105,6 +121,7 @@ export default function EventsPage() {
           imageUrl: currentEvent.imageUrl || `https://picsum.photos/seed/event${events.length + 1}/600/400`,
           imageHint: currentEvent.imageHint || 'new event',
           organizers: Array.isArray(currentEvent.organizers) ? currentEvent.organizers : ((currentEvent.organizers as string) || '').split(',').map(s => s.trim()).filter(Boolean),
+          collectRsvp: currentEvent.collectRsvp ?? true,
       };
       
       if (isEditing && currentEvent.id) {
@@ -142,13 +159,14 @@ export default function EventsPage() {
     }
   }
 
-  const handleToggleSwitch = async (eventId: string, active: boolean) => {
+  const handleToggleSwitch = async (eventId: string, field: 'active' | 'collectRsvp', value: boolean) => {
     if (!eventsRef) return;
     try {
       const eventDoc = doc(eventsRef, eventId);
-      await updateDoc(eventDoc, { active });
+      await updateDoc(eventDoc, { [field]: value });
+      toast({ title: "Updated", description: `Event ${field === 'active' ? 'status' : 'RSVP setting'} changed.` });
     } catch (e) {
-      toast({ variant: "destructive", title: "Error", description: "Could not update event status." });
+      toast({ variant: "destructive", title: "Error", description: "Could not update event." });
       console.error(e);
     }
   };
@@ -185,7 +203,6 @@ export default function EventsPage() {
         
         const uploadResult = await uploadFile(newPath, file);
         if(uploadResult) {
-            // Delete old image if it exists and we're editing
             if(isEditing && currentEvent.imageStoragePath) {
                 await deleteFile(currentEvent.imageStoragePath);
             }
@@ -235,11 +252,11 @@ export default function EventsPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="name">Event Name</Label>
-                <Input id="name" value={currentEvent.name} onChange={handleInputChange} placeholder="e.g. Summer Festival" />
+                <Input id="name" value={currentEvent.name || ''} onChange={handleInputChange} placeholder="e.g. Summer Festival" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
-                <Textarea id="description" value={currentEvent.description} onChange={handleInputChange} placeholder="Describe the event..." />
+                <Textarea id="description" value={currentEvent.description || ''} onChange={handleInputChange} placeholder="Describe the event..." />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -274,16 +291,42 @@ export default function EventsPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="organizers">Event Organizers (Optional, comma-separated)</Label>
-                <Input id="organizers" value={Array.isArray(currentEvent.organizers) ? currentEvent.organizers.join(', ') : currentEvent.organizers} onChange={handleOrganizersChange} placeholder="e.g. John Doe, Jane Smith" />
+                <Input id="organizers" value={Array.isArray(currentEvent.organizers) ? currentEvent.organizers.join(', ') : currentEvent.organizers || ''} onChange={handleOrganizersChange} placeholder="e.g. John Doe, Jane Smith" />
               </div>
                <Accordion type="single" collapsible>
                 <AccordionItem value="item-1">
                   <AccordionTrigger>Terms & Conditions (Optional)</AccordionTrigger>
                   <AccordionContent>
-                    <Textarea id="terms" value={currentEvent.terms} onChange={handleInputChange} placeholder="Enter terms and conditions for the event." />
+                    <Textarea id="terms" value={currentEvent.terms || ''} onChange={handleInputChange} placeholder="Enter terms and conditions for the event." />
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
+              <Accordion type="single" collapsible>
+                <AccordionItem value="item-2">
+                    <AccordionTrigger>RSVP & Redirect</AccordionTrigger>
+                    <AccordionContent className="space-y-4">
+                        <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
+                            <Label htmlFor="collectRsvp" className="flex flex-col space-y-1">
+                                <span>Collect RSVPs Internally</span>
+                                <span className="font-normal leading-snug text-muted-foreground">
+                                    Turn this off to redirect users to an external URL.
+                                </span>
+                            </Label>
+                            <Switch
+                                id="collectRsvp"
+                                checked={currentEvent.collectRsvp ?? true}
+                                onCheckedChange={(checked) => setCurrentEvent(prev => ({...prev, collectRsvp: checked}))}
+                            />
+                        </div>
+                        {currentEvent.collectRsvp === false && (
+                            <div className="space-y-2">
+                                <Label htmlFor="url">Redirect URL</Label>
+                                <Input id="url" type="url" value={currentEvent.url || ''} onChange={handleInputChange} placeholder="https://your-event-link.com" />
+                            </div>
+                        )}
+                    </AccordionContent>
+                </AccordionItem>
+               </Accordion>
             </div>
             </ScrollArea>
             <SheetFooter>
@@ -325,7 +368,7 @@ export default function EventsPage() {
                   <Switch 
                     id={`event-toggle-${event.id}`} 
                     checked={event.active} 
-                    onCheckedChange={(checked) => handleToggleSwitch(event.id, checked)}
+                    onCheckedChange={(checked) => handleToggleSwitch(event.id, 'active', checked)}
                   />
                   <label htmlFor={`event-toggle-${event.id}`} className="text-sm font-medium">
                     {event.active ? 'Active' : 'Inactive'}
@@ -340,6 +383,18 @@ export default function EventsPage() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => handleEditClick(event)}>Edit</DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                     <div className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors">
+                      <Switch
+                        id={`rsvp-toggle-${event.id}`}
+                        checked={event.collectRsvp ?? true}
+                        onCheckedChange={(checked) => handleToggleSwitch(event.id, 'collectRsvp', checked)}
+                      />
+                      <Label htmlFor={`rsvp-toggle-${event.id}`} className="pl-2 font-normal">
+                        Collect RSVP
+                      </Label>
+                    </div>
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(event)} disabled={isDeleting}>
                       {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null} Delete
                     </DropdownMenuItem>

@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview The main AI flow for the AI Food Assistant (AIFA).
@@ -55,6 +56,8 @@ No menu items available right now. Please check back later.
   {{#if active}}
 - **{{name}}**: {{description}}
   - **Date & Time:** {{datetime}}
+  - **Redirect URL:** {{url}}
+  - **Collect RSVP Internally:** {{collectRsvp}}
   {{#if organizers}}- **Organizers:** {{#each organizers}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}{{/if}}
   {{#if terms}}- **Terms:** {{terms}}{{/if}}
   {{/if}}
@@ -81,7 +84,7 @@ No events happening right now.
     *   When the user confirms adding an item to their order (e.g., "I'll have the burger", "sounds good", "yes add it"), confirm their choice and ask "What's next on our culinary journey?" or a similar open-ended question to continue the order.
     *   Keep track of all items the user has expressed interest in during the conversation.
     *   If the user asks to see their order or to checkout (e.g., "what's my order?", "checkout", "nope", "that's all"), you MUST first summarize the items they've selected from the conversation history in a clear list. Then, ask for final confirmation and end your response with the special tag: [CONFIRM_ORDER]. For example: "Alright, mission control! Here's the order so far: 1 Classic Chicken Burger (Large), 2 Grilled Paneer Sandwiches. Is that a 'go' for launch? [CONFIRM_ORDER]".
-7.  **Event Awareness:** If the user asks about events, specials, or what's happening, use the "Events" section of your knowledge base to provide details.
+7.  **Event Awareness:** If the user asks about events, specials, or what's happening, use the "Events" section of your knowledge base. If an event has 'collectRsvp' set to 'false' and a 'url' is present, you should say something like "We have the [Event Name] coming up! You can find all the details and sign up at this link: [URL]". Do not ask them to RSVP inside the chat.
 8.  **Handle "Who Made You" questions:** Credit the brilliant minds at **QRLive**.
 9.  **Handle Data/Privacy questions:** Explain that you only remember the current conversation to be helpful and don't store personal data.
 10. **Handle Feedback Submission:**
@@ -113,7 +116,7 @@ const aifaFlow = ai.defineFlow(
         return output!;
     } catch (error) {
         console.error("AIFA Flow Error:", error);
-        // Instead of crashing, throw a specific, user-friendly error.
+        // Instead of crashing, return a user-friendly error.
         // This will be caught by the client-side calling function.
         return "AIFA is a bit busy right now. Please wait a moment and try again.";
     }

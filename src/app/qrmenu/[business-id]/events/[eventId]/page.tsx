@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { ChevronLeft, Info, Users, FileText, Loader2, Send } from 'lucide-react';
+import { ChevronLeft, Info, Users, FileText, Loader2, Send, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -87,6 +87,8 @@ export default function PublicEventPage() {
     return <div className="flex h-screen items-center justify-center">Event not found.</div>;
   }
 
+  const showRsvpForm = event.collectRsvp !== false;
+
   return (
     <div className="h-screen w-full bg-gray-100 dark:bg-black">
       <div className="max-w-2xl mx-auto h-full flex flex-col bg-white dark:bg-gray-950 shadow-lg">
@@ -140,37 +142,50 @@ export default function PublicEventPage() {
               </Accordion>
           )}
 
-          <Card>
-            <CardHeader>
-              <CardTitle>RSVP for this Event</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
-                  <Input id="name" placeholder="Enter your full name" value={rsvpData.name} onChange={handleInputChange} required disabled={isSubmitting}/>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email ID</Label>
-                  <Input id="email" type="email" placeholder="Enter your email" value={rsvpData.email} onChange={handleInputChange} required disabled={isSubmitting}/>
-                </div>
-                 <div className="space-y-2">
-                  <Label htmlFor="mobile">Mobile Number</Label>
-                    <Input id="mobile" type="tel" placeholder="Enter your 10-digit mobile number" value={rsvpData.mobile} onChange={handleInputChange} required disabled={isSubmitting} maxLength={10} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="people">Number of Persons</Label>
-                  <Input id="people" type="number" min="1" placeholder="e.g., 2" value={rsvpData.people} onChange={handleInputChange} required disabled={isSubmitting}/>
-                </div>
-                <Button type="submit" className="w-full" disabled={isSubmitting}>
-                   {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Send className="mr-2 h-4 w-4" />}
-                  {isSubmitting ? 'Submitting...' : 'Submit RSVP'}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
+          {showRsvpForm ? (
+            <Card>
+                <CardHeader>
+                <CardTitle>RSVP for this Event</CardTitle>
+                </CardHeader>
+                <CardContent>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="space-y-2">
+                    <Label htmlFor="name">Full Name</Label>
+                    <Input id="name" placeholder="Enter your full name" value={rsvpData.name} onChange={handleInputChange} required disabled={isSubmitting}/>
+                    </div>
+                    <div className="space-y-2">
+                    <Label htmlFor="email">Email ID</Label>
+                    <Input id="email" type="email" placeholder="Enter your email" value={rsvpData.email} onChange={handleInputChange} required disabled={isSubmitting}/>
+                    </div>
+                    <div className="space-y-2">
+                    <Label htmlFor="mobile">Mobile Number</Label>
+                        <Input id="mobile" type="tel" placeholder="Enter your 10-digit mobile number" value={rsvpData.mobile} onChange={handleInputChange} required disabled={isSubmitting} maxLength={10} />
+                    </div>
+                    <div className="space-y-2">
+                    <Label htmlFor="people">Number of Persons</Label>
+                    <Input id="people" type="number" min="1" placeholder="e.g., 2" value={rsvpData.people} onChange={handleInputChange} required disabled={isSubmitting}/>
+                    </div>
+                    <Button type="submit" className="w-full" disabled={isSubmitting}>
+                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Send className="mr-2 h-4 w-4" />}
+                    {isSubmitting ? 'Submitting...' : 'Submit RSVP'}
+                    </Button>
+                </form>
+                </CardContent>
+            </Card>
+          ) : (
+             event.url && (
+                 <a href={event.url} target="_blank" rel="noopener noreferrer" className="w-full">
+                    <Button className="w-full h-12 text-lg">
+                        <ExternalLink className="mr-2 h-5 w-5" />
+                        Register Here
+                    </Button>
+                 </a>
+             )
+          )}
         </main>
       </div>
     </div>
   );
 }
+
+    
