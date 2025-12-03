@@ -177,7 +177,7 @@ export async function getMenuData(userId: string): Promise<{ categories: Categor
 
     try {
         const [categoriesSnapshot, itemsSnapshot, combosSnapshot] = await Promise.all([
-            getDocs(query(categoriesRef)), // Fetch all, filter on client
+            getDocs(query(categoriesRef, where('isAvailable', '==', true))),
             getDocs(query(itemsRef, where('available', '==', true))),
             getDocs(query(combosRef, where('available', '==', true))),
         ]);
