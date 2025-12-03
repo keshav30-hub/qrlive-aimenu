@@ -499,15 +499,6 @@ export default function QrMenuPage() {
 
           <main className="p-4">
             <div className="grid grid-cols-2 gap-4">
-             {combos.length > 0 && (
-                  <Link href={`/qrmenu/${businessId}/${tableNumber}/combos`}>
-                      <Card className="overflow-hidden h-full flex flex-col">
-                           <div className="flex-grow flex items-center justify-center h-24">
-                              <CardTitle className="text-base text-center">Combos</CardTitle>
-                          </div>
-                      </Card>
-                  </Link>
-             )}
               {availableCategories.map((category) => (
                   <Link key={category.name} href={`/qrmenu/${businessId}/${tableNumber}/${category.name.toLowerCase().replace(/ /g, '-')}`}>
                       <Card className="overflow-hidden">
@@ -526,6 +517,15 @@ export default function QrMenuPage() {
                       </Card>
                   </Link>
               ))}
+              {combos.length > 0 && (
+                  <Link href={`/qrmenu/${businessId}/${tableNumber}/combos`}>
+                      <Card className="overflow-hidden h-full flex flex-col">
+                           <div className="flex-grow flex items-center justify-center h-24">
+                              <CardTitle className="text-base text-center">Combos</CardTitle>
+                          </div>
+                      </Card>
+                  </Link>
+             )}
             </div>
           </main>
         </ScrollArea>
