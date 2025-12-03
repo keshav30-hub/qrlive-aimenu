@@ -68,7 +68,8 @@ type CartItem = MenuItem & { quantity: number };
 
 export default function QrMenuPage() {
   const params = useParams();
-  const { 'business-id': businessId, 'table-number': tableNumber } = params as { 'business-id': string, 'table-number': string };
+  const { 'business-id': businessId, 'table-number': encodedTableNumber } = params as { 'business-id': string, 'table-number': string };
+  const tableNumber = useMemo(() => decodeURIComponent(encodedTableNumber), [encodedTableNumber]);
   const { format } = useCurrency();
   const { toast } = useToast();
   const router = useRouter();
@@ -239,7 +240,7 @@ export default function QrMenuPage() {
     0
   );
   
-  const aifaUrl = `/qrmenu/${businessId}/${tableNumber}/aifa`;
+  const aifaUrl = `/qrmenu/${businessId}/${encodedTableNumber}/aifa`;
 
   const availableCategories = useMemo(() => {
     const now = new Date();
@@ -499,7 +500,7 @@ export default function QrMenuPage() {
           <main className="p-4">
             <div className="grid grid-cols-2 gap-4">
               {availableCategories.map((category) => (
-                  <Link key={category.name} href={`/qrmenu/${businessId}/${tableNumber}/${category.name.toLowerCase().replace(/ /g, '-')}`}>
+                  <Link key={category.name} href={`/qrmenu/${businessId}/${encodedTableNumber}/${category.name.toLowerCase().replace(/ /g, '-')}`}>
                       <Card className="overflow-hidden">
                           <div className="relative h-24 w-full">
                               <Image
@@ -517,7 +518,7 @@ export default function QrMenuPage() {
                   </Link>
               ))}
               {combos.length > 0 && (
-                  <Link href={`/qrmenu/${businessId}/${tableNumber}/combos`}>
+                  <Link href={`/qrmenu/${businessId}/${encodedTableNumber}/combos`}>
                       <Card className="overflow-hidden h-full flex flex-col">
                            <div className="flex-grow flex items-center justify-center h-24">
                               <CardTitle className="text-base text-center">Combos</CardTitle>

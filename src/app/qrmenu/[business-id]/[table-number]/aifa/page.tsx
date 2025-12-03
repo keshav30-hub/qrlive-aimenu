@@ -207,7 +207,8 @@ export default function AIFAPage() {
     const params = useParams();
     const { user } = useFirebase();
     const businessId = params['business-id'] as string;
-    const tableNumber = params['table-number'] as string;
+    const encodedTableNumber = params['table-number'] as string;
+    const tableNumber = useMemo(() => decodeURIComponent(encodedTableNumber), [encodedTableNumber]);
     const { format } = useCurrency();
     const { toast } = useToast();
     const { uploadFile } = useFirebaseStorage();
@@ -607,5 +608,3 @@ export default function AIFAPage() {
         </div>
     );
 }
-
-    

@@ -78,16 +78,27 @@ export default function SetupQrMenuPage() {
 
 
   const handleAddTable = async () => {
-    if (newTableName.trim() && tablesRef) {
-      try {
-        await addDoc(tablesRef, { name: newTableName });
-        toast({ title: "Success", description: "Table added." });
-        setNewTableName('');
-        setIsDialogOpen(false);
-      } catch (e) {
-        toast({ variant: "destructive", title: "Error", description: "Could not add table." });
-        console.error(e);
-      }
+    if (!newTableName.trim()) {
+        toast({ variant: "destructive", title: "Error", description: "Table name cannot be empty." });
+        return;
+    }
+    if (!tablesRef) return;
+
+    // Case-insensitive check for duplicates
+    const isDuplicate = tables.some(table => table.name.toLowerCase() === newTableName.trim().toLowerCase());
+    if (isDuplicate) {
+        toast({ variant: "destructive", title: "Duplicate Table", description: "A table with this name already exists." });
+        return;
+    }
+    
+    try {
+      await addDoc(tablesRef, { name: newTableName.trim() });
+      toast({ title: "Success", description: "Table added." });
+      setNewTableName('');
+      setIsDialogOpen(false);
+    } catch (e) {
+      toast({ variant: "destructive", title: "Error", description: "Could not add table." });
+      console.error(e);
     }
   };
 
@@ -107,8 +118,9 @@ export default function SetupQrMenuPage() {
         toast({ variant: "destructive", title: "Error", description: "Business ID not found." });
         return;
     }
-    const tableSlug = tableName.toLowerCase().replace(/ /g, '-');
-    const menuUrl = `${window.location.origin}/qrmenu/${businessId}/${tableSlug}`;
+    
+    const encodedTableName = encodeURIComponent(tableName);
+    const menuUrl = `${window.location.origin}/qrmenu/${businessId}/${encodedTableName}`;
     const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(
       menuUrl
     )}`;
@@ -241,7 +253,7 @@ export default function SetupQrMenuPage() {
                         <Download className="mr-2 h-4 w-4" />
                         Download QR
                       </Button>
-                      <Link href={`/qrmenu/${businessId}/${table.name.toLowerCase().replace(/ /g, '-')}`} target="_blank">
+                      <Link href={`/qrmenu/${businessId}/${encodeURIComponent(table.name)}`} target="_blank">
                         <Button variant="outline" size="sm">
                           <ExternalLink className="mr-2 h-4 w-4" />
                           Visit

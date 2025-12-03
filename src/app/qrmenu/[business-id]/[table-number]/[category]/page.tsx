@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -166,7 +165,9 @@ export default function CategoryMenuPage() {
   const router = useRouter();
   const params = useParams();
   const { toast } = useToast();
-  const { 'business-id': businessId, 'table-number': tableNumber, category: categorySlug } = params as { 'business-id': string, 'table-number': string, category: string };
+  const { 'business-id': businessId, 'table-number': encodedTableNumber, category: categorySlug } = params as { 'business-id': string, 'table-number': string, category: string };
+  
+  const tableNumber = useMemo(() => decodeURIComponent(encodedTableNumber), [encodedTableNumber]);
   const isComboPage = categorySlug === 'combos';
   const categoryName = isComboPage ? 'Combos' : categorySlug.replace(/-/g, ' ');
   
@@ -331,7 +332,7 @@ export default function CategoryMenuPage() {
     }
   };
 
-  const aifaUrl = `/qrmenu/${businessId}/${tableNumber}/aifa`;
+  const aifaUrl = `/qrmenu/${businessId}/${encodedTableNumber}/aifa`;
 
   if (isLoading) {
     return <div className="flex h-screen items-center justify-center">Loading dishes...</div>
