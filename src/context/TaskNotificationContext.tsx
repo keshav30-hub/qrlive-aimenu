@@ -92,6 +92,15 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
   useEffect(() => {
     setUnattendedTaskCount(totalUnattendedCount);
   }, [totalUnattendedCount]);
+  
+  // Load mute state from localStorage on initial render
+  useEffect(() => {
+    const savedMuteState = localStorage.getItem('qrlive-mute-state');
+    if (savedMuteState !== null) {
+        setIsMuted(JSON.parse(savedMuteState));
+    }
+  }, []);
+
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -100,6 +109,30 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
       audioRef.current.preload = 'auto';
     }
   }, []);
+  
+  // Audio and Vibration logic restored here
+  useEffect(() => {
+    const audio = audioRef.current;
+    
+    const stopNotifications = () => {
+      if (audio) {
+        audio.pause();
+        audio.currentTime = 0;
+      }
+      if (navigator.vibrate) {
+        navigator.vibrate(0);
+      }
+    };
+
+    if (unattendedTaskCount > 0 && !isMuted && isAudioUnlocked) {
+      audio?.play().catch(error => console.error("Audio playback failed:", error));
+    } else {
+      stopNotifications();
+    }
+    
+    return stopNotifications;
+  }, [unattendedTaskCount, isMuted, isAudioUnlocked]);
+
 
   const unlockAudio = useCallback(() => {
     if (audioRef.current && !audioUnlockedRef.current) {
@@ -112,7 +145,6 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
   }, []);
 
   useEffect(() => {
-    // This effect is now only responsible for the pop-up dialog, not audio.
     if (isDialogOpen && notifiedTask) {
         const isUrgentFeedback = 'type' in notifiedTask;
         
@@ -198,7 +230,9 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
   }, [urgentFeedbacks, urgentFeedbackRef, isDialogOpen, dialogsDisabled]);
 
   const toggleMute = () => {
-    setIsMuted(prev => !prev);
+    const newMuteState = !isMuted;
+    setIsMuted(newMuteState);
+    localStorage.setItem('qrlive-mute-state', JSON.stringify(newMuteState));
   };
   
   const showNewTask = useCallback((payload: NewTaskPayload) => {

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -81,16 +82,10 @@ export default function CaptainTasksPage() {
   }, [tasksDoc, staffMember]);
 
   
-  const { setUnattendedTaskCount, setDialogsDisabled, isMuted, toggleMute, isAudioUnlocked } = useTaskNotification();
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const { unattendedTaskCount, setUnattendedTaskCount, setDialogsDisabled, isMuted, toggleMute, isAudioUnlocked } = useTaskNotification();
 
   useEffect(() => {
     setDialogsDisabled(true); // Disable global popups on this page
-    if (typeof window !== 'undefined') {
-        audioRef.current = new Audio('/notificationalert.mp3');
-        audioRef.current.loop = true;
-        audioRef.current.preload = 'auto';
-    }
     return () => setDialogsDisabled(false); // Re-enable on unmount
   }, [setDialogsDisabled]);
 
@@ -98,30 +93,6 @@ export default function CaptainTasksPage() {
     setUnattendedTaskCount(unattendedTasks.length);
   }, [unattendedTasks, setUnattendedTaskCount]);
 
-  useEffect(() => {
-    const audio = audioRef.current;
-    
-    const stopNotifications = () => {
-      if (audio) {
-        audio.pause();
-        audio.currentTime = 0;
-      }
-      if (navigator.vibrate) {
-        navigator.vibrate(0); // Stop vibration
-      }
-    };
-
-    if (unattendedTasks.length > 0 && !isMuted && isAudioUnlocked) {
-      audio?.play().catch(error => console.error("Audio playback failed on captain page:", error));
-      if (navigator.vibrate) {
-        navigator.vibrate([200, 100, 200]); // Vibrate pattern for new task
-      }
-    } else {
-      stopNotifications();
-    }
-    
-    return stopNotifications;
-  }, [unattendedTasks.length, isMuted, isAudioUnlocked]);
 
   const handleUpdateTask = async (taskToUpdate: Task, newStatus: 'attended' | 'ignored') => {
     if (!tasksLiveRef || !staffMember) return;
