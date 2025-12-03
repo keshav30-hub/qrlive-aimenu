@@ -75,10 +75,10 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
   const [dialogsDisabled, setDialogsDisabled] = useState(false);
   
   const [notifiedTask, setNotifiedTask] = useState<Task | UrgentFeedback | null>(null);
+  const previouslyNotifiedIds = useRef(new Set<string>());
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUnlockedRef = useRef(false);
-  const [isAudioUnlocked, setIsAudioUnlocked] = useState(false);
 
   const tasksLiveRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid, 'tasks', 'live') : null, [user, firestore]);
   const { data: taskDoc } = useDoc<TaskDoc>(tasksLiveRef);
@@ -93,14 +93,12 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
     setUnattendedTaskCount(totalUnattendedCount);
   }, [totalUnattendedCount]);
   
-  // Load mute state from localStorage on initial render
   useEffect(() => {
     const savedMuteState = localStorage.getItem('qrlive-mute-state');
     if (savedMuteState !== null) {
         setIsMuted(JSON.parse(savedMuteState));
     }
   }, []);
-
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -109,125 +107,106 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
       audioRef.current.preload = 'auto';
     }
   }, []);
-  
-  // Audio and Vibration logic restored here
-  useEffect(() => {
-    const audio = audioRef.current;
-    
-    const stopNotifications = () => {
-      if (audio) {
-        audio.pause();
-        audio.currentTime = 0;
-      }
-      if (navigator.vibrate) {
-        navigator.vibrate(0);
-      }
-    };
-
-    if (unattendedTaskCount > 0 && !isMuted && isAudioUnlocked) {
-      audio?.play().catch(error => console.error("Audio playback failed:", error));
-    } else {
-      stopNotifications();
-    }
-    
-    return stopNotifications;
-  }, [unattendedTaskCount, isMuted, isAudioUnlocked]);
-
 
   const unlockAudio = useCallback(() => {
     if (audioRef.current && !audioUnlockedRef.current) {
         audioRef.current.play().then(() => {
             audioRef.current?.pause();
             audioUnlockedRef.current = true;
-            setIsAudioUnlocked(true);
         }).catch(err => console.error("Audio unlock failed:", err));
     }
   }, []);
 
+  const stopNotifications = useCallback(() => {
+    if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+    }
+    if (navigator.vibrate) {
+        navigator.vibrate(0); // Stop vibration
+    }
+  }, []);
+
+  // Main notification effect
+  useEffect(() => {
+    if (dialogsDisabled || isDialogOpen) return;
+
+    const allUnattended = [
+        ...(unattendedTasks || []).map(t => ({...t, id: t.time})), // Use time as a pseudo-id for tasks
+        ...(urgentFeedbacks || [])
+    ].sort((a,b) => new Date(a.time).getTime() - new Date(b.time).getTime());
+
+    const latestNotification = allUnattended.find(
+        (item) => !previouslyNotifiedIds.current.has(item.id)
+    );
+
+    if (latestNotification) {
+        previouslyNotifiedIds.current.add(latestNotification.id);
+        
+        const isFeedback = 'type' in latestNotification;
+        const data = isFeedback
+          ? { Table: latestNotification.table, Comment: latestNotification.comment, Time: new Date(latestNotification.time).toLocaleTimeString() }
+          : { Table: latestNotification.table, Request: (latestNotification as Task).request, Time: new Date(latestNotification.time).toLocaleTimeString() };
+        
+        setNotifiedTask(latestNotification);
+        setNotification({
+            title: isFeedback ? "Urgent Feedback Received!" : "New Task Received!",
+            description: isFeedback ? `A ${(latestNotification as UrgentFeedback).type} was submitted.` : "A new service request has been received.",
+            data,
+            onAcknowledge: async (status: 'attended' | 'ignored') => {
+                 setIsAcknowledging(true);
+                 try {
+                     if (isFeedback) {
+                        if (urgentFeedbackRef) await deleteDoc(doc(urgentFeedbackRef, latestNotification.id));
+                     } else {
+                        if (tasksLiveRef) {
+                            const updatedTask = { ...(latestNotification as Task), status, time: new Date().toISOString(), handledBy: 'Admin' };
+                            await updateDoc(tasksLiveRef, { 
+                                pendingCalls: arrayRemove(latestNotification),
+                                attendedCalls: arrayUnion(updatedTask)
+                            });
+                        }
+                     }
+                 } catch(e) {
+                    console.error("Failed to acknowledge task/feedback", e);
+                 } finally {
+                    setIsAcknowledging(false);
+                 }
+            }
+        });
+        setIsDialogOpen(true);
+
+        if (!isMuted && audioUnlockedRef.current) {
+            audioRef.current?.play().catch(error => console.error("Audio playback failed:", error));
+            if (navigator.vibrate) {
+                navigator.vibrate([200, 100, 200, 100, 200]); // Vibrate pattern
+            }
+        }
+    } else {
+       // This handles the case where all tasks are acknowledged.
+       // The dialog closes, and we should stop the sound.
+       if (!isDialogOpen && totalUnattendedCount === 0) {
+           stopNotifications();
+       }
+    }
+
+  }, [unattendedTasks, urgentFeedbacks, isMuted, dialogsDisabled, isDialogOpen, stopNotifications, tasksLiveRef, urgentFeedbackRef]);
+
+  // Effect to close the dialog if the task disappears from the list
   useEffect(() => {
     if (isDialogOpen && notifiedTask) {
         const isUrgentFeedback = 'type' in notifiedTask;
         
-        let taskIsStillPending;
-        if (isUrgentFeedback) {
-            taskIsStillPending = (urgentFeedbacks || []).some(fb => fb.id === (notifiedTask as UrgentFeedback).id);
-        } else {
-            taskIsStillPending = unattendedTasks.some(
-                task => task.time === (notifiedTask as Task).time && task.table === (notifiedTask as Task).table && task.request === (notifiedTask as Task).request
-            );
-        }
+        const taskStillPending = isUrgentFeedback
+          ? (urgentFeedbacks || []).some(fb => fb.id === (notifiedTask as UrgentFeedback).id)
+          : (unattendedTasks || []).some(task => task.time === (notifiedTask as Task).time);
 
-        if (!taskIsStillPending) {
+        if (!taskStillPending) {
             closeDialog();
         }
     }
   }, [unattendedTasks, urgentFeedbacks, isDialogOpen, notifiedTask]);
 
-
-  useEffect(() => {
-    if (tasksLiveRef && unattendedTasks && unattendedTasks.length > 0 && !dialogsDisabled) {
-      const latestTask = unattendedTasks[unattendedTasks.length - 1];
-      
-      if (!isDialogOpen) {
-        setNotifiedTask(latestTask);
-        setNotification({
-          title: "New Task Received!",
-          description: "A new service request has been received.",
-          data: {
-            Table: latestTask.table,
-            Request: latestTask.request,
-            Time: new Date(latestTask.time).toLocaleTimeString(),
-          },
-          onAcknowledge: async (status: 'attended' | 'ignored') => {
-             setIsAcknowledging(true);
-             const updatedTask = { ...latestTask, status: status, time: new Date().toISOString(), handledBy: 'Admin' };
-             try {
-                await updateDoc(tasksLiveRef, { 
-                    pendingCalls: arrayRemove(latestTask),
-                    attendedCalls: arrayUnion(updatedTask)
-                });
-             } catch(e) {
-                console.error("Failed to acknowledge task", e);
-             } finally {
-                setIsAcknowledging(false);
-             }
-          },
-        });
-        setIsDialogOpen(true);
-      }
-    }
-  }, [tasksLiveRef, unattendedTasks, isDialogOpen, dialogsDisabled]);
-  
-  useEffect(() => {
-    if (urgentFeedbacks && urgentFeedbacks.length > 0 && !dialogsDisabled) {
-        const latestFeedback = urgentFeedbacks[0];
-        if (!isDialogOpen) {
-            setNotifiedTask(latestFeedback);
-            setNotification({
-                title: "Urgent Feedback Received!",
-                description: `A ${latestFeedback.type} was submitted.`,
-                data: {
-                    Table: latestFeedback.table,
-                    Comment: latestFeedback.comment,
-                    Time: new Date(latestFeedback.time).toLocaleTimeString(),
-                },
-                onAcknowledge: async () => {
-                    setIsAcknowledging(true);
-                    if (urgentFeedbackRef) {
-                        try {
-                           await deleteDoc(doc(urgentFeedbackRef, latestFeedback.id));
-                        } catch(e) {
-                           console.error("Failed to acknowledge feedback", e);
-                        } finally {
-                            setIsAcknowledging(false);
-                        }
-                    }
-                },
-            });
-            setIsDialogOpen(true);
-        }
-    }
-  }, [urgentFeedbacks, urgentFeedbackRef, isDialogOpen, dialogsDisabled]);
 
   const toggleMute = () => {
     const newMuteState = !isMuted;
@@ -239,6 +218,7 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
   }, []);
 
   const closeDialog = () => {
+    stopNotifications();
     setIsDialogOpen(false);
     setNotification(null);
     setNotifiedTask(null); 
@@ -254,7 +234,7 @@ export const TaskNotificationProvider = ({ children }: { children: ReactNode }) 
   const value: TaskNotificationContextType = { 
     isMuted, 
     toggleMute,
-    unattendedTaskCount,
+    unattendedTaskCount: totalUnattendedCount,
     setUnattendedTaskCount,
     showNewTask,
     setDialogsDisabled,

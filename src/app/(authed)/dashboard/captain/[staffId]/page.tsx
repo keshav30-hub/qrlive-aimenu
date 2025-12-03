@@ -1,14 +1,17 @@
 
 'use client';
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Image from 'next/image';
+import Link from 'next/link';
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
-  CardDescription,
+  CardFooter,
 } from '@/components/ui/card';
 import {
   Table,
@@ -18,213 +21,415 @@ import {
   TableBody,
   TableCell,
 } from '@/components/ui/table';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { LogOut, Volume2, VolumeX } from 'lucide-react';
-import { useTaskNotification } from '@/context/TaskNotificationContext';
-import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
-import { doc, updateDoc, arrayRemove, arrayUnion } from 'firebase/firestore';
-import { useToast } from '@/hooks/use-toast';
-import { format } from 'date-fns';
-
-type Task = {
-  table: string;
-  request: string;
-  time: string;
-  status: 'attended' | 'ignored' | 'unattended';
-  handledBy?: string;
-};
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import {
+  User,
+  Fingerprint,
+  Briefcase,
+  ChevronLeft,
+  ImageIcon,
+  Wallet,
+  FilePenLine,
+  CircleDollarSign,
+  Gift,
+} from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { useFirebase, useDoc, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where, Timestamp, doc, getDocs, orderBy } from 'firebase/firestore';
+import { format, getMonth, startOfYear, endOfYear, eachMonthOfInterval, getDaysInMonth, getYear, startOfMonth, endOfMonth } from 'date-fns';
+import { useCurrency } from '@/hooks/use-currency';
 
 type StaffMember = {
-    id: string;
-    name: string;
+  id: string;
+  name: string;
+  avatar?: string;
+  accessCode?: string;
+  shiftId?: string;
+  monthlySalary?: number;
 };
 
-type TaskDoc = {
-    pendingCalls: Task[];
-    attendedCalls: Task[];
+type Shift = {
+  id: string;
+  name: string;
+  from: string;
+  to: string;
+};
+
+type AttendanceRecord = {
+  id: string;
+  staffId: string;
+  status: 'Present' | 'Absent' | 'Half Day' | 'Paid Leave';
+  date: string; 
+  imageUrl?: string;
+  captureTime?: Timestamp;
+};
+
+type PayrollAdjustment = {
+    id: string;
+    type: 'bonus' | 'fine';
+    amount: number;
+    comment: string;
+    date: string; // yyyy-MM-dd
+};
+
+type UserProfile = {
+    createdAt?: Timestamp;
 }
 
-const statusVariant = (status: string) => {
+const getStatusVariant = (status: AttendanceRecord['status']) => {
   switch (status) {
-    case 'attended':
-      return 'default';
-    case 'ignored':
-      return 'destructive';
-    case 'unattended':
-      return 'secondary';
-    default:
-      return 'outline';
+    case 'Present': return 'default';
+    case 'Absent': return 'destructive';
+    case 'Half Day':
+    case 'Paid Leave': return 'secondary';
+    default: return 'outline';
   }
 };
 
-
-export default function CaptainTasksPage() {
-  const { firestore, user } = useFirebase();
-  const { toast } = useToast();
-  const params = useParams();
-  const router = useRouter();
-  const { staffId } = params;
-
-  const staffDocRef = useMemoFirebase(() => (user && staffId) ? doc(firestore, 'users', user.uid, 'staff', staffId as string) : null, [firestore, user, staffId]);
-  const tasksLiveRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid, 'tasks', 'live') : null, [firestore, user]);
-  
-  const { data: staffMember, isLoading: staffLoading } = useDoc<StaffMember>(staffDocRef);
-  const { data: tasksDoc, isLoading: tasksLoading } = useDoc<TaskDoc>(tasksLiveRef);
-
-  const unattendedTasks = useMemo(() => (tasksDoc?.pendingCalls || []).sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime()), [tasksDoc]);
-  const attendedToday = useMemo(() => {
-    const today = format(new Date(), 'yyyy-MM-dd');
-    return (tasksDoc?.attendedCalls || [])
-        .filter(task => task.handledBy === staffMember?.name && task.time.startsWith(today))
-        .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
-  }, [tasksDoc, staffMember]);
-
-  
-  const { unattendedTaskCount, setUnattendedTaskCount, setDialogsDisabled, isMuted, toggleMute, isAudioUnlocked } = useTaskNotification();
-
-  useEffect(() => {
-    setDialogsDisabled(true); // Disable global popups on this page
-    return () => setDialogsDisabled(false); // Re-enable on unmount
-  }, [setDialogsDisabled]);
-
-  useEffect(() => {
-    setUnattendedTaskCount(unattendedTasks.length);
-  }, [unattendedTasks, setUnattendedTaskCount]);
-
-
-  const handleUpdateTask = async (taskToUpdate: Task, newStatus: 'attended' | 'ignored') => {
-    if (!tasksLiveRef || !staffMember) return;
+const MonthAttendance = ({ monthDate, staffId }: { monthDate: Date, staffId: string }) => {
+    const { user, firestore } = useFirebase();
+    const { format: formatCurrency } = useCurrency();
     
-    const originalTaskInDb = (tasksDoc?.pendingCalls || []).find(
-      t => t.time === taskToUpdate.time && t.table === taskToUpdate.table && t.request === taskToUpdate.request
+    const staffDocRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid, 'staff', staffId) : null, [firestore, user, staffId]);
+    const { data: staff, isLoading: isStaffLoading } = useDoc<StaffMember>(staffDocRef);
+
+    const attendanceRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'staff', staffId, 'attendance') : null, [firestore, user, staffId]);
+    const payrollRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'staff', staffId, 'payroll') : null, [firestore, user, staffId]);
+    
+    const monthQuery = useMemoFirebase(() => {
+        if (!attendanceRef) return null;
+        const start = format(startOfMonth(monthDate), 'yyyy-MM-dd');
+        const end = format(endOfMonth(monthDate), 'yyyy-MM-dd');
+        return query(attendanceRef, where('date', '>=', start), where('date', '<=', end));
+    }, [attendanceRef, monthDate]);
+
+    const payrollQuery = useMemoFirebase(() => {
+        if (!payrollRef) return null;
+        const start = format(startOfMonth(monthDate), 'yyyy-MM-dd');
+        const end = format(endOfMonth(monthDate), 'yyyy-MM-dd');
+        return query(payrollRef, where('date', '>=', start), where('date', '<=', end));
+    }, [payrollRef, monthDate]);
+
+    const { data: recordsForMonth, isLoading: isAttendanceLoading } = useCollection<AttendanceRecord>(monthQuery);
+    const { data: adjustmentsForMonth, isLoading: isPayrollLoading } = useCollection<PayrollAdjustment>(payrollQuery);
+    
+    if (isStaffLoading || isAttendanceLoading || isPayrollLoading) {
+        return <div className="p-4 text-center">Loading month data...</div>;
+    }
+    
+    if (!staff) {
+        return <div className="p-4 text-center">Could not load staff data.</div>;
+    }
+
+    const monthName = format(monthDate, 'MMMM');
+    const totalDaysInMonth = getDaysInMonth(monthDate);
+    const presentCount = (recordsForMonth || []).filter(r => r.status === 'Present').length;
+    const absentCount = totalDaysInMonth - (recordsForMonth || []).length;
+    const halfDayCount = (recordsForMonth || []).filter(r => r.status === 'Half Day').length;
+    const paidLeaveCount = (recordsForMonth || []).filter(r => r.status === 'Paid Leave').length;
+
+    const totalBonuses = (adjustmentsForMonth || []).filter(a => a.type === 'bonus').reduce((acc, curr) => acc + curr.amount, 0);
+    const totalFines = (adjustmentsForMonth || []).filter(a => a.type === 'fine').reduce((acc, curr) => acc + curr.amount, 0);
+
+    const monthlySalary = staff.monthlySalary || 0;
+    const perDaySalary = monthlySalary / totalDaysInMonth;
+    
+    // Half day counts as half salary
+    const salaryForDays = perDaySalary * (presentCount + paidLeaveCount + (halfDayCount * 0.5));
+    const finalSalary = salaryForDays + totalBonuses - totalFines;
+
+    return (
+        <div className="p-4 border-t">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 text-center">
+            <div className='p-2 rounded-md bg-gray-100 dark:bg-gray-800'>
+              <p className="text-sm text-muted-foreground">Total Days</p>
+              <p className="font-bold text-lg">{totalDaysInMonth}</p>
+            </div>
+            <div className='p-2 rounded-md bg-green-100 dark:bg-green-900/30'>
+              <p className="text-sm text-green-800 dark:text-green-300">Present</p>
+              <p className="font-bold text-lg text-green-900 dark:text-green-200">{presentCount}</p>
+            </div>
+            <div className='p-2 rounded-md bg-red-100 dark:bg-red-900/30'>
+               <p className="text-sm text-red-800 dark:text-red-300">Absent</p>
+              <p className="font-bold text-lg text-red-900 dark:text-red-200">{absentCount}</p>
+            </div>
+            <div className='p-2 rounded-md bg-yellow-100 dark:bg-yellow-900/30'>
+               <p className="text-sm text-yellow-800 dark:text-yellow-300">Half Day / Leave</p>
+              <p className="font-bold text-lg text-yellow-900 dark:text-yellow-200">{halfDayCount} / {paidLeaveCount}</p>
+            </div>
+          </div>
+
+          <Card className='mb-4'>
+              <CardHeader className='p-4'>
+                  <CardTitle className='text-base'>Salary Calculation for {monthName}</CardTitle>
+              </CardHeader>
+              <CardContent className='p-4 text-sm space-y-2'>
+                  <div className='flex justify-between'><span>Salary Earned (incl. Half Days):</span> <span className='font-medium'>{formatCurrency(salaryForDays)}</span></div>
+                  <div className='flex justify-between'><span>Bonuses:</span> <span className='font-medium text-green-600'>+ {formatCurrency(totalBonuses)}</span></div>
+                  <div className='flex justify-between'><span>Fines:</span> <span className='font-medium text-destructive'>- {formatCurrency(totalFines)}</span></div>
+              </CardContent>
+              <CardFooter className='p-4 border-t'>
+                <div className='flex justify-between font-bold text-base w-full'><span>Final Salary:</span> <span>{formatCurrency(finalSalary)}</span></div>
+              </CardFooter>
+          </Card>
+
+          {(adjustmentsForMonth || []).length > 0 && (
+             <Card className="mb-4">
+                <CardHeader className="p-4">
+                    <CardTitle className="text-base">Bonuses & Fines for {monthName}</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Date</TableHead>
+                                <TableHead>Type</TableHead>
+                                <TableHead>Amount</TableHead>
+                                <TableHead>Comment</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {adjustmentsForMonth?.map(adj => (
+                                <TableRow key={adj.id}>
+                                    <TableCell>{format(new Date(adj.date), 'PPP')}</TableCell>
+                                    <TableCell className="capitalize">
+                                        <Badge variant={adj.type === 'bonus' ? 'default' : 'destructive'}>{adj.type}</Badge>
+                                    </TableCell>
+                                    <TableCell>{formatCurrency(adj.amount)}</TableCell>
+                                    <TableCell>{adj.comment}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+          )}
+
+        {(recordsForMonth || []).length > 0 ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Capture Time</TableHead>
+                <TableHead>Image</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {(recordsForMonth || []).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(record => (
+                <TableRow key={record.id}>
+                  <TableCell>{format(new Date(record.date), 'PPP')}</TableCell>
+                  <TableCell>
+                    <Badge variant={getStatusVariant(record.status)} className="capitalize">{record.status}</Badge>
+                  </TableCell>
+                  <TableCell>{record.captureTime ? record.captureTime.toDate().toLocaleTimeString() : '-'}</TableCell>
+                  <TableCell>
+                    {record.imageUrl ? (
+                        <Dialog>
+                            <DialogTrigger asChild>
+                               <Button variant="ghost" size="icon">
+                                <ImageIcon className="h-5 w-5" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-lg">
+                                <DialogHeader>
+                                    <DialogTitle>Attendance for {format(new Date(record.date), 'PPP')}</DialogTitle>
+                                </DialogHeader>
+                                    <div className="relative mt-4 h-96 w-full">
+                                    <Image src={record.imageUrl} alt={`Attendance for ${staff.name}`} layout="fill" objectFit="contain" />
+                                </div>
+                            </DialogContent>
+                        </Dialog>
+                    ) : '-'}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <p className="text-center text-muted-foreground p-4">No attendance records for {monthName}.</p>
+        )}
+        </div>
     );
+};
 
-    if (!originalTaskInDb) {
-      toast({ variant: "destructive", title: "Error", description: "Task not found to update." });
-      return;
-    }
 
-    const updatedTask = { ...originalTaskInDb, status: newStatus, time: new Date().toISOString(), handledBy: staffMember.name };
+export default function StaffDetailPage() {
+  const { user, firestore } = useFirebase();
+  const params = useParams();
+  const staffId = params.staffId as string;
+  const { format: formatCurrency } = useCurrency();
+  const router = useRouter();
 
-    try {
-      await updateDoc(tasksLiveRef, { 
-        pendingCalls: arrayRemove(originalTaskInDb),
-        attendedCalls: arrayUnion(updatedTask)
-      });
-      toast({ title: "Success", description: `Task marked as ${newStatus}.` });
-    } catch(e) {
-      toast({ variant: "destructive", title: "Error", description: "Could not update task." });
-      console.error(e);
-    }
-  };
+  const currentYear = new Date().getFullYear();
+  const [selectedYear, setSelectedYear] = useState(currentYear);
   
-  const handleLogout = () => {
-    router.push('/dashboard/captain');
+  const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [user, firestore]);
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
+
+  const availableYears = useMemo(() => {
+    if (!userProfile?.createdAt) {
+      return [currentYear];
+    }
+    const startYear = getYear(userProfile.createdAt.toDate());
+    const years = [];
+    for (let i = currentYear; i >= startYear; i--) {
+      years.push(i);
+    }
+    return years;
+  }, [userProfile, currentYear]);
+
+
+  const staffDocRef = useMemoFirebase(
+    () => (user && staffId ? doc(firestore, 'users', user.uid, 'staff', staffId) : null),
+    [firestore, user, staffId]
+  );
+  const { data: staff, isLoading: staffLoading } = useDoc<StaffMember>(staffDocRef);
+
+  const shiftDocRef = useMemoFirebase(
+    () => (user && staff?.shiftId ? doc(firestore, 'users', user.uid, 'shifts', staff.shiftId) : null),
+    [firestore, user, staff]
+  );
+  const { data: shift, isLoading: shiftLoading } = useDoc<Shift>(shiftDocRef);
+
+  const monthsOfYear = useMemo(() => {
+    return eachMonthOfInterval({
+        start: startOfYear(new Date(selectedYear, 0, 1)),
+        end: endOfYear(new Date(selectedYear, 11, 31)),
+    });
+  }, [selectedYear]);
+
+
+  if (staffLoading || shiftLoading || isProfileLoading) {
+    return <div className="flex h-screen items-center justify-center">Loading staff details...</div>;
   }
 
-  if (tasksLoading || staffLoading) {
-    return <div className="flex h-screen items-center justify-center">Loading tasks...</div>;
+  if (!staff) {
+    return <div className="flex h-screen items-center justify-center">Staff member not found.</div>;
   }
-  
+
   return (
-    <div className="space-y-6 max-w-lg mx-auto py-6 px-4">
-      <div className="flex justify-between items-center">
-        <div>
-            <h1 className="text-3xl font-bold">Captain's Dashboard</h1>
-            <p className="text-lg text-muted-foreground">Welcome, {staffMember?.name || 'Captain'}</p>
-        </div>
-        <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={toggleMute}>
-                {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
-                <span className="sr-only">{isMuted ? 'Unmute' : 'Mute'}</span>
-            </Button>
-            <Button variant="outline" onClick={handleLogout}>
-                <LogOut className="mr-2 h-4 w-4" />
-                Logout
-            </Button>
-        </div>
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <Link href="/dashboard/staff">
+          <Button variant="outline" size="icon">
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+        </Link>
+        <h1 className="text-3xl font-bold">Staff Profile</h1>
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Unattended Tasks ({unattendedTasks.length})</CardTitle>
-           <CardDescription>Live requests from your customers.</CardDescription>
+        <CardHeader className="flex flex-row items-start justify-between">
+          <div className="flex items-center gap-6">
+            <Avatar className="h-24 w-24">
+              <AvatarImage src={staff.avatar} alt={staff.name} />
+              <AvatarFallback>{staff.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+            </Avatar>
+            <div>
+              <CardTitle className="text-3xl">{staff.name}</CardTitle>
+            </div>
+          </div>
+           <Button variant="outline" onClick={() => router.push('/dashboard/staff')}>
+            <FilePenLine className="mr-2 h-4 w-4" />
+            Edit
+          </Button>
         </CardHeader>
         <CardContent>
-          <ScrollArea className="w-full whitespace-nowrap">
-            <div className="flex w-max space-x-4 pb-4">
-              {tasksLoading ? <p>Loading tasks...</p> : unattendedTasks.map((task, index) => (
-                <Card key={index} className="w-[280px] border-primary border-2">
-                  <CardHeader>
-                    <CardTitle className="text-lg">{task.table}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <p className="font-semibold">{task.request}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {new Date(task.time).toLocaleTimeString()}
-                    </p>
-                    <div className="flex justify-between pt-2">
-                      <Button variant="outline" onClick={() => handleUpdateTask(task, 'ignored')}>Ignore</Button>
-                      <Button onClick={() => handleUpdateTask(task, 'attended')}>Attend</Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-               {unattendedTasks.length === 0 && !tasksLoading && (
-                  <div className="text-center w-full py-10 text-muted-foreground">
-                      <p>No unattended tasks right now. Great job!</p>
-                  </div>
-              )}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+            <div className="flex items-center gap-3">
+              <User className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <p className="text-sm text-muted-foreground">Name</p>
+                <p className="font-medium">{staff.name}</p>
+              </div>
             </div>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
+            <div className="flex items-center gap-3">
+              <Fingerprint className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <p className="text-sm text-muted-foreground">Access Code</p>
+                <p className="font-medium font-mono">{staff.accessCode || 'Not Set'}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Briefcase className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <p className="text-sm text-muted-foreground">Shift</p>
+                <p className="font-medium">{shift ? `${shift.name} (${shift.from} - ${shift.to})` : 'Not Assigned'}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Wallet className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <p className="text-sm text-muted-foreground">Monthly Salary</p>
+                <p className="font-medium">{staff.monthlySalary ? formatCurrency(staff.monthlySalary) : 'Not Set'}</p>
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
-      
+
       <Card>
         <CardHeader>
-          <CardTitle>Today's Attended Tasks</CardTitle>
-           <CardDescription>Tasks you have handled today.</CardDescription>
+            <div className="flex justify-between items-center">
+                 <div>
+                    <CardTitle>Attendance History</CardTitle>
+                    <CardDescription>Monthly breakdown of attendance and salary.</CardDescription>
+                 </div>
+                 {availableYears.length > 0 && (
+                    <Select
+                        value={selectedYear.toString()}
+                        onValueChange={(value) => setSelectedYear(parseInt(value, 10))}
+                    >
+                        <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Select a year" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {availableYears.map(year => (
+                                <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                 )}
+            </div>
         </CardHeader>
         <CardContent>
-          {tasksLoading ? <p>Loading history...</p> : (
-          <>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Time</TableHead>
-                  <TableHead>Table</TableHead>
-                  <TableHead>Request</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {attendedToday.map((task, index) => (
-                  <TableRow key={index}>
-                    <TableCell>{new Date(task.time).toLocaleString()}</TableCell>
-                    <TableCell>{task.table}</TableCell>
-                    <TableCell>{task.request}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={statusVariant(task.status)}
-                        className="capitalize"
-                      >
-                        {task.status}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            {attendedToday.length === 0 && !tasksLoading && (
-              <div className="text-center py-10 text-muted-foreground">
-                  <p>You have not attended any tasks today.</p>
-              </div>
-            )}
-          </>
-          )}
+          <Accordion type="single" collapsible className="w-full">
+            {monthsOfYear.map(monthDate => {
+              const monthName = format(monthDate, 'MMMM');
+              return (
+                <AccordionItem key={monthName} value={monthName}>
+                  <AccordionTrigger>
+                    {monthName} {selectedYear}
+                  </AccordionTrigger>
+                  <AccordionContent>
+                      <MonthAttendance monthDate={monthDate} staffId={staffId} />
+                  </AccordionContent>
+                </AccordionItem>
+              );
+            })}
+          </Accordion>
         </CardContent>
       </Card>
     </div>
