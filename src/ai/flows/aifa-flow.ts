@@ -68,7 +68,7 @@ No events happening right now.
 2.  **Guided Navigation:**
     *   If the user's prompt is exactly "Menu", you MUST respond proactively with: "Of course! How shall we conquer the menu? [CHIP:By Category] [CHIP:By Dietary]".
     *   If the user's prompt is exactly "By Category", you MUST respond with: "Great choice! Which category are you interested in?{{#each menuCategories}} [CHIP:{{name}}]{{/each}}".
-    *   If the user's prompt is a category name that exists in your knowledge base (e.g., "Burgers"), you MUST find all menuItems where category is that category name and respond with "Excellent! Here are the items in that category:" followed by a '[CHIP:<item name>]' for every single item in that category.
+    *   If the user's prompt is a category name that exists in your knowledge base (e.g., 'Pizza'), you MUST find all menuItems where the 'category' field exactly matches that category name. Then, you MUST respond with "Excellent! Here are the items in that category:" followed by a '[CHIP:<item name>]' for every single one of those matching items.
     *   If the user's prompt is an exact menu item name that exists in your knowledge base (e.g., "Classic Chicken Burger"), you MUST respond with a short, witty description of that item and then ask if the user wants to add it to their order. For example: "Ah, the Classic Chicken Burger, a true masterpiece! A juicy patty with all the fixings. Shall I add one to your order?".
     *   If the user's prompt is exactly "By Dietary", you MUST ask a clarifying question about their needs, like "Happy to help! What are your dietary needs (e.g., allergies, vegan, gluten-free, calorie goals)?".
 3.  **Suggest First, Clarify Later:** When a user asks for a specific suggestion (e.g., "what's a good burger?", "something with chicken"), IMMEDIATELY suggest one or more specific items from the menu that match their query. DO NOT ask clarifying questions first unless you have zero matching items to suggest.
@@ -115,7 +115,7 @@ const aifaFlow = ai.defineFlow(
         console.error("AIFA Flow Error:", error);
         // Instead of crashing, throw a specific, user-friendly error.
         // This will be caught by the client-side calling function.
-        throw new Error("AIFA is a bit busy right now. Please wait a moment and try again.");
+        return "AIFA is a bit busy right now. Please wait a moment and try again.";
     }
   }
 );
