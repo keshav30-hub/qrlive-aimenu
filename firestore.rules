@@ -51,10 +51,12 @@ service cloud.firestore {
 
     match /subscriptions/{userId} {
       allow get: if isOwner(userId);
-      // Allow a user to create their own initial subscription document upon signup.
-      allow create: if isOwner(userId);
-      // Prevent users from updating or deleting their subscription status directly.
-      allow update, delete: if false;
+      // Allow creation only if the user is setting their initial 'inactive' status.
+      allow create: if isOwner(userId) && request.resource.data.status == 'inactive';
+      // Allow a user to update ONLY the 'status' field.
+      allow update: if isOwner(userId) && request.resource.data.keys().hasOnly(['status']);
+      // Prevent users from deleting their subscription.
+      allow delete: if false;
     }
 
     match /payments/{paymentId} {
