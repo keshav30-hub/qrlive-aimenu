@@ -16,7 +16,7 @@ import { useFirebase, useCollection, useMemoFirebase, useDoc } from '@/firebase'
 import { collection, query, orderBy, DocumentData, doc, Timestamp, getDoc } from 'firebase/firestore';
 import { useCurrency } from '@/hooks/use-currency';
 import { cn } from '@/lib/utils';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -32,6 +32,7 @@ import { useToast } from '@/hooks/use-toast';
 import { RAZORPAY_KEY_ID } from '@/lib/config';
 import { validateCoupon } from '@/lib/firebase/coupons';
 import { format } from 'date-fns';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 
 const features = [
@@ -67,12 +68,18 @@ type UserProfile = {
 }
 
 type Subscription = {
-    planName: string;
     status: 'active' | 'inactive';
+    expiresAt?: Timestamp;
+    // other fields are now in history
+};
+
+type SubscriptionHistoryItem = {
+    id: string;
+    planName: string;
     startedAt: Timestamp;
     expiresAt: Timestamp;
     paidAmount: number;
-};
+}
 
 export default function SubscriptionPage() {
   const { firestore, user } = useFirebase();
@@ -81,9 +88,13 @@ export default function SubscriptionPage() {
 
   const userRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [user, firestore]);
   const subscriptionRef = useMemoFirebase(() => (user ? doc(firestore, 'subscriptions', user.uid) : null), [user, firestore]);
+  const historyRef = useMemoFirebase(() => subscriptionRef ? collection(subscriptionRef, 'history') : null, [subscriptionRef]);
   
   const { data: userProfile } = useDoc<UserProfile>(userRef);
   const { data: subscription, isLoading: isSubscriptionLoading } = useDoc<Subscription>(subscriptionRef);
+  const { data: history, isLoading: isHistoryLoading } = useCollection<SubscriptionHistoryItem>(
+    useMemoFirebase(() => historyRef ? query(historyRef, orderBy('startedAt', 'desc')) : null, [historyRef])
+  );
 
   const plansRef = useMemoFirebase(
     () => (firestore ? collection(firestore, 'plans') : null),
@@ -105,6 +116,11 @@ export default function SubscriptionPage() {
   const [isSubscribing, setIsSubscribing] = useState(false);
   const [setupFee, setSetupFee] = useState(0);
   const [needsSetupFee, setNeedsSetupFee] = useState(false);
+
+  const isSubscriptionActive = 
+        subscription?.status === 'active' && 
+        subscription.expiresAt && 
+        subscription.expiresAt.toDate() > new Date();
 
   const handleSelectPlan = async (plan: Plan) => {
     setSelectedPlan(plan);
@@ -247,162 +263,163 @@ export default function SubscriptionPage() {
 
 
   const finalPrice = selectedPlan ? (selectedPlan.offerPrice - discount) + (needsSetupFee ? setupFee : 0) : 0;
+  
+  const currentPlan = history?.[0];
 
-  if (isSubscriptionLoading) {
+  if (isSubscriptionLoading || isHistoryLoading) {
     return <div className="flex h-screen items-center justify-center">Loading subscription status...</div>
   }
-  
-  if (subscription?.status === 'active') {
-      return (
-         <div className="space-y-8 max-w-2xl mx-auto">
-            <div className="text-center">
-                <h1 className="text-4xl font-bold">Your Subscription</h1>
-                <p className="text-lg text-muted-foreground mt-2">
-                Here are the details of your current active plan.
-                </p>
+
+  return (
+    <div className="space-y-8">
+       <div className="text-center">
+         <h1 className="text-4xl font-bold">Subscription</h1>
+         <p className="text-lg text-muted-foreground mt-2">
+            {isSubscriptionActive ? 'Manage your active subscription and view history.' : 'Your subscription has expired. Please choose a plan to continue.'}
+         </p>
+       </div>
+
+      {!isSubscriptionActive && (
+        <>
+            <Card className="bg-gray-50 dark:bg-gray-800/50">
+                <CardHeader>
+                <CardTitle className="text-2xl text-center">🏆 Why Choose QRlive?</CardTitle>
+                <CardDescription className="text-center">
+                    Unlock the full potential of your business with our powerful features.
+                </CardDescription>
+                </CardHeader>
+                <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4">
+                    {features.map((feature) => (
+                    <div key={feature} className="flex items-start gap-2">
+                        <span className="text-lg leading-none mt-1">{feature.split(' ')[0]}</span>
+                        <span className="text-sm font-medium">{feature.substring(feature.indexOf(' ') + 1)}</span>
+                    </div>
+                    ))}
+                </div>
+                </CardContent>
+            </Card>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                {plansLoading && (
+                    [...Array(3)].map((_, i) => (
+                        <Card key={i} className="flex flex-col justify-between animate-pulse">
+                            <CardHeader>
+                                <div className="h-6 bg-gray-200 rounded w-3/4"></div>
+                                <div className="h-10 bg-gray-200 rounded w-1/2 mt-2"></div>
+                                <div className="h-4 bg-gray-200 rounded w-1/4 mt-1"></div>
+                            </CardHeader>
+                            <CardContent className="flex-grow">
+                                <div className="space-y-3">
+                                    <div className="h-4 bg-gray-200 rounded"></div>
+                                    <div className="h-4 bg-gray-200 rounded"></div>
+                                </div>
+                            </CardContent>
+                            <CardFooter>
+                                <div className="h-10 bg-gray-200 rounded w-full"></div>
+                            </CardFooter>
+                        </Card>
+                    ))
+                )}
+                {!plansLoading && plans && plans.map(plan => {
+                    const priceToUse = plan.offerPrice > 0 ? plan.offerPrice : plan.priceINR;
+                    const perDayCost = Math.floor(priceToUse / (plan.durationMonths * 30));
+
+                    return (
+                    <Card key={plan.id} className={cn("flex flex-col", plan.recommended && "border-primary border-2")}>
+                        <CardHeader>
+                            <div className="flex justify-between items-center">
+                                <CardTitle className="text-2xl capitalize">{plan.name}</CardTitle>
+                                {plan.recommended && <Badge>Recommended</Badge>}
+                            </div>
+                            <div className="flex items-baseline gap-2 pt-2">
+                                <span className="text-4xl font-bold">{formatCurrency(plan.offerPrice)}</span>
+                                {plan.priceINR > plan.offerPrice && <span className="text-muted-foreground line-through">{formatCurrency(plan.priceINR)}</span>}
+                            </div>
+                            <CardDescription>{plan.durationMonths} month access</CardDescription>
+                        </CardHeader>
+                        <CardContent className="flex-grow">
+                        <div className='p-3 rounded-md bg-green-50 dark:bg-green-900/20 text-center mb-4'>
+                            <p className='text-lg font-bold text-green-700 dark:text-green-300'>{formatCurrency(perDayCost)}/day</p>
+                            {plan.offerPrice > 0 && <p className='text-xs text-green-600 dark:text-green-400'>(Based on offer price)</p>}
+                        </div>
+                        <ul className="space-y-3 text-sm text-muted-foreground">
+                            <li>Renews at {formatCurrency(plan.offerPrice)} every {plan.durationMonths} months.</li>
+                            <li>Cancel anytime.</li>
+                        </ul>
+                        </CardContent>
+                        <CardFooter>
+                        <Button className="w-full" onClick={() => handleSelectPlan(plan)}>
+                            Choose Plan
+                        </Button>
+                        </CardFooter>
+                    </Card>
+                )})}
             </div>
-            <Card>
+        </>
+      )}
+
+      {isSubscriptionActive && currentPlan && (
+           <Card>
                 <CardHeader>
                     <div className="flex justify-between items-center">
-                        <CardTitle className="text-2xl">{subscription.planName}</CardTitle>
+                        <CardTitle className="text-2xl">{currentPlan.planName}</CardTitle>
                         <Badge variant="default" className="bg-green-600">Active</Badge>
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Activated On</span>
-                        <span className="font-medium">{format(subscription.startedAt.toDate(), 'dd MMM yyyy')}</span>
+                        <span className="font-medium">{format(currentPlan.startedAt.toDate(), 'dd MMM yyyy')}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Renews On</span>
-                        <span className="font-medium">{format(subscription.expiresAt.toDate(), 'dd MMM yyyy')}</span>
+                        <span className="font-medium">{format(currentPlan.expiresAt.toDate(), 'dd MMM yyyy')}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Last Amount Paid</span>
-                        <span className="font-medium">{formatCurrency(subscription.paidAmount)}</span>
+                        <span className="font-medium">{formatCurrency(currentPlan.paidAmount)}</span>
                     </div>
                 </CardContent>
             </Card>
+      )}
 
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <History className="h-5 w-5" />
-                        Subscription History
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="relative pl-6">
-                        <div className="absolute left-6 top-3 bottom-3 w-0.5 bg-border"></div>
-                        <div className="relative flex items-start gap-6 mb-8">
-                            <div className="h-5 w-5 bg-green-500 rounded-full flex items-center justify-center ring-4 ring-background">
-                                <CircleCheck className="h-3 w-3 text-white" />
-                            </div>
-                            <div>
-                                <p className="font-semibold">Subscription Activated</p>
-                                <p className="text-sm text-muted-foreground">{format(subscription.startedAt.toDate(), 'PPP, p')}</p>
-                            </div>
-                        </div>
-                        <div className="relative flex items-start gap-6">
-                            <div className="h-5 w-5 bg-blue-500 rounded-full flex items-center justify-center ring-4 ring-background">
-                                <Calendar className="h-3 w-3 text-white" />
-                            </div>
-                            <div>
-                                <p className="font-semibold">Next Renewal</p>
-                                <p className="text-sm text-muted-foreground">{format(subscription.expiresAt.toDate(), 'PPP')}</p>
-                            </div>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-        </div>
-      );
-  }
-
-  return (
-    <div className="space-y-8">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold">Subscription Plans</h1>
-        <p className="text-lg text-muted-foreground mt-2">
-          Choose the plan duration that's right for your business.
-        </p>
-      </div>
-
-       <Card className="bg-gray-50 dark:bg-gray-800/50">
-        <CardHeader>
-          <CardTitle className="text-2xl text-center">🏆 Why Choose QRlive?</CardTitle>
-          <CardDescription className="text-center">
-            Unlock the full potential of your business with our powerful features.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4">
-            {features.map((feature) => (
-              <div key={feature} className="flex items-start gap-2">
-                <span className="text-lg leading-none mt-1">{feature.split(' ')[0]}</span>
-                <span className="text-sm font-medium">{feature.substring(feature.indexOf(' ') + 1)}</span>
-              </div>
-            ))}
-          </div>
-        </CardContent>
+      <Card>
+          <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                  <History className="h-5 w-5" />
+                  Subscription History
+              </CardTitle>
+          </CardHeader>
+          <CardContent>
+              <Table>
+                  <TableHeader>
+                      <TableRow>
+                          <TableHead>Plan Name</TableHead>
+                          <TableHead>Start Date</TableHead>
+                          <TableHead>End Date</TableHead>
+                          <TableHead className="text-right">Amount Paid</TableHead>
+                      </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                      {isHistoryLoading ? (
+                          <TableRow><TableCell colSpan={4} className="text-center h-24">Loading history...</TableCell></TableRow>
+                      ) : history && history.length > 0 ? (
+                          history.map(item => (
+                            <TableRow key={item.id}>
+                                <TableCell className="font-medium">{item.planName}</TableCell>
+                                <TableCell>{format(item.startedAt.toDate(), 'dd MMM yyyy')}</TableCell>
+                                <TableCell>{format(item.expiresAt.toDate(), 'dd MMM yyyy')}</TableCell>
+                                <TableCell className="text-right">{formatCurrency(item.paidAmount)}</TableCell>
+                            </TableRow>
+                          ))
+                      ) : (
+                          <TableRow><TableCell colSpan={4} className="text-center h-24">No subscription history found.</TableCell></TableRow>
+                      )}
+                  </TableBody>
+              </Table>
+          </CardContent>
       </Card>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {plansLoading && (
-              [...Array(3)].map((_, i) => (
-                  <Card key={i} className="flex flex-col justify-between animate-pulse">
-                      <CardHeader>
-                          <div className="h-6 bg-gray-200 rounded w-3/4"></div>
-                          <div className="h-10 bg-gray-200 rounded w-1/2 mt-2"></div>
-                          <div className="h-4 bg-gray-200 rounded w-1/4 mt-1"></div>
-                      </CardHeader>
-                      <CardContent className="flex-grow">
-                          <div className="space-y-3">
-                              <div className="h-4 bg-gray-200 rounded"></div>
-                              <div className="h-4 bg-gray-200 rounded"></div>
-                          </div>
-                      </CardContent>
-                      <CardFooter>
-                          <div className="h-10 bg-gray-200 rounded w-full"></div>
-                      </CardFooter>
-                  </Card>
-              ))
-          )}
-          {!plansLoading && plans && plans.map(plan => {
-              const priceToUse = plan.offerPrice > 0 ? plan.offerPrice : plan.priceINR;
-              const perDayCost = Math.floor(priceToUse / (plan.durationMonths * 30));
-
-              return (
-               <Card key={plan.id} className={cn("flex flex-col", plan.recommended && "border-primary border-2")}>
-                  <CardHeader>
-                    <div className="flex justify-between items-center">
-                        <CardTitle className="text-2xl capitalize">{plan.name}</CardTitle>
-                        {plan.recommended && <Badge>Recommended</Badge>}
-                    </div>
-                    <div className="flex items-baseline gap-2 pt-2">
-                        <span className="text-4xl font-bold">{formatCurrency(plan.offerPrice)}</span>
-                        {plan.priceINR > plan.offerPrice && <span className="text-muted-foreground line-through">{formatCurrency(plan.priceINR)}</span>}
-                    </div>
-                    <CardDescription>{plan.durationMonths} month access</CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex-grow">
-                  <div className='p-3 rounded-md bg-green-50 dark:bg-green-900/20 text-center mb-4'>
-                      <p className='text-lg font-bold text-green-700 dark:text-green-300'>{formatCurrency(perDayCost)}/day</p>
-                      {plan.offerPrice > 0 && <p className='text-xs text-green-600 dark:text-green-400'>(Based on offer price)</p>}
-                  </div>
-                  <ul className="space-y-3 text-sm text-muted-foreground">
-                      <li>Renews at {formatCurrency(plan.offerPrice)} every {plan.durationMonths} months.</li>
-                      <li>Cancel anytime.</li>
-                  </ul>
-                  </CardContent>
-                  <CardFooter>
-                  <Button className="w-full" onClick={() => handleSelectPlan(plan)}>
-                      Choose Plan
-                  </Button>
-                  </CardFooter>
-              </Card>
-          )})}
-      </div>
       
        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogContent className="sm:max-w-md">

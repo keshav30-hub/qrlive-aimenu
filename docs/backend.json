@@ -630,6 +630,23 @@
         "features"
       ]
     },
+    "SubscriptionHistory": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Subscription History",
+      "type": "object",
+      "description": "Represents a historical record of a user's subscription.",
+      "properties": {
+        "planId": { "type": "string" },
+        "planName": { "type": "string" },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "expiresAt": { "type": "string", "format": "date-time" },
+        "paidAmount": { "type": "number" },
+        "couponCode": { "type": "string" },
+        "lastPaymentId": { "type": "string" },
+        "duration": { "type": "string" }
+      },
+      "required": ["planId", "planName", "startedAt", "expiresAt", "paidAmount"]
+    },
     "Notification": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Notification",
@@ -933,6 +950,12 @@
       },
       "description": "Stores subscription plans."
     },
+    "/subscriptions/{userId}/history/{historyId}": {
+        "schema": {
+          "$ref": "#/entities/SubscriptionHistory"
+        },
+        "description": "Stores a user's subscription history."
+    },
     "/notifications/{notificationId}": {
       "schema": {
         "$ref": "#/entities/Notification"
@@ -971,5 +994,3 @@
     }
   }
 }
-
-    

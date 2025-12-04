@@ -59,6 +59,7 @@ export async function POST(req: Request) {
 
           const userRef = firestore.collection('users').doc(userId);
           const subRef = firestore.collection('subscriptions').doc(userId);
+          const historyCollectionRef = subRef.collection('history');
           const paymentDocRef = firestore.collection('payments').doc(paymentId);
           
            await firestore.runTransaction(async (tx) => {
@@ -88,17 +89,25 @@ export async function POST(req: Request) {
               const now = admin.firestore.Timestamp.now();
               const expiresAt = new Date();
               expiresAt.setMonth(expiresAt.getMonth() + durationMonths);
-      
-              const subData = {
+
+              const historyData = {
                   planId: planId,
                   planName: planData.name,
                   startedAt: now,
                   expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
-                  status: 'active',
-                  lastPaymentId: paymentId,
-                  couponCode: couponCode || null,
                   paidAmount: amountINR,
-                  duration: `${durationMonths} months`
+                  couponCode: couponCode || null,
+                  lastPaymentId: paymentId,
+                  duration: `${durationMonths} months`,
+              };
+              
+              // Add a new document to the history subcollection
+              tx.set(historyCollectionRef.doc(), historyData);
+      
+              // Update the main subscription document
+              const subData = {
+                  status: 'active',
+                  ...historyData // Mirror the latest history entry to the main doc
               };
               
               tx.set(subRef, subData, { merge: true });

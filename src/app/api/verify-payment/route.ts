@@ -45,6 +45,7 @@ export async function POST(req: Request) {
     const paymentDocRef = firestore.collection('payments').doc(razorpay_payment_id);
     const userRef = firestore.collection('users').doc(uid);
     const subRef = firestore.collection('subscriptions').doc(uid);
+    const historyCollectionRef = subRef.collection('history');
     const planRef = firestore.collection('plans').doc(planId);
 
     await firestore.runTransaction(async (tx) => {
@@ -84,16 +85,24 @@ export async function POST(req: Request) {
       const expiresAt = new Date();
       expiresAt.setMonth(expiresAt.getMonth() + durationMonths);
 
+      const historyData = {
+          planId: planId,
+          planName: planData.name,
+          startedAt: now,
+          expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
+          paidAmount: amountINR,
+          couponCode: notes.couponCode || null,
+          lastPaymentId: razorpay_payment_id,
+          duration: `${durationMonths} months`
+      };
+
+      // Add a new document to the history subcollection
+      tx.set(historyCollectionRef.doc(), historyData);
+
+      // Update the main subscription document with the latest info
       const subData = {
-        planId: planId,
-        planName: planData.name,
-        startedAt: now,
-        expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
         status: 'active',
-        lastPaymentId: razorpay_payment_id,
-        couponCode: notes.couponCode || null,
-        paidAmount: amountINR,
-        duration: `${durationMonths} months`
+        ...historyData // Mirror the latest history entry to the main doc
       };
       
       tx.set(subRef, subData, { merge: true });
