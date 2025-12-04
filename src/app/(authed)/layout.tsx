@@ -28,7 +28,7 @@ import {
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 
 type UserProfile = {
@@ -86,8 +86,8 @@ function AuthRedirect({ children }: { children: React.ReactNode }) {
         if (subscription?.status === 'active' && subscription.expiresAt && subscription.expiresAt.toDate() <= now) {
             if(subscriptionRef) {
                 // This is a non-blocking write. It won't slow down the redirect.
-                // Explicitly send only the 'status' field to comply with security rules.
-                updateDocumentNonBlocking(subscriptionRef, { status: 'inactive' });
+                // We now use set with merge: true to handle both creation and update scenarios safely.
+                setDocumentNonBlocking(subscriptionRef, { status: 'inactive' }, { merge: true });
             }
         }
         
