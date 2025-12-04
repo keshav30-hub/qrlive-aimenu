@@ -66,7 +66,7 @@ function AuthRedirect({ children }: { children: React.ReactNode }) {
     const isDataLoading = isUserLoading || isProfileLoading || isSubscriptionLoading;
     
     useEffect(() => {
-        if (isDataLoading) return; // Wait for all data to load
+        if (isDataLoading) return;
 
         if (!user) {
             router.replace('/login');
@@ -78,26 +78,19 @@ function AuthRedirect({ children }: { children: React.ReactNode }) {
             return;
         }
         
-        // --- START: Robust Subscription Check ---
-        const now = new Date();
-        const isSubscriptionActive = subscription?.status === 'active' && subscription.expiresAt && subscription.expiresAt.toDate() > now;
-
-        // If subscription has expired but status is still 'active', update it in the background.
-        if (subscription?.status === 'active' && subscription.expiresAt && subscription.expiresAt.toDate() <= now) {
-            if(subscriptionRef) {
-                // This is a non-blocking write. It won't slow down the redirect.
-                // We now use set with merge: true to handle both creation and update scenarios safely.
-                setDocumentNonBlocking(subscriptionRef, { status: 'inactive' }, { merge: true });
-            }
-        }
+        // This is the new, simplified, and robust subscription check.
+        // It does not write to the database, only reads.
+        const isSubscriptionActive = 
+            subscription?.status === 'active' && 
+            subscription.expiresAt && 
+            subscription.expiresAt.toDate() > new Date();
         
         if (!isSubscriptionActive && pathname !== '/dashboard/subscription') {
             router.replace('/dashboard/subscription');
             return;
         }
-        // --- END: Robust Subscription Check ---
 
-    }, [user, userProfile, subscription, isDataLoading, router, pathname, subscriptionRef]);
+    }, [user, userProfile, subscription, isDataLoading, router, pathname]);
 
     const isLoading = isUserLoading || (user && (isProfileLoading || isSubscriptionLoading));
 
@@ -109,28 +102,23 @@ function AuthRedirect({ children }: { children: React.ReactNode }) {
         );
     }
     
-    // --- START: Modified Access Control ---
-    const hasActiveSubscription = subscription?.status === 'active' && subscription.expiresAt && subscription.expiresAt.toDate() > new Date();
+    // Determine access based on the same simple, reliable check.
+    const hasActiveSubscription = 
+        subscription?.status === 'active' && 
+        subscription.expiresAt && 
+        subscription.expiresAt.toDate() > new Date();
 
     if (user && userProfile?.onboarding) {
-        if (hasActiveSubscription) {
+        if (hasActiveSubscription || pathname === '/dashboard/subscription') {
              return (
                 <TaskNotificationProvider>
                     {children}
                 </TaskNotificationProvider>
             );
         }
-        // Allow access to subscription page even if inactive
-        if (pathname === '/dashboard/subscription') {
-            return (
-                <TaskNotificationProvider>
-                    {children}
-                </TaskNotificationProvider>
-            );
-        }
     }
-    // --- END: Modified Access Control ---
 
+    // Fallback loading screen while redirects are processing.
     return (
         <div className="flex h-screen items-center justify-center">
             <p>Loading...</p>
