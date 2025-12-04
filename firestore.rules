@@ -57,6 +57,13 @@ service cloud.firestore {
       allow update: if isOwner(userId) && request.resource.data.keys().hasOnly(['status']);
       // Prevent users from deleting their subscription.
       allow delete: if false;
+
+      // Allow users to read their own subscription history
+      match /history/{historyId} {
+        allow get, list: if isOwner(userId);
+        // Prevent users from writing to their history
+        allow write: if false;
+      }
     }
 
     match /payments/{paymentId} {
