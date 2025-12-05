@@ -45,6 +45,12 @@ service cloud.firestore {
         allow create: if true;
         allow read, write, delete: if isOwner(userId);
     }
+    // Allow owner to read urgent feedback submitted by public users
+    match /users/{userId}/urgent_feedback/{feedbackId} {
+        allow create: if true;
+        allow read, delete: if isOwner(userId);
+    }
+
 
     // --- Private User Data ---
     // Rule for all other subcollections that are not public.
@@ -112,11 +118,6 @@ service cloud.firestore {
         allow read, write, delete: if isAdmin();
     }
     
-    match /urgent_feedback/{feedbackId} {
-      allow create: if true; // Public can create
-      allow read, delete: if isOwner(userId); // Owner can manage
-    }
-
     match /supportTickets/{ticketId} {
       allow create: if isSignedIn() && request.auth.uid == request.resource.data.submittedBy;
       allow get: if (isSignedIn() && resource.data.submittedBy == request.auth.uid) || isAdmin();
