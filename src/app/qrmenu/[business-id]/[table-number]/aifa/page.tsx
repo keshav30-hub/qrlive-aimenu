@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar } from "@/components/ui/avatar";
 import { useRouter, useParams } from "next/navigation";
-import { ChevronLeft, Send, Sparkles, ImagePlus, Loader2, Trash2, ExternalLink, Instagram } from "lucide-react";
+import { ChevronLeft, Send, Sparkles, ImagePlus, Loader2, Trash2, ExternalLink, Instagram, History } from "lucide-react";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import Image from "next/image";
@@ -22,12 +22,18 @@ import { useToast } from "@/hooks/use-toast";
 import { useFirebaseStorage } from "@/firebase/storage/use-firebase-storage";
 import { useFirebase } from "@/firebase";
 import { trackAifaMessage, trackAifaOpen, trackFeedbackSubmission } from "@/lib/gtag";
-
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription } from "@/components/ui/sheet";
+import { format } from 'date-fns';
 
 type Message = {
     id: string;
     sender: 'user' | 'aifa';
     content: React.ReactNode;
+};
+
+type Order = {
+    timestamp: string;
+    items: string[];
 };
 
 // Helper to generate unique IDs for messages, avoiding duplicates from Date.now()
@@ -174,13 +180,36 @@ const InstagramButton = ({ href }: { href: string }) => (
     </div>
 );
 
-const ConfirmOrder = ({ orderText, onConfirm }: { orderText: string, onConfirm: () => void }) => {
+const ConfirmOrder = ({ orderText, onConfirm }: { orderText: string, onConfirm: (items: string[]) => void }) => {
     const [isConfirming, setIsConfirming] = useState(false);
     
+    // Function to parse items from the order summary text
+    const parseOrderItems = (text: string): string[] => {
+        const lines = text.split('\n').map(line => line.trim());
+        const items: string[] = [];
+        lines.forEach(line => {
+             // Regex to match patterns like "1 Classic Chicken Burger (Large)" or "2 Grilled Paneer Sandwiches"
+            const match = line.match(/(\d+)\s*(.*?)(?:\s\(.*\))?$/);
+            if (match) {
+                const quantity = parseInt(match[1], 10);
+                const itemName = match[2].trim();
+                for (let i = 0; i < quantity; i++) {
+                    items.push(itemName);
+                }
+            } else if (line.match(/^\d+x\s/)) { // for "1x Item" format
+                items.push(line);
+            }
+        });
+        // A fallback if parsing fails, just return the raw text
+        return items.length > 0 ? items : [text];
+    };
+
     const handleConfirm = async () => {
         setIsConfirming(true);
-        await onConfirm();
-        // The parent component will handle the success message from the server.
+        const orderSummaryMatch = orderText.match(/Here's the order so far:\s*(.*)/is);
+        const summaryText = orderSummaryMatch ? orderSummaryMatch[1].trim() : "Your confirmed order.";
+        const parsedItems = parseOrderItems(summaryText);
+        await onConfirm(parsedItems);
         setIsConfirming(false);
     }
 
@@ -225,6 +254,8 @@ export default function AIFAPage() {
     const [combos, setCombos] = useState<Combo[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
+    const [orderHistory, setOrderHistory] = useState<Order[]>([]);
+    const orderHistoryStorageKey = `aifa-order-history-${businessId}-${tableNumber}`;
 
     const activeEvents = useMemo(() => events.filter(e => e.active), [events]);
 
@@ -268,6 +299,16 @@ export default function AIFAPage() {
 
     useEffect(() => {
         trackAifaOpen();
+        
+        try {
+            const savedHistory = sessionStorage.getItem(orderHistoryStorageKey);
+            if (savedHistory) {
+                setOrderHistory(JSON.parse(savedHistory));
+            }
+        } catch (e) {
+            console.error("Failed to load order history from session storage", e);
+        }
+
         if (isLoading) return;
 
         try {
@@ -289,7 +330,7 @@ export default function AIFAPage() {
         const initialMessage = getInitialMessage();
         setMessages([initialMessage]);
         sessionStorage.setItem('aifa-chat-history', JSON.stringify([initialMessage]));
-    }, [businessData, isLoading]);
+    }, [businessData, isLoading, orderHistoryStorageKey]);
 
 
     useEffect(() => {
@@ -341,9 +382,7 @@ export default function AIFAPage() {
                 feedbackMessage += ` and comment: ${feedback.comment}`;
             }
 
-            // Add a user message that the AI can process
             addMessage('user', feedbackMessage);
-            // Get AI's response to the feedback submission
             await getAIResponse(feedbackMessage);
 
             toast({ title: "Feedback submitted successfully!" });
@@ -359,18 +398,32 @@ export default function AIFAPage() {
         addMessage('user', `Feedback for ${target}`);
         setIsThinking(true);
         setTimeout(() => {
-            const feedbackTarget = target === 'AIFA' ? 'AIFA' : 'Business';
-            const displayTarget = target === 'AIFA' ? 'AIFA' : businessData?.name || 'the Business';
+            const isForBusiness = target === (businessData?.name || 'Business');
+            const feedbackTarget = isForBusiness ? 'Business' : 'AIFA';
+            const displayTarget = isForBusiness ? businessData?.name || 'the Business' : 'AIFA';
             addMessage('aifa', <FeedbackForm target={displayTarget} onSubmit={(feedback) => handleFeedbackSubmit({...feedback, target: feedbackTarget})} />);
             setIsThinking(false);
         }, 300);
     }
     
-    const handleConfirmOrder = async (orderSummary: string) => {
+    const handleConfirmOrder = async (orderedItems: string[]) => {
         if (businessData?.id) {
             try {
-                const taskDescription = `Order ready: ${orderSummary}`;
+                const taskDescription = `Order ready: ${orderedItems.join(', ')}`;
                 await submitServiceRequest(businessData.id, tableNumber, taskDescription);
+                
+                // Add to order history
+                const newOrder: Order = {
+                    timestamp: new Date().toISOString(),
+                    items: orderedItems,
+                };
+
+                setOrderHistory(prev => {
+                    const updatedHistory = [...prev, newOrder];
+                    sessionStorage.setItem(orderHistoryStorageKey, JSON.stringify(updatedHistory));
+                    return updatedHistory;
+                });
+
                 toast({
                     title: "Order Confirmed!",
                     description: "A captain will be with you shortly to finalize your order.",
@@ -396,18 +449,14 @@ export default function AIFAPage() {
         const chipRegex = /\[(CHIP|ADDON|MODIFIER):([^\]]+)\]/g;
         const matches = Array.from(response.matchAll(chipRegex));
 
-        // Get the main text by removing all chip patterns
         const mainText = response.replace(chipRegex, '').trim();
 
         if (matches.length > 0) {
-            // Render main text first if it exists
             if (mainText) {
                 addMessage('aifa', mainText);
             }
 
-            // Then render the chips
             const chips = matches.map((match, index) => {
-                // match[2] is the chip text, e.g., "By Category"
                 const chipText = match[2];
                 return <ChipButton key={`${chipText}-${index}`} text={chipText} onSelect={handleChipSelect} />;
             });
@@ -431,9 +480,7 @@ export default function AIFAPage() {
             }
         } else if (response.includes('[CONFIRM_ORDER]')) {
             const cleanResponse = response.replace('[CONFIRM_ORDER]', '').trim();
-            const orderSummaryMatch = cleanResponse.match(/Here's the order so far:\s*(.*)/is);
-            const orderSummary = orderSummaryMatch ? orderSummaryMatch[1].trim() : "Your confirmed order.";
-            addMessage('aifa', <ConfirmOrder orderText={cleanResponse} onConfirm={() => handleConfirmOrder(orderSummary)} />);
+            addMessage('aifa', <ConfirmOrder orderText={cleanResponse} onConfirm={handleConfirmOrder} />);
         }
         else {
              if (mainText) {
@@ -449,7 +496,7 @@ export default function AIFAPage() {
         trackAifaMessage();
         const historyForAI = messages
             .filter(msg => typeof msg.content === 'string')
-            .slice(-HISTORY_LIMIT) // Truncate history before sending
+            .slice(-HISTORY_LIMIT) 
             .map(msg => ({
                 role: msg.sender === 'user' ? 'user' : 'model' as 'user' | 'model',
                 content: msg.content as string
@@ -538,7 +585,6 @@ export default function AIFAPage() {
         );
     }
     
-    // Determine if the initial actions should be shown
     const showInitialActions = messages.length <= 1;
 
     return (
@@ -554,10 +600,44 @@ export default function AIFAPage() {
                             <p className="text-xs font-bold text-foreground/80">powered by QRLIVE</p>
                         </div>
                     </div>
-                    <Button variant="ghost" size="icon" onClick={resetChat}>
-                        <Trash2 className="h-5 w-5 text-destructive" />
-                        <span className="sr-only">Delete Chat</span>
-                    </Button>
+                    <div className="flex items-center gap-2">
+                         <Sheet>
+                            <SheetTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                    <History className="h-5 w-5" />
+                                    <span className="sr-only">Order History</span>
+                                </Button>
+                            </SheetTrigger>
+                            <SheetContent side="bottom" className="max-w-[480px] mx-auto rounded-t-2xl">
+                                <SheetHeader>
+                                    <SheetTitle>Your Order History</SheetTitle>
+                                    <SheetDescription>
+                                        A record of orders you've placed in this session.
+                                    </SheetDescription>
+                                </SheetHeader>
+                                <ScrollArea className="h-[60vh] mt-4">
+                                {orderHistory.length === 0 ? (
+                                    <p className="text-center text-muted-foreground pt-10">No orders placed yet.</p>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {orderHistory.map((order, index) => (
+                                            <div key={order.timestamp} className="p-3 border rounded-md">
+                                                <p className="text-sm font-semibold">Order #{index + 1} - {format(new Date(order.timestamp), 'p')}</p>
+                                                <ul className="list-disc pl-5 mt-2 text-sm text-muted-foreground">
+                                                    {order.items.map((item, i) => <li key={i}>{item}</li>)}
+                                                </ul>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                </ScrollArea>
+                            </SheetContent>
+                        </Sheet>
+                        <Button variant="ghost" size="icon" onClick={resetChat}>
+                            <Trash2 className="h-5 w-5 text-destructive" />
+                            <span className="sr-only">Delete Chat</span>
+                        </Button>
+                    </div>
                 </header>
                 
                 <ScrollArea className="flex-1 z-0" viewportRef={scrollViewportRef}>
@@ -615,3 +695,4 @@ export default function AIFAPage() {
         </div>
     );
 }
+
