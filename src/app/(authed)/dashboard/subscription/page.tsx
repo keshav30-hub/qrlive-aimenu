@@ -87,11 +87,11 @@ export default function SubscriptionPage() {
   const { toast } = useToast();
 
   const userRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [user, firestore]);
-  const subscriptionRef = useMemoFirebase(() => (user ? doc(firestore, 'subscriptions', user.uid) : null), [user, firestore]);
+  const [subscriptionRef, setSubscriptionRef] = useState(user ? doc(firestore, 'subscriptions', user.uid) : null);
   const historyRef = useMemoFirebase(() => subscriptionRef ? collection(subscriptionRef, 'history') : null, [subscriptionRef]);
   
   const { data: userProfile } = useDoc<UserProfile>(userRef);
-  const { data: subscription, isLoading: isSubscriptionLoading } = useDoc<Subscription>(subscriptionRef);
+  const { data: subscription, isLoading: isSubscriptionLoading, error: subscriptionError } = useDoc<Subscription>(subscriptionRef);
   const { data: history, isLoading: isHistoryLoading } = useCollection<SubscriptionHistoryItem>(
     useMemoFirebase(() => historyRef ? query(historyRef, orderBy('startedAt', 'desc')) : null, [historyRef])
   );
@@ -265,9 +265,40 @@ export default function SubscriptionPage() {
   const finalPrice = selectedPlan ? (selectedPlan.offerPrice - discount) + (needsSetupFee ? setupFee : 0) : 0;
   
   const currentPlan = history?.[0];
+  
+  const handleRetry = () => {
+    if (user) {
+        // This creates a new DocumentReference object, which will force the useDoc hook to re-run
+        setSubscriptionRef(doc(firestore, 'subscriptions', user.uid));
+    }
+  };
 
   if (isSubscriptionLoading || isHistoryLoading) {
     return <div className="flex h-screen items-center justify-center">Loading subscription status...</div>
+  }
+  
+  if (subscriptionError) {
+      return (
+          <div className="flex h-screen items-center justify-center">
+              <Card className="w-full max-w-md text-center">
+                  <CardHeader>
+                      <CardTitle>Error Loading Subscription</CardTitle>
+                      <CardDescription>
+                          There was a problem fetching your subscription status. This might be due to a temporary issue or security rule propagation delay.
+                      </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                      <p className="text-sm text-destructive">{subscriptionError.message}</p>
+                  </CardContent>
+                  <CardFooter>
+                      <Button className="w-full" onClick={handleRetry}>
+                          <RefreshCw className="mr-2 h-4 w-4" />
+                          Retry
+                      </Button>
+                  </CardFooter>
+              </Card>
+          </div>
+      )
   }
 
   return (
