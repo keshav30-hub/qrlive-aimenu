@@ -66,30 +66,36 @@ function AuthRedirect({ children }: { children: React.ReactNode }) {
     const isDataLoading = isUserLoading || isProfileLoading || isSubscriptionLoading;
     
     useEffect(() => {
-        if (isDataLoading) return;
+        // Only run checks when data is no longer loading.
+        if (isDataLoading) {
+            return;
+        }
 
+        // If there's no user, redirect to login.
         if (!user) {
             router.replace('/login');
             return;
         }
 
+        // If user exists but has not completed onboarding, redirect there.
         if (userProfile && userProfile.onboarding === false) {
             router.replace('/onboarding');
             return;
         }
         
-        // This is the new, simplified, and robust subscription check.
-        // It does not write to the database, only reads.
+        // Check for an active subscription.
         const isSubscriptionActive = 
             subscription?.status === 'active' && 
             subscription.expiresAt && 
             subscription.expiresAt.toDate() > new Date();
         
+        // If the subscription is not active and they aren't on the subscription page, redirect them.
         if (!isSubscriptionActive && pathname !== '/dashboard/subscription') {
             router.replace('/dashboard/subscription');
             return;
         }
 
+    // This effect should run whenever any of the core data dependencies change.
     }, [user, userProfile, subscription, isDataLoading, router, pathname]);
 
     const isLoading = isUserLoading || (user && (isProfileLoading || isSubscriptionLoading));
