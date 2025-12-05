@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -68,6 +67,7 @@ import { collection, doc, addDoc, updateDoc, deleteDoc, serverTimestamp } from '
 import { useToast } from '@/hooks/use-toast';
 import { useFirebaseStorage } from '@/firebase/storage/use-firebase-storage';
 import { generateComboDescription } from '@/ai/flows/generate-combo-description';
+import { cn } from '@/lib/utils';
 
 type Addon = { name: string; price: string };
 type Modifier = { name: string; price: string };
@@ -88,6 +88,7 @@ type MenuItem = {
   imageUrl?: string;
   imageStoragePath?: string;
   serves?: string;
+  tags?: string[];
 };
 
 const initialItemState: Omit<MenuItem, 'id'> = {
@@ -103,6 +104,7 @@ const initialItemState: Omit<MenuItem, 'id'> = {
   modifiers: [{ name: '', price: '' }],
   available: true,
   serves: '',
+  tags: [],
 };
 
 
@@ -114,6 +116,13 @@ const daysOfWeek = [
     { id: 'friday', label: 'Friday' },
     { id: 'saturday', label: 'Saturday' },
     { id: 'sunday', label: 'Sunday' },
+];
+
+const foodTags = [
+    { id: 'vegan', label: 'Vegan' },
+    { id: 'gluten-free', label: 'Gluten Free' },
+    { id: 'dairy-free', label: 'Dairy Free' },
+    { id: 'spicy', label: 'Spicy' },
 ];
 
 type Category = {
@@ -152,6 +161,7 @@ type Combo = {
   imageUrl?: string;
   imageStoragePath?: string;
   serves?: string;
+  tags?: string[];
 }
 
 const initialComboState: Partial<Combo> = {
@@ -163,6 +173,7 @@ const initialComboState: Partial<Combo> = {
   imageUrl: '',
   imageStoragePath: '',
   serves: '',
+  tags: [],
 }
 
 const ITEMS_PER_PAGE = 15;
@@ -310,6 +321,26 @@ export default function MenuPage() {
     const modifiers = [...(currentItem.modifiers || [])];
     modifiers.splice(index, 1);
     setCurrentItem(prev => ({ ...prev, modifiers }));
+  };
+
+  const handleTagToggle = (tagId: string) => {
+    setCurrentItem(prev => {
+        const currentTags = prev.tags || [];
+        const newTags = currentTags.includes(tagId) 
+            ? currentTags.filter(t => t !== tagId) 
+            : [...currentTags, tagId];
+        return { ...prev, tags: newTags };
+    });
+  };
+  
+  const handleComboTagToggle = (tagId: string) => {
+    setCurrentCombo(prev => {
+        const currentTags = prev.tags || [];
+        const newTags = currentTags.includes(tagId) 
+            ? currentTags.filter(t => t !== tagId) 
+            : [...currentTags, tagId];
+        return { ...prev, tags: newTags };
+    });
   };
 
   const handleItemImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -545,6 +576,7 @@ const handleCategoryDayChange = (dayId: string, checked: boolean) => {
             imageUrl: currentCombo.imageUrl || `https://picsum.photos/seed/combo${Date.now()}/400/300`,
             imageStoragePath: currentCombo.imageStoragePath,
             serves: currentCombo.serves,
+            tags: currentCombo.tags || [],
         };
 
         if (isEditingCombo && currentCombo.id) {
@@ -697,6 +729,21 @@ const handleCategoryDayChange = (dayId: string, checked: boolean) => {
                           <Label htmlFor="na" className="font-normal">N/A</Label>
                         </div>
                       </RadioGroup>
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Food Tags (Optional)</Label>
+                        <div className="flex flex-wrap gap-2">
+                            {foodTags.map(tag => (
+                                <Button
+                                    key={tag.id}
+                                    type="button"
+                                    variant={(currentItem.tags || []).includes(tag.id) ? 'default' : 'outline'}
+                                    onClick={() => handleTagToggle(tag.id)}
+                                >
+                                    {tag.label}
+                                </Button>
+                            ))}
+                        </div>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="ingredients">Ingredients</Label>
@@ -1078,6 +1125,21 @@ const handleCategoryDayChange = (dayId: string, checked: boolean) => {
                                <div className="space-y-2">
                                     <Label htmlFor="serves">Serves (Optional)</Label>
                                     <Input id="serves" name="serves" value={currentCombo.serves} onChange={e => setCurrentCombo(p => ({...p, serves: e.target.value}))} placeholder="e.g., 2 or 2-3 people" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Food Tags (Optional)</Label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {foodTags.map(tag => (
+                                            <Button
+                                                key={tag.id}
+                                                type="button"
+                                                variant={(currentCombo.tags || []).includes(tag.id) ? 'default' : 'outline'}
+                                                onClick={() => handleComboTagToggle(tag.id)}
+                                            >
+                                                {tag.label}
+                                            </Button>
+                                        ))}
+                                    </div>
                                 </div>
                               <div className="space-y-2">
                                   <div className="flex justify-between items-center">
