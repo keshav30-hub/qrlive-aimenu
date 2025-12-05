@@ -58,16 +58,21 @@ function AuthRedirect({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
 
     const userDocRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [user, firestore]);
+    
+    // **FIX:** Only define the subscription ref if the user object is available.
     const subscriptionRef = useMemoFirebase(() => (user ? doc(firestore, 'subscriptions', user.uid) : null), [user, firestore]);
     
     const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userDocRef);
+    
+    // **FIX:** The subscription hook now correctly waits for a valid reference.
     const { data: subscription, isLoading: isSubscriptionLoading } = useDoc<Subscription>(subscriptionRef);
 
-    const isDataLoading = isUserLoading || isProfileLoading || isSubscriptionLoading;
+    // **FIX:** isDataLoading now correctly waits for the user object before checking profile/subscription loading state.
+    const isDataLoading = isUserLoading || (user && (isProfileLoading || isSubscriptionLoading));
     
     useEffect(() => {
         // Only run checks when data is no longer loading.
-        if (isDataLoading) {
+        if (isUserLoading) {
             return;
         }
 
@@ -77,30 +82,28 @@ function AuthRedirect({ children }: { children: React.ReactNode }) {
             return;
         }
 
-        // If user exists but has not completed onboarding, redirect there.
-        if (userProfile && userProfile.onboarding === false) {
+        // Once the user is confirmed, we can check their profile and subscription status
+        if (!isProfileLoading && userProfile && userProfile.onboarding === false) {
             router.replace('/onboarding');
             return;
         }
         
-        // Check for an active subscription.
-        const isSubscriptionActive = 
-            subscription?.status === 'active' && 
-            subscription.expiresAt && 
-            subscription.expiresAt.toDate() > new Date();
-        
-        // If the subscription is not active and they aren't on the subscription page, redirect them.
-        if (!isSubscriptionActive && pathname !== '/dashboard/subscription') {
-            router.replace('/dashboard/subscription');
-            return;
+        if (!isSubscriptionLoading && userProfile?.onboarding) {
+            const isSubscriptionActive = 
+                subscription?.status === 'active' && 
+                subscription.expiresAt && 
+                subscription.expiresAt.toDate() > new Date();
+            
+            if (!isSubscriptionActive && pathname !== '/dashboard/subscription') {
+                router.replace('/dashboard/subscription');
+                return;
+            }
         }
+    
+    }, [user, userProfile, subscription, isUserLoading, isProfileLoading, isSubscriptionLoading, router, pathname]);
 
-    // This effect should run whenever any of the core data dependencies change.
-    }, [user, userProfile, subscription, isDataLoading, router, pathname]);
-
-    const isLoading = isUserLoading || (user && (isProfileLoading || isSubscriptionLoading));
-
-    if (isLoading) {
+    // **FIX:** Revised loading condition for clarity. Show loading until all initial checks are complete.
+    if (isDataLoading) {
         return (
             <div className="flex h-screen items-center justify-center">
                 <p>Loading...</p>
@@ -108,13 +111,14 @@ function AuthRedirect({ children }: { children: React.ReactNode }) {
         );
     }
     
-    // Determine access based on the same simple, reliable check.
-    const hasActiveSubscription = 
-        subscription?.status === 'active' && 
-        subscription.expiresAt && 
-        subscription.expiresAt.toDate() > new Date();
-
+    // If we have a user and they've completed onboarding, determine access.
     if (user && userProfile?.onboarding) {
+        const hasActiveSubscription = 
+            subscription?.status === 'active' && 
+            subscription.expiresAt && 
+            subscription.expiresAt.toDate() > new Date();
+
+        // Allow access if subscription is active, OR if they are on the subscription page to renew it.
         if (hasActiveSubscription || pathname === '/dashboard/subscription') {
              return (
                 <TaskNotificationProvider>
@@ -124,10 +128,10 @@ function AuthRedirect({ children }: { children: React.ReactNode }) {
         }
     }
 
-    // Fallback loading screen while redirects are processing.
+    // Fallback loading/redirecting screen.
     return (
         <div className="flex h-screen items-center justify-center">
-            <p>Loading...</p>
+            <p>Verifying access...</p>
         </div>
     );
 }
