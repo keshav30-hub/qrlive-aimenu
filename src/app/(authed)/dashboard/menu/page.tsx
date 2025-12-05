@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -123,6 +124,7 @@ const foodTags = [
     { id: 'gluten-free', label: 'Gluten Free' },
     { id: 'dairy-free', label: 'Dairy Free' },
     { id: 'spicy', label: 'Spicy' },
+    { id: 'sugar-free', label: 'Sugar Free' },
 ];
 
 type Category = {
