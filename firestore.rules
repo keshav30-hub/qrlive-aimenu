@@ -23,11 +23,41 @@ service cloud.firestore {
       allow create: if isSignedIn();
     }
     
-    // This single rule grants a user full access to all documents in all subcollections
-    // under their own user document. This is more secure and scalable than individual rules.
-    match /users/{userId}/{document=**} {
-      allow read, write: if isOwner(userId);
+    // --- Publicly Readable QR Menu Data ---
+    match /users/{userId}/menuCategories/{categoryId} {
+        allow get, list: if true;
+        allow write: if isOwner(userId);
     }
+    match /users/{userId}/menuItems/{itemId} {
+        allow get, list: if true;
+        allow write: if isOwner(userId);
+    }
+    match /users/{userId}/combos/{comboId} {
+        allow get, list: if true;
+        allow write: if isOwner(userId);
+    }
+    match /users/{userId}/events/{eventId} {
+        allow get, list: if true;
+        allow write: if isOwner(userId);
+    }
+     // Allow anyone to submit an RSVP
+    match /users/{userId}/events/{eventId}/rsvps/{rsvpId} {
+        allow create: if true;
+        allow read, write, delete: if isOwner(userId);
+    }
+
+    // --- Private User Data ---
+    // Rule for all other subcollections that are not public.
+    match /users/{userId}/staff/{staffId} { allow read, write: if isOwner(userId); }
+    match /users/{userId}/shifts/{shiftId} { allow read, write: if isOwner(userId); }
+    match /users/{userId}/staff/{staffId}/attendance/{attendanceId} { allow read, write: if isOwner(userId); }
+    match /users/{userId}/staff/{staffId}/payroll/{payrollId} { allow read, write: if isOwner(userId); }
+    match /users/{userId}/devices/{deviceId} { allow read, write: if isOwner(userId); }
+    match /users/{userId}/tasks/{taskId} { allow read, write: if isOwner(userId); }
+    match /users/{userId}/feedback/{feedbackId} { allow read, write: if isOwner(userId); }
+    match /users/{userId}/activity/{activityId} { allow read, write: if isOwner(userId); }
+    match /users/{userId}/tables/{tableId} { allow read, write: if isOwner(userId); }
+
 
     match /businesses/{businessId} {
       allow get: if true;
@@ -51,24 +81,19 @@ service cloud.firestore {
 
     match /subscriptions/{userId} {
       allow get: if isOwner(userId);
-      // Allow creation only if the user is setting their initial 'inactive' status.
-      allow create: if isOwner(userId) && request.resource.data.status == 'inactive';
-      // Allow a user to update ONLY the 'status' field.
-      allow update: if isOwner(userId) && request.resource.data.keys().hasOnly(['status']);
-      // Prevent users from deleting their subscription.
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
       allow delete: if false;
 
-      // Allow users to read their own subscription history
       match /history/{historyId} {
         allow get, list: if isOwner(userId);
-        // Prevent users from writing to their history
         allow write: if false;
       }
     }
 
     match /payments/{paymentId} {
-      allow get: if request.auth != null && request.auth.uid == resource.data.userId;
-      allow list: if (request.auth != null && request.query.userId == request.auth.uid) || isAdmin();
+      allow get: if isOwner(resource.data.userId);
+      allow list: if (isOwner(request.query.userId)) || isAdmin();
       allow create, update, delete: if false;
     }
 
@@ -77,24 +102,24 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Public notifications can be read by anyone, but only created by admin
     match /notifications/{notificationId} {
-      allow get: if isSignedIn();
+      allow read: if isSignedIn();
       allow write: if isAdmin();
-    }
-    
-    match /notifications {
-        allow list: if isSignedIn();
     }
 
     match /aifa_feedback/{feedbackId} {
         allow create: if true;
         allow read, write, delete: if isAdmin();
     }
+    
+    match /urgent_feedback/{feedbackId} {
+      allow create: if true; // Public can create
+      allow read, delete: if isOwner(userId); // Owner can manage
+    }
 
     match /supportTickets/{ticketId} {
       allow create: if isSignedIn() && request.auth.uid == request.resource.data.submittedBy;
-      allow get: if isOwner(request.resource.data.submittedBy) || isAdmin();
+      allow get: if (isSignedIn() && resource.data.submittedBy == request.auth.uid) || isAdmin();
       allow list: if (isSignedIn() && request.query.get("submittedBy") == request.auth.uid) || isAdmin();
       allow update: if isAdmin() && request.resource.data.keys().hasOnly(['status']);
       allow delete: if isAdmin();
@@ -113,7 +138,7 @@ service cloud.firestore {
     
     match /mobileVerifications/{verificationId} {
       allow create: if true;
-      allow read, delete: if request.auth != null;
+      allow read, delete: if isSignedIn();
     }
 
     match /legal/{docId} {
@@ -122,7 +147,7 @@ service cloud.firestore {
     }
     
     match /qrlive_contact/{contactId} {
-      allow get, list: if isSignedIn();
+      allow get, list: if true; // Allow public read access
       allow write: if isAdmin();
     }
 
