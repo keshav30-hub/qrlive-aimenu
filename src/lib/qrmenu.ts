@@ -80,6 +80,8 @@ export type Event = {
   organizers?: string[];
   terms?: string;
   userId?: string; 
+  url?: string;
+  collectRsvp?: boolean;
 };
 
 export type RsvpData = {
@@ -276,7 +278,7 @@ export async function submitRsvp(userId: string, eventId: string, rsvpData: Rsvp
         });
 }
 
-export async function submitFeedback(userId: string, feedback: { target: string; rating: number; comment: string; imageUrl?: string | null }, table: string) {
+export async function submitFeedback(ownerUid: string, feedback: { target: string; rating: number; comment: string; imageUrl?: string | null }, table: string) {
     const firestore = await getFirestoreInstance();
     let feedbackRef;
 
@@ -285,15 +287,15 @@ export async function submitFeedback(userId: string, feedback: { target: string;
         comment: feedback.comment,
         imageUrl: feedback.imageUrl || '',
         timestamp: serverTimestamp(),
-        restaurantId: userId, 
+        ownerUid: ownerUid, // associate feedback with the business owner
     };
 
     if (feedback.target === 'Business') {
-        feedbackRef = collection(firestore, 'users', userId, 'feedback');
+        feedbackRef = collection(firestore, 'business_feedback');
         await addDoc(feedbackRef, feedbackData);
 
         if (feedback.rating <= 2) {
-            const urgentFeedbackRef = collection(firestore, 'users', userId, 'urgent_feedback');
+            const urgentFeedbackRef = collection(firestore, 'users', ownerUid, 'urgent_feedback');
             await addDoc(urgentFeedbackRef, {
                 ...feedbackData,
                 table: table,
@@ -302,9 +304,11 @@ export async function submitFeedback(userId: string, feedback: { target: string;
             });
         }
 
-    } else {
+    } else { // AIFA Feedback
         feedbackRef = collection(firestore, 'aifa_feedback');
-        await addDoc(feedbackRef, { ...feedbackData });
+        // We don't need ownerUid for AIFA feedback
+        const { ownerUid, ...aifaFeedbackData } = feedbackData;
+        await addDoc(feedbackRef, aifaFeedbackData);
     }
 }
 

@@ -454,19 +454,19 @@
         "completed"
       ]
     },
-    "Feedback": {
+    "BusinessFeedback": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Feedback",
+      "title": "BusinessFeedback",
       "type": "object",
-      "description": "Represents feedback submitted by a user for a restaurant.",
+      "description": "Represents feedback submitted by a public user for a specific restaurant business.",
       "properties": {
         "id": {
           "type": "string",
           "description": "Unique identifier for the feedback."
         },
-        "userId": {
+        "ownerUid": {
           "type": "string",
-          "description": "Reference to User. (Relationship: User 1:N Feedback)"
+          "description": "The UID of the user who owns the business being reviewed."
         },
         "comment": {
           "type": "string",
@@ -484,7 +484,7 @@
       },
       "required": [
         "id",
-        "userId",
+        "ownerUid",
         "comment",
         "rating",
         "timestamp"
@@ -920,17 +920,17 @@
       },
       "description": "Stores tasks assigned to a user."
     },
-    "/users/{userId}/feedback/{feedbackId}": {
+    "/business_feedback/{feedbackId}": {
       "schema": {
-        "$ref": "#/entities/Feedback"
+        "$ref": "#/entities/BusinessFeedback"
       },
-      "description": "Stores feedback provided by a user."
+      "description": "Stores feedback provided by public QR menu users for a business."
     },
     "/qrlive-feedback/{feedbackId}": {
       "schema": {
         "$ref": "#/entities/QrliveFeedback"
       },
-      "description": "Stores feedback for the QRLive app."
+      "description": "Stores feedback for the QRLive app from authenticated users."
     },
     "/mobileVerifications/{verificationId}": {
       "schema": {

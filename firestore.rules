@@ -48,7 +48,7 @@ service cloud.firestore {
     // Allow owner to read urgent feedback submitted by public users
     match /users/{userId}/urgent_feedback/{feedbackId} {
         allow create: if true;
-        allow read, delete: if isOwner(userId);
+        allow read, write, delete: if isOwner(userId);
     }
 
 
@@ -116,6 +116,13 @@ service cloud.firestore {
     match /aifa_feedback/{feedbackId} {
         allow create: if true;
         allow read, write, delete: if isAdmin();
+    }
+
+    match /business_feedback/{feedbackId} {
+      allow create: if true;
+      allow read: if isOwner(resource.data.ownerUid);
+      allow list: if isSignedIn() && request.query.where[0][2] == request.auth.uid;
+      allow write, delete: if isOwner(resource.data.ownerUid) || isAdmin();
     }
     
     match /supportTickets/{ticketId} {

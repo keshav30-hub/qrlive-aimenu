@@ -30,7 +30,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, Timestamp } from 'firebase/firestore';
+import { collection, Timestamp, query, where } from 'firebase/firestore';
 
 
 type Feedback = {
@@ -52,8 +52,10 @@ const ITEMS_PER_PAGE = 10;
 
 export default function FeedbackPage() {
   const { firestore, user } = useFirebase();
-  const feedbackRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'feedback') : null, [firestore, user]);
-  const { data: feedbackListData, isLoading: feedbackLoading } = useCollection<Feedback>(feedbackRef);
+  const feedbackRef = useMemoFirebase(() => user ? collection(firestore, 'business_feedback') : null, [firestore, user]);
+  const feedbackQuery = useMemoFirebase(() => feedbackRef ? query(feedbackRef, where('ownerUid', '==', user?.uid || '')) : null, [feedbackRef, user]);
+  
+  const { data: feedbackListData, isLoading: feedbackLoading } = useCollection<Feedback>(feedbackQuery);
 
   const feedbackList = useMemo(() => feedbackListData?.sort((a, b) => b.timestamp.toMillis() - a.timestamp.toMillis()) || [], [feedbackListData]);
   const [currentPage, setCurrentPage] = useState(1);
