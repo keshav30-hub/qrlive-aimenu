@@ -359,8 +359,9 @@ export default function AIFAPage() {
         addMessage('user', `Feedback for ${target}`);
         setIsThinking(true);
         setTimeout(() => {
-            const feedbackTarget = target === 'AIFA' ? 'AIFA' : businessData?.name || 'the business';
-            addMessage('aifa', <FeedbackForm target={feedbackTarget} onSubmit={handleFeedbackSubmit} />);
+            const feedbackTarget = target === 'AIFA' ? 'AIFA' : 'Business';
+            const displayTarget = target === 'AIFA' ? 'AIFA' : businessData?.name || 'the Business';
+            addMessage('aifa', <FeedbackForm target={displayTarget} onSubmit={(feedback) => handleFeedbackSubmit({...feedback, target: feedbackTarget})} />);
             setIsThinking(false);
         }, 300);
     }
