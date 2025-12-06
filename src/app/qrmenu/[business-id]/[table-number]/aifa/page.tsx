@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar } from "@/components/ui/avatar";
 import { useRouter, useParams } from "next/navigation";
-import { ChevronLeft, Send, Sparkles, ImagePlus, Loader2, Trash2, ExternalLink, Instagram, History } from "lucide-react";
+import { ChevronLeft, Send, Sparkles, ImagePlus, Loader2, Trash2, ExternalLink, Instagram, History, Youtube, Globe, MapPin } from "lucide-react";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import Image from "next/image";
@@ -47,7 +47,7 @@ const ChipButton = ({ text, onSelect }: { text: string; onSelect: (text: string)
     <Button
         variant="secondary"
         size="sm"
-        className="h-auto py-1 px-3 bg-white text-black hover:bg-white/90"
+        className="h-auto py-1 px-3 bg-white text-black"
         onClick={() => onSelect(text)}
     >
         {text}
@@ -168,7 +168,7 @@ const GoogleReviewButton = ({ href }: { href: string }) => (
     <div className="py-2">
         <Link href={href} target="_blank" rel="noopener noreferrer">
             <Button variant="outline" className="w-full">
-                <ExternalLink className="mr-2 h-4 w-4" />
+                <MapPin className="mr-2 h-4 w-4" />
                 Leave a Google Review
             </Button>
         </Link>
@@ -180,11 +180,48 @@ const InstagramButton = ({ href }: { href: string }) => (
         <Link href={href} target="_blank" rel="noopener noreferrer">
             <Button variant="outline" className="w-full bg-[#E1306C] text-white hover:bg-[#c12a5c] hover:text-white">
                 <Instagram className="mr-2 h-4 w-4" />
-                Follow us on Instagram
+                Follow on Instagram
             </Button>
         </Link>
     </div>
 );
+
+const WhatsAppButton = ({ number }: { number: string }) => {
+    const href = `https://wa.me/${number.replace(/\D/g, '')}`;
+    return (
+        <div className="py-2">
+            <Link href={href} target="_blank" rel="noopener noreferrer">
+                <Button variant="outline" className="w-full bg-[#25D366] text-white hover:bg-[#1EBE57] hover:text-white">
+                     <svg className="mr-2 h-4 w-4" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><title>WhatsApp</title><path d="M12.06 0C5.4 0 0 5.4 0 12.06c0 3.59 1.57 6.8 4.13 9.09l-1.35 4.96 5.07-1.33a11.95 11.95 0 0 0 9.21 0l5.07 1.33-1.35-4.96a11.99 11.99 0 0 0 4.13-9.09C24.12 5.4 18.72 0 12.06 0zm0 2.13c5.48 0 9.94 4.46 9.94 9.93 0 3.2-1.53 6.05-3.95 7.85l.89 3.26-3.32-.87a9.89 9.89 0 0 1-8.52 0l-3.32.87.89-3.26a9.92 9.92 0 0 1-3.95-7.85c0-5.47 4.46-9.93 9.94-9.93zm5.83 14.92c-.27-.13-1.58-.78-1.82-.87-.25-.09-.43-.13-.61.13-.19.27-.7.87-.85 1.04-.16.18-.32.2-.6.06-.27-.13-1.14-.42-2.17-1.33-.8-.7-1.34-1.58-1.5-1.85-.16-.27 0-.42.12-.55.12-.12.27-.3.4-.4.14-.12.18-.2.27-.35.09-.14.04-.27 0-.4-.05-.13-.6-1.45-.83-1.98-.22-.53-.44-.46-.6-.46h-.52c-.18 0-.46.09-.7.46-.24.37-.92 1.08-.92 2.64s.94 3.06 1.07 3.28c.13.22 1.85 2.8 4.48 3.92 1.58.68 2.23.93 2.8.84.82-.12 1.58-.64 1.8-1.22.23-.58.23-1.08.16-1.22-.09-.12-.27-.2-.54-.33z"/></svg>
+                    Chat on WhatsApp
+                </Button>
+            </Link>
+        </div>
+    );
+};
+
+const YouTubeButton = ({ href }: { href: string }) => (
+    <div className="py-2">
+        <Link href={href} target="_blank" rel="noopener noreferrer">
+            <Button variant="outline" className="w-full bg-[#FF0000] text-white hover:bg-[#cc0000] hover:text-white">
+                <Youtube className="mr-2 h-4 w-4" />
+                Watch on YouTube
+            </Button>
+        </Link>
+    </div>
+);
+
+const WebsiteButton = ({ href }: { href: string }) => (
+    <div className="py-2">
+        <Link href={href} target="_blank" rel="noopener noreferrer">
+            <Button variant="outline" className="w-full">
+                <Globe className="mr-2 h-4 w-4" />
+                Visit our Website
+            </Button>
+        </Link>
+    </div>
+);
+
 
 const ConfirmOrder = ({ orderText, onConfirm }: { orderText: string; onConfirm: (orderSummary: string) => void }) => {
     const [isConfirming, setIsConfirming] = useState(false);
@@ -482,23 +519,37 @@ export default function AIFAPage() {
         const chipRegex = /\[(CHIP|ADDON|MODIFIER):([^\]]+)\]/g;
         const matches = Array.from(response.matchAll(chipRegex));
     
-        const mainText = response.replace(chipRegex, '').trim();
+        let mainText = response.replace(chipRegex, '').trim();
     
-        if (matches.length > 0) {
-            if (mainText) {
-                addMessage('aifa', mainText);
-            }
+        if (response.includes('[GOOGLE_REVIEW_LINK]')) {
+            mainText = mainText.replace('[GOOGLE_REVIEW_LINK]', '').trim();
+            if (mainText) addMessage('aifa', mainText);
+            if (businessData?.googleReviewLink) addMessage('aifa', <GoogleReviewButton href={businessData.googleReviewLink} />);
+        } else if (response.includes('[INSTAGRAM_LINK]')) {
+            mainText = mainText.replace('[INSTAGRAM_LINK]', '').trim();
+            if (mainText) addMessage('aifa', mainText);
+            if (businessData?.instagramLink) addMessage('aifa', <InstagramButton href={businessData.instagramLink} />);
+        } else if (response.includes('[WHATSAPP_LINK]')) {
+            mainText = mainText.replace('[WHATSAPP_LINK]', '').trim();
+            if (mainText) addMessage('aifa', mainText);
+            if (businessData?.whatsappNumber) addMessage('aifa', <WhatsAppButton number={businessData.whatsappNumber} />);
+        } else if (response.includes('[YOUTUBE_LINK]')) {
+            mainText = mainText.replace('[YOUTUBE_LINK]', '').trim();
+            if (mainText) addMessage('aifa', mainText);
+            if (businessData?.youtubeLink) addMessage('aifa', <YouTubeButton href={businessData.youtubeLink} />);
+        } else if (response.includes('[WEBSITE_LINK]')) {
+            mainText = mainText.replace('[WEBSITE_LINK]', '').trim();
+            if (mainText) addMessage('aifa', mainText);
+            if (businessData?.websiteLink) addMessage('aifa', <WebsiteButton href={businessData.websiteLink} />);
+        } else if (matches.length > 0) {
+            if (mainText) addMessage('aifa', mainText);
     
             const isOptionFlow = matches.some(m => m[1] === 'ADDON' || m[1] === 'MODIFIER');
             if (isOptionFlow) {
-                // Find the item name from the last user message.
-                // This is a bit brittle but should work for the current flow.
                 const lastUserMessage = [...messages].reverse().find(m => m.sender === 'user' && typeof m.content === 'string')?.content as string;
                 if (lastUserMessage) {
                     const itemMatch = lastUserMessage.match(/Add (.+)/);
-                    if (itemMatch && itemMatch[1]) {
-                        setItemBeingCustomized(itemMatch[1]);
-                    }
+                    if (itemMatch && itemMatch[1]) setItemBeingCustomized(itemMatch[1]);
                 }
             }
     
@@ -511,29 +562,14 @@ export default function AIFAPage() {
             addMessage('aifa', <div className="flex flex-wrap gap-2">{chips}</div>);
     
         } else if (response.includes('[SUGGEST_FEEDBACK]')) {
-            const cleanResponse = response.replace('[SUGGEST_FEEDBACK]', '').trim();
-            if (cleanResponse) addMessage('aifa', cleanResponse);
+            mainText = mainText.replace('[SUGGEST_FEEDBACK]', '').trim();
+            if (mainText) addMessage('aifa', mainText);
             addMessage('aifa', <div><p>I can help with that. Who is this feedback for?</p><FeedbackTargetSelection onSelect={handleFeedbackTarget} businessName={businessData?.name || 'Business'} /></div>);
-        } else if (response.includes('[GOOGLE_REVIEW_LINK]')) {
-            const cleanResponse = response.replace('[GOOGLE_REVIEW_LINK]', '').trim();
-            addMessage('aifa', cleanResponse);
-            if (businessData?.googleReviewLink) {
-                 addMessage('aifa', <GoogleReviewButton href={businessData.googleReviewLink} />);
-            }
-        } else if (response.includes('[INSTAGRAM_LINK]')) {
-            const cleanResponse = response.replace('[INSTAGRAM_LINK]', '').trim();
-            addMessage('aifa', cleanResponse);
-            if (businessData?.instagramLink) {
-                addMessage('aifa', <InstagramButton href={businessData.instagramLink} />);
-            }
         } else if (response.includes('[CONFIRM_ORDER]')) {
-            const cleanResponse = response.replace('[CONFIRM_ORDER]', '').trim();
-            addMessage('aifa', <ConfirmOrder orderText={cleanResponse} onConfirm={handleConfirmOrder} />);
-        }
-        else {
-             if (mainText) {
-                addMessage('aifa', mainText);
-             }
+            mainText = mainText.replace('[CONFIRM_ORDER]', '').trim();
+            addMessage('aifa', <ConfirmOrder orderText={mainText} onConfirm={handleConfirmOrder} />);
+        } else {
+             if (mainText) addMessage('aifa', mainText);
         }
     };
 
@@ -595,6 +631,9 @@ export default function AIFAPage() {
                     priceSymbol: format(0).replace(/[\d.,\s]/g, ''),
                     googleReviewLink: businessData.googleReviewLink,
                     instagramLink: businessData.instagramLink,
+                    youtubeLink: businessData.youtubeLink,
+                    websiteLink: businessData.websiteLink,
+                    whatsappNumber: businessData.whatsappNumber,
                     menuCategories: processDataForServerAction(menuCategories).map((c: any) => ({name: c.name, description: c.description || ''})),
                     menuItems: processDataForServerAction(menuItemsForAI),
                     combos: processDataForServerAction(combosForAI),
