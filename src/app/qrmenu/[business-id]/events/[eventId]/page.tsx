@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { ChevronLeft, Info, Users, FileText, Loader2, Send, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -14,9 +14,18 @@ import { useToast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { trackEventRsvp } from '@/lib/gtag';
 
+const ExpiredSessionComponent = () => (
+    <div className="flex h-screen flex-col items-center justify-center bg-gradient-to-br from-gray-900 via-blue-950 to-black text-white p-4 text-center">
+        <h2 className="text-2xl font-bold mb-2">Session Expired</h2>
+        <p className="text-lg">For security, your session has expired.</p>
+        <p className="text-lg">Please scan the QR code on your table again.</p>
+    </div>
+);
+
 export default function PublicEventPage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const eventId = params.eventId as string;
   const businessId = params['business-id'] as string;
   const { toast } = useToast();
@@ -24,6 +33,7 @@ export default function PublicEventPage() {
   const [event, setEvent] = useState<Event | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSessionExpired, setIsSessionExpired] = useState(false);
 
   const [rsvpData, setRsvpData] = useState({
     name: '',
@@ -33,7 +43,20 @@ export default function PublicEventPage() {
   });
 
   useEffect(() => {
-    if (eventId && businessId) {
+    const ts = searchParams.get('ts');
+    if (!ts) {
+        setIsSessionExpired(true);
+        return;
+    }
+    const sessionStart = parseInt(ts, 10);
+    const now = new Date().getTime();
+    if (now - sessionStart > 2 * 60 * 60 * 1000) { // 2 hours
+        setIsSessionExpired(true);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (eventId && businessId && !isSessionExpired) {
       const fetchEvent = async () => {
         setIsLoading(true);
         const eventData = await getEventById(businessId, eventId);
@@ -42,7 +65,7 @@ export default function PublicEventPage() {
       };
       fetchEvent();
     }
-  }, [eventId, businessId]);
+  }, [eventId, businessId, isSessionExpired]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
@@ -78,6 +101,10 @@ export default function PublicEventPage() {
       setIsSubmitting(false);
     }
   };
+
+  if (isSessionExpired) {
+    return <ExpiredSessionComponent />;
+  }
 
   if (isLoading) {
     return <div className="flex h-screen items-center justify-center">Loading event details...</div>;
@@ -187,5 +214,3 @@ export default function PublicEventPage() {
     </div>
   );
 }
-
-    

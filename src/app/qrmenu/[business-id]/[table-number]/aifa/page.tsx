@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar } from "@/components/ui/avatar";
-import { useRouter, useParams } from "next/navigation";
-import { ChevronLeft, Send, Sparkles, ImagePlus, Loader2, Trash2, ExternalLink, Instagram, History, Youtube, Globe, MapPin } from "lucide-react";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
+import { ChevronLeft, Send, Sparkles, ImagePlus, Loader2, Trash2, ExternalLink, Instagram, History, Youtube, Globe, MapPin, Bot } from "lucide-react";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import Image from "next/image";
@@ -62,24 +62,33 @@ const InitialActions = ({ onSelect, showEventsButton }: { onSelect: (action: str
     </div>
 );
 
-const EventCard = ({ event, businessId }: { event: Event, businessId: string }) => (
-    <Card className="w-full overflow-hidden my-2">
-        <div className="relative h-32 w-full">
-            <Image src={event.imageUrl} alt={event.name} layout="fill" objectFit="cover" data-ai-hint={event.imageHint} />
-        </div>
-        <div className="p-3">
-            <h4 className="font-semibold">{event.name}</h4>
-            <p className="text-sm text-muted-foreground line-clamp-2">{event.description}</p>
-            <div className="flex gap-2 mt-3">
-                <Link href={`/qrmenu/${businessId}/events/${event.id}`} className="flex-1">
-                    <Button className="w-full">
-                         View Details
-                    </Button>
-                </Link>
+const EventCard = ({ event, businessId }: { event: Event, businessId: string }) => {
+    const searchParams = useSearchParams();
+    const ts = searchParams.get('ts');
+    
+    const eventUrl = `${event.collectRsvp === false && event.url ? event.url : `/qrmenu/${businessId}/events/${event.id}?ts=${ts}`}`;
+    const isExternal = event.collectRsvp === false && event.url;
+
+    return (
+        <Card className="w-full overflow-hidden my-2">
+            <div className="relative h-32 w-full">
+                <Image src={event.imageUrl} alt={event.name} layout="fill" objectFit="cover" data-ai-hint={event.imageHint} />
             </div>
-        </div>
-    </Card>
-);
+            <div className="p-3">
+                <h4 className="font-semibold">{event.name}</h4>
+                <p className="text-sm text-muted-foreground line-clamp-2">{event.description}</p>
+                <div className="flex gap-2 mt-3">
+                    <Link href={eventUrl} target={isExternal ? '_blank' : '_self'} rel={isExternal ? 'noopener noreferrer' : ''} className="flex-1">
+                        <Button className="w-full">
+                             View Details
+                        </Button>
+                    </Link>
+                </div>
+            </div>
+        </Card>
+    )
+};
+
 
 const FeedbackTargetSelection = ({ onSelect, businessName }: { onSelect: (target: string) => void; businessName: string; }) => {
     return (
@@ -314,9 +323,18 @@ const processDataForServerAction = (data: any) => {
 
 const HISTORY_LIMIT = 12; // Keep the last 12 messages (6 user, 6 AI)
 
+const ExpiredSessionComponent = () => (
+    <div className="flex h-screen flex-col items-center justify-center bg-gradient-to-br from-gray-900 via-blue-950 to-black text-white p-4 text-center">
+        <h2 className="text-2xl font-bold mb-2">Session Expired</h2>
+        <p className="text-lg">For security, your session has expired.</p>
+        <p className="text-lg">Please scan the QR code on your table again.</p>
+    </div>
+);
+
 export default function AIFAPage() {
     const router = useRouter();
     const params = useParams();
+    const searchParams = useSearchParams();
     const { user } = useFirebase();
     const businessId = params['business-id'] as string;
     const encodedTableNumber = params['table-number'] as string;
@@ -340,6 +358,21 @@ export default function AIFAPage() {
 
     const [orderHistory, setOrderHistory] = useState<Order[]>([]);
     const orderHistoryStorageKey = `aifa-order-history-${businessId}-${tableNumber}`;
+    
+    const [isSessionExpired, setIsSessionExpired] = useState(false);
+
+    useEffect(() => {
+        const ts = searchParams.get('ts');
+        if (!ts) {
+            setIsSessionExpired(true);
+            return;
+        }
+        const sessionStart = parseInt(ts, 10);
+        const now = new Date().getTime();
+        if (now - sessionStart > 2 * 60 * 60 * 1000) { // 2 hours
+            setIsSessionExpired(true);
+        }
+    }, [searchParams]);
 
     const activeEvents = useMemo(() => events.filter(e => e.active), [events]);
 
@@ -382,10 +415,13 @@ export default function AIFAPage() {
         setIsLoading(false);
       }
   
-      fetchData();
-    }, [businessId]);
+      if (!isSessionExpired) {
+          fetchData();
+      }
+    }, [businessId, isSessionExpired]);
 
     useEffect(() => {
+        if (isSessionExpired) return;
         trackAifaOpen();
         
         try {
@@ -416,7 +452,7 @@ export default function AIFAPage() {
         setMessages([initialMessage]);
         sessionStorage.setItem('aifa-chat-history', JSON.stringify([{ id: initialMessage.id, sender: initialMessage.sender, content: initialMessage.content }]));
 
-    }, [businessData, isLoading, orderHistoryStorageKey]);
+    }, [businessData, isLoading, orderHistoryStorageKey, isSessionExpired]);
 
 
     useEffect(() => {
@@ -704,6 +740,10 @@ export default function AIFAPage() {
         }
     };
 
+    if (isSessionExpired) {
+        return <ExpiredSessionComponent />;
+    }
+
     if (isLoading) {
         return (
              <div className="h-screen w-full bg-gray-100 dark:bg-black">
@@ -811,7 +851,7 @@ export default function AIFAPage() {
                             onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
                             disabled={isThinking}
                         />
-                        <Button size="icon" onClick={handleSendMessage} disabled={isThinking || !inputValue.trim()} className="bg-white/20 text-white border-white/30 hover:bg-white/30">
+                        <Button size="icon" onClick={handleSendMessage} disabled={isThinking || !inputValue.trim()} className="bg-primary text-primary-foreground">
                             <Send className="h-5 w-5" />
                         </Button>
                     </div>
@@ -824,5 +864,3 @@ export default function AIFAPage() {
         </div>
     );
 }
-
-    

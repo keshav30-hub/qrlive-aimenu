@@ -100,6 +100,8 @@ export default function QrMenuPage() {
   const [isServiceRequestDialogOpen, setIsServiceRequestDialogOpen] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  
+  const [sessionTimestamp, setSessionTimestamp] = useState<number | null>(null);
 
   const [carouselApi, setCarouselApi] = useState<CarouselApi>()
   const [currentSlide, setCurrentSlide] = useState(0)
@@ -107,6 +109,17 @@ export default function QrMenuPage() {
   const autoplayPlugin = useRef(
     Autoplay({ delay: 3000, stopOnInteraction: true })
   );
+  
+  useEffect(() => {
+    const sessionStartKey = `sessionStart_${businessId}_${tableNumber}`;
+    let ts = sessionStorage.getItem(sessionStartKey);
+    if (!ts) {
+      ts = new Date().getTime().toString();
+      sessionStorage.setItem(sessionStartKey, ts);
+    }
+    setSessionTimestamp(parseInt(ts, 10));
+  }, [businessId, tableNumber]);
+
 
   useEffect(() => {
       try {
@@ -256,7 +269,7 @@ export default function QrMenuPage() {
     0
   );
   
-  const aifaUrl = `/qrmenu/${businessId}/${encodedTableNumber}/aifa`;
+  const aifaUrl = `/qrmenu/${businessId}/${encodedTableNumber}/aifa?ts=${sessionTimestamp}`;
 
   const availableCategories = useMemo(() => {
     const now = new Date();
@@ -300,7 +313,7 @@ export default function QrMenuPage() {
 
   const handleSuggestionClick = (item: MenuItem) => {
     const categorySlug = item.category.toLowerCase().replace(/ /g, '-');
-    router.push(`/qrmenu/${businessId}/${encodedTableNumber}/${categorySlug}#${item.id}`);
+    router.push(`/qrmenu/${businessId}/${encodedTableNumber}/${categorySlug}?ts=${sessionTimestamp}#${item.id}`);
     setSearchTerm('');
   };
 
@@ -313,7 +326,7 @@ export default function QrMenuPage() {
   }
 
   const renderEventLink = (event: Event) => {
-    const eventUrl = event.collectRsvp === false && event.url ? event.url : `/qrmenu/${businessId}/events/${event.id}`;
+    const eventUrl = `${event.collectRsvp === false && event.url ? event.url : `/qrmenu/${businessId}/events/${event.id}?ts=${sessionTimestamp}`}`;
     const isExternal = event.collectRsvp === false && event.url;
     
     return (
@@ -440,7 +453,7 @@ export default function QrMenuPage() {
                     <Button size="icon" variant="outline" className="relative bg-white/20 text-white border-white/30 hover:bg-white/30 hover:text-white flex-shrink-0">
                         <ShoppingBag className="h-6 w-6" />
                         {cart.length > 0 && (
-                            <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-pink-500 text-white text-xs flex items-center justify-center">
+                            <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center">
                             {cart.reduce((acc, item) => acc + item.quantity, 0)}
                             </span>
                         )}
@@ -616,7 +629,7 @@ export default function QrMenuPage() {
           <main className="p-4">
             <div className="grid grid-cols-2 gap-4">
               {availableCategories.map((category) => (
-                  <Link key={category.name} href={`/qrmenu/${businessId}/${encodedTableNumber}/${category.name.toLowerCase().replace(/ /g, '-')}`}>
+                  <Link key={category.name} href={`/qrmenu/${businessId}/${encodedTableNumber}/${category.name.toLowerCase().replace(/ /g, '-')}?ts=${sessionTimestamp}`}>
                       <Card className="overflow-hidden bg-white/10 backdrop-blur-lg border border-white/20 text-white transition-all hover:border-white/40">
                           <div className="relative h-24 w-full">
                               <Image
@@ -634,7 +647,7 @@ export default function QrMenuPage() {
                   </Link>
               ))}
               {combos.length > 0 && (
-                  <Link href={`/qrmenu/${businessId}/${encodedTableNumber}/combos`}>
+                  <Link href={`/qrmenu/${businessId}/${encodedTableNumber}/combos?ts=${sessionTimestamp}`}>
                       <Card className="overflow-hidden h-full flex flex-col bg-white/10 backdrop-blur-lg border border-white/20 text-white transition-all hover:border-white/40">
                            <div className="flex-grow flex items-center justify-center h-24">
                               <CardTitle className="text-base text-center">Combos</CardTitle>
@@ -692,5 +705,3 @@ export default function QrMenuPage() {
     </div>
   );
 }
-
-    

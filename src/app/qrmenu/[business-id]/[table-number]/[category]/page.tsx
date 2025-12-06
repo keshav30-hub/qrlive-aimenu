@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import {
   Card,
@@ -186,11 +186,35 @@ const LoadingComponent = () => {
     );
 };
 
+const ExpiredSessionComponent = () => (
+    <div className="flex h-screen flex-col items-center justify-center bg-gradient-to-br from-gray-900 via-blue-950 to-black text-white p-4 text-center">
+        <h2 className="text-2xl font-bold mb-2">Session Expired</h2>
+        <p className="text-lg">For security, your session has expired.</p>
+        <p className="text-lg">Please scan the QR code on your table again.</p>
+    </div>
+);
+
 export default function CategoryMenuPage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const { 'business-id': businessId, 'table-number': encodedTableNumber, category: categorySlug } = params as { 'business-id': string, 'table-number': string, category: string };
+  
+  const [isSessionExpired, setIsSessionExpired] = useState(false);
+
+  useEffect(() => {
+    const ts = searchParams.get('ts');
+    if (!ts) {
+        setIsSessionExpired(true);
+        return;
+    }
+    const sessionStart = parseInt(ts, 10);
+    const now = new Date().getTime();
+    if (now - sessionStart > 2 * 60 * 60 * 1000) { // 2 hours
+        setIsSessionExpired(true);
+    }
+  }, [searchParams]);
   
   const tableNumber = useMemo(() => decodeURIComponent(encodedTableNumber), [encodedTableNumber]);
   const isComboPage = categorySlug === 'combos';
@@ -263,8 +287,10 @@ export default function CategoryMenuPage() {
       }
       setIsLoading(false);
     }
-    fetchData();
-  }, [businessId]);
+    if (!isSessionExpired) {
+        fetchData();
+    }
+  }, [businessId, isSessionExpired]);
 
   const handleServiceRequest = async (requestType: string) => {
     if (!userId || typeof tableNumber !== 'string') return;
@@ -380,7 +406,11 @@ export default function CategoryMenuPage() {
     }
   };
 
-  const aifaUrl = `/qrmenu/${businessId}/${encodedTableNumber}/aifa`;
+  const aifaUrl = `/qrmenu/${businessId}/${encodedTableNumber}/aifa?ts=${searchParams.get('ts')}`;
+
+  if (isSessionExpired) {
+    return <ExpiredSessionComponent />;
+  }
 
   if (isLoading) {
     return <LoadingComponent />
@@ -402,7 +432,7 @@ export default function CategoryMenuPage() {
                         <SheetTrigger asChild>
                             <Button size="icon" variant="outline" className="relative bg-white/20 text-white border-white/30 hover:bg-white/30 hover:text-white">
                                 <ShoppingBag className="h-6 w-6" />
-                                {cart.length > 0 && <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-pink-500 text-white text-xs flex items-center justify-center">{cart.reduce((total, item) => total + item.quantity, 0)}</span>}
+                                {cart.length > 0 && <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center">{cart.reduce((total, item) => total + item.quantity, 0)}</span>}
                             </Button>
                         </SheetTrigger>
                         <SheetContent side="bottom" className="max-w-[480px] mx-auto rounded-t-2xl p-0">
@@ -578,5 +608,3 @@ export default function CategoryMenuPage() {
     </div>
   );
 }
-
-    
