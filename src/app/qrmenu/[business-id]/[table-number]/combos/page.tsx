@@ -395,7 +395,7 @@ export default function CombosPage() {
                 <Tooltip>
                     <TooltipTrigger asChild>
                         <Link href={aifaUrl}>
-                            <Button size="icon" className="h-14 w-14 rounded-full shadow-lg bg-pink-500 text-white hover:bg-pink-600"
+                            <Button size="icon" className="h-14 w-14 rounded-full shadow-lg bg-primary text-primary-foreground hover:bg-primary/90"
                             onClick={(e) => {
                                 if(!userId) {
                                     e.preventDefault();
@@ -417,3 +417,5 @@ export default function CombosPage() {
     </div>
   );
 }
+
+    

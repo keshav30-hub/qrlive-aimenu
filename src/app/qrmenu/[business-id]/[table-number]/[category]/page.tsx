@@ -562,7 +562,7 @@ export default function CategoryMenuPage() {
                 <Tooltip>
                     <TooltipTrigger asChild>
                         <Link href={aifaUrl}>
-                            <Button size="icon" className="h-14 w-14 rounded-full shadow-lg bg-pink-500 text-white hover:bg-pink-600">
+                            <Button size="icon" className="h-14 w-14 rounded-full shadow-lg bg-primary text-primary-foreground hover:bg-primary/90">
                                 <Bot className="h-7 w-7" />
                                 <span className="sr-only">AI Food Assistant</span>
                             </Button>
@@ -578,3 +578,5 @@ export default function CategoryMenuPage() {
     </div>
   );
 }
+
+    

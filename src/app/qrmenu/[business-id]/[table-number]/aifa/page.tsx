@@ -47,7 +47,7 @@ const ChipButton = ({ text, onSelect }: { text: string; onSelect: (text: string)
     <Button
         variant="secondary"
         size="sm"
-        className="h-auto py-1 px-3 bg-white text-black hover:bg-white/90"
+        className="h-auto py-1 px-3 bg-white text-black"
         onClick={() => onSelect(text)}
     >
         {text}
@@ -775,7 +775,7 @@ export default function AIFAPage() {
                             <div key={message.id} className={`flex items-start gap-2 ${message.sender === 'user' ? 'justify-end' : ''}`}>
                                 {message.sender === 'aifa' && (
                                     <Avatar className="h-8 w-8 flex-shrink-0">
-                                        <div className="flex h-full w-full items-center justify-center rounded-full bg-pink-500 text-white">
+                                        <div className="flex h-full w-full items-center justify-center rounded-full bg-primary text-primary-foreground">
                                             <Sparkles className="h-5 w-5" />
                                         </div>
                                     </Avatar>
@@ -788,7 +788,7 @@ export default function AIFAPage() {
                         {isThinking && (
                              <div className="flex items-start gap-2">
                                 <Avatar className="h-8 w-8 flex-shrink-0">
-                                    <div className="flex h-full w-full items-center justify-center rounded-full bg-pink-500 text-white">
+                                    <div className="flex h-full w-full items-center justify-center rounded-full bg-primary text-primary-foreground">
                                         <Sparkles className="h-5 w-5" />
                                     </div>
                                 </Avatar>
@@ -824,3 +824,5 @@ export default function AIFAPage() {
         </div>
     );
 }
+
+    
