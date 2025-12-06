@@ -47,7 +47,7 @@ const ChipButton = ({ text, onSelect }: { text: string; onSelect: (text: string)
     <Button
         variant="secondary"
         size="sm"
-        className="h-auto py-1 px-3 bg-white text-black"
+        className="h-auto py-1 px-3 bg-white text-black hover:bg-white/90"
         onClick={() => onSelect(text)}
     >
         {text}
@@ -404,7 +404,7 @@ export default function AIFAPage() {
           if (savedMessagesJSON) {
             const savedMessages = JSON.parse(savedMessagesJSON);
             if (Array.isArray(savedMessages) && savedMessages.length > 0) {
-              setMessages(savedMessages);
+              setMessages(savedMessages.map((msg: any) => ({...msg, content: typeof msg.content === 'string' ? <AIFAMessageContent content={msg.content} /> : msg.content})));
               return;
             }
           }
@@ -437,7 +437,6 @@ export default function AIFAPage() {
             const savedMessagesJSON = sessionStorage.getItem('aifa-chat-history');
             const savedMessages = savedMessagesJSON ? JSON.parse(savedMessagesJSON) : [];
             
-            // Only store simple text content in session storage
             const contentForStorage = typeof content === 'string' ? content : 'Interactive Message';
             
             const newHistory = [...savedMessages, { id: newMessage.id, sender, content: contentForStorage }];
@@ -501,10 +500,9 @@ export default function AIFAPage() {
                 const taskDescription = `Order ready: ${orderSummary}`;
                 await submitServiceRequest(businessData.id, tableNumber, taskDescription);
                 
-                // Add to order history
                 const newOrder: Order = {
                     timestamp: new Date().toISOString(),
-                    items: [orderSummary], // Storing the full summary string
+                    items: [orderSummary], 
                 };
 
                 setOrderHistory(prev => {
@@ -530,7 +528,6 @@ export default function AIFAPage() {
     };
 
     const handleChipSelect = (action: string) => {
-        // When a generic chip is selected, clear the item being customized.
         setItemBeingCustomized(null);
         addMessage('user', action);
         getAIResponse(action);
@@ -541,9 +538,8 @@ export default function AIFAPage() {
             const fullPrompt = `Add ${itemBeingCustomized} with ${option}`;
             addMessage('user', fullPrompt);
             getAIResponse(fullPrompt);
-            setItemBeingCustomized(null); // Clear after use
+            setItemBeingCustomized(null); 
         } else {
-             // Fallback for safety, though it shouldn't happen with correct logic
             addMessage('user', option);
             getAIResponse(option);
         }
@@ -619,12 +615,18 @@ export default function AIFAPage() {
         setIsThinking(true);
         trackAifaMessage();
         const historyForAI = messages
-            .filter(msg => typeof msg.content === 'string')
-            .slice(-HISTORY_LIMIT) 
-            .map(msg => ({
-                role: msg.sender === 'user' ? 'user' : 'model' as 'user' | 'model',
-                content: msg.content as string
-            }));
+            .map(msg => {
+                // Ensure content is a simple string for the AI
+                const content = typeof msg.content === 'string' ? msg.content :
+                                msg.content && typeof (msg.content as any).props?.content === 'string' ? (msg.content as any).props.content :
+                                'Interactive Component';
+                return {
+                    role: msg.sender === 'user' ? 'user' : 'model' as 'user' | 'model',
+                    content: content
+                };
+            })
+            .filter(msg => msg.content !== 'Interactive Component') // Filter out non-string content
+            .slice(-HISTORY_LIMIT); 
         
         try {
             const isAskingForEvents = /event|happening|special/i.test(prompt);
@@ -779,7 +781,7 @@ export default function AIFAPage() {
                                     </Avatar>
                                 )}
                                 <div className={`rounded-lg px-4 py-2 max-w-[85%] break-words ${message.sender === 'user' ? 'bg-white text-gray-800' : 'bg-black/20 text-white backdrop-blur-md border border-white/10'}`}>
-                                    { typeof message.content === 'string' ? <AIFAMessageContent content={message.content} /> : message.content }
+                                    {message.content}
                                 </div>
                              </div>
                         ))}
