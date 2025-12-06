@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Edit, Save, X, Upload, Fingerprint, RefreshCw, Crown, ExternalLink, Instagram, Globe, Eye, EyeOff, Loader2, Download, QrCode, Mail, Phone } from 'lucide-react';
+import { Edit, Save, X, Upload, Fingerprint, RefreshCw, Crown, ExternalLink, Instagram, Globe, Eye, EyeOff, Loader2, Download, QrCode, Mail, Phone, Youtube, Bot } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -38,6 +38,9 @@ type BusinessInfo = {
   logoStoragePath?: string;
   googleReviewLink?: string;
   instagramLink?: string;
+  youtubeLink?: string;
+  websiteLink?: string;
+  whatsappNumber?: string;
   adminAccessCode?: string;
   businessId?: string;
 };
@@ -440,7 +443,15 @@ export default function SettingsPage() {
                 <p className="font-medium">{businessInfo.address}</p>
               )}
             </div>
-            <div className="space-y-1">
+             <div className="space-y-1">
+              <Label htmlFor="instagramLink">Instagram Link</Label>
+               {isEditing ? (
+                <Input id="instagramLink" name="instagramLink" value={editedInfo.instagramLink || ''} onChange={handleInputChange} />
+              ) : (
+                <p className="font-medium">{businessInfo.instagramLink || '-'}</p>
+              )}
+            </div>
+             <div className="space-y-1">
               <Label htmlFor="googleReviewLink">Google Review Link</Label>
                {isEditing ? (
                 <Input id="googleReviewLink" name="googleReviewLink" value={editedInfo.googleReviewLink || ''} onChange={handleInputChange} />
@@ -449,11 +460,27 @@ export default function SettingsPage() {
               )}
             </div>
              <div className="space-y-1">
-              <Label htmlFor="instagramLink">Instagram Link</Label>
+              <Label htmlFor="youtubeLink">YouTube Link</Label>
                {isEditing ? (
-                <Input id="instagramLink" name="instagramLink" value={editedInfo.instagramLink || ''} onChange={handleInputChange} />
+                <Input id="youtubeLink" name="youtubeLink" value={editedInfo.youtubeLink || ''} onChange={handleInputChange} />
               ) : (
-                <p className="font-medium">{businessInfo.instagramLink || '-'}</p>
+                <p className="font-medium">{businessInfo.youtubeLink || '-'}</p>
+              )}
+            </div>
+             <div className="space-y-1">
+              <Label htmlFor="websiteLink">Website Link</Label>
+               {isEditing ? (
+                <Input id="websiteLink" name="websiteLink" value={editedInfo.websiteLink || ''} onChange={handleInputChange} />
+              ) : (
+                <p className="font-medium">{businessInfo.websiteLink || '-'}</p>
+              )}
+            </div>
+             <div className="space-y-1">
+              <Label htmlFor="whatsappNumber">WhatsApp Number</Label>
+               {isEditing ? (
+                <Input id="whatsappNumber" name="whatsappNumber" value={editedInfo.whatsappNumber || ''} onChange={handleInputChange} />
+              ) : (
+                <p className="font-medium">{businessInfo.whatsappNumber || '-'}</p>
               )}
             </div>
              <div className="space-y-1">

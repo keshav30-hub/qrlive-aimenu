@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -48,6 +47,11 @@ import {
   Sparkles,
   GlassWater,
   SprayCan,
+  MapPin,
+  Bot,
+  Youtube,
+  Globe,
+  Instagram,
 } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { getBusinessDataBySlug, getEvents, getMenuData, type BusinessData, type Event, type Category, submitServiceRequest, type MenuItem, type Combo, getQrliveContact, type QrliveContact } from '@/lib/qrmenu';
@@ -328,6 +332,35 @@ export default function QrMenuPage() {
         </Link>
     );
   };
+  
+  const socialLinks = [
+    {
+      href: businessData.whatsappNumber ? `https://wa.me/${businessData.whatsappNumber.replace(/\D/g, '')}` : '',
+      icon: <Bot className="h-5 w-5" />, // Using Bot icon for WhatsApp
+      label: 'WhatsApp',
+    },
+    {
+      href: businessData.instagramLink,
+      icon: <Instagram className="h-5 w-5" />,
+      label: 'Instagram',
+    },
+    {
+      href: businessData.websiteLink,
+      icon: <Globe className="h-5 w-5" />,
+      label: 'Website',
+    },
+    {
+      href: businessData.youtubeLink,
+      icon: <Youtube className="h-5 w-5" />,
+      label: 'YouTube',
+    },
+    {
+      href: businessData.googleReviewLink,
+      icon: <MapPin className="h-5 w-5" />,
+      label: 'Find Us',
+    },
+  ].filter(link => link.href);
+
 
   return (
     <div className="h-screen w-full bg-gradient-to-br from-gray-900 via-blue-950 to-black">
@@ -609,6 +642,25 @@ export default function QrMenuPage() {
              )}
             </div>
           </main>
+           {socialLinks.length > 0 && (
+            <section className="p-4">
+              <Card className="bg-white/10 backdrop-blur-lg border border-white/20">
+                <CardHeader>
+                  <CardTitle className="text-base text-center text-white">Connect with us</CardTitle>
+                </CardHeader>
+                <CardContent className="flex justify-center gap-4">
+                  {socialLinks.map((link) => (
+                    <a key={link.label} href={link.href} target="_blank" rel="noopener noreferrer">
+                      <Button variant="outline" size="icon" className="bg-white/20 text-white border-white/30 hover:bg-white/30 hover:text-white">
+                        {link.icon}
+                        <span className="sr-only">{link.label}</span>
+                      </Button>
+                    </a>
+                  ))}
+                </CardContent>
+              </Card>
+            </section>
+          )}
         </ScrollArea>
         
         <div className="fixed bottom-4 right-4 z-20">
@@ -629,5 +681,3 @@ export default function QrMenuPage() {
     </div>
   );
 }
-
-

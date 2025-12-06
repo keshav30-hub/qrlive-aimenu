@@ -98,6 +98,9 @@ export type BusinessData = {
     businessId?: string;
     googleReviewLink?: string;
     instagramLink?: string;
+    youtubeLink?: string;
+    websiteLink?: string;
+    whatsappNumber?: string;
 };
 
 export type QrliveContact = {
@@ -161,6 +164,9 @@ export async function getBusinessDataBySlug(slug: string): Promise<{ businessDat
                 businessId: userData.businessId,
                 googleReviewLink: userData.googleReviewLink,
                 instagramLink: userData.instagramLink,
+                youtubeLink: userData.youtubeLink,
+                websiteLink: userData.websiteLink,
+                whatsappNumber: userData.whatsappNumber,
             },
             userId: userDoc.id,
         };

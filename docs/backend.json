@@ -79,6 +79,22 @@
         "instagramLink": {
             "type": "string",
             "description": "A link to the business's Instagram profile."
+        },
+        "youtubeLink": {
+            "type": "string",
+            "description": "A link to the business's YouTube channel."
+        },
+        "websiteLink": {
+            "type": "string",
+            "description": "A link to the business's official website."
+        },
+        "whatsappNumber": {
+            "type": "string",
+            "description": "The business's WhatsApp contact number."
+        },
+        "googleReviewLink": {
+            "type": "string",
+            "description": "A link for customers to leave a Google review."
         }
       },
       "required": [
