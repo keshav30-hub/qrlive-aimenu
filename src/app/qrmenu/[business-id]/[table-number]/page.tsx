@@ -35,6 +35,7 @@ import {
   FileText,
   Loader2,
   Star,
+  Sparkles,
 } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { getBusinessDataBySlug, getEvents, getMenuData, type BusinessData, type Event, type Category, submitServiceRequest, type MenuItem, type Combo, getQrliveContact, type QrliveContact } from '@/lib/qrmenu';
@@ -506,7 +507,7 @@ export default function QrMenuPage() {
         </ScrollArea>
         
         <div className="fixed bottom-4 right-4 flex items-center gap-2">
-            <div className="z-50 overflow-hidden rounded-md border border-white/20 bg-black/20 backdrop-blur-md px-3 py-1.5 text-sm text-white shadow-lg animate-in fade-in-0 zoom-in-95">
+            <div className="z-50 overflow-hidden rounded-md border border-white/20 bg-black/20 backdrop-blur-md px-3 py-1.5 text-sm text-white shadow-md animate-in fade-in-0 zoom-in-95">
                 <p>Hi, I'm AIFA! Ask me for suggestions.</p>
             </div>
             <Link href={aifaUrl}>
@@ -517,7 +518,7 @@ export default function QrMenuPage() {
                         toast({variant: 'destructive', title: 'AI Assistant Not Ready', description: 'Please wait a moment and try again.'})
                     }
                 }}>
-                    <Sparkles className="h-7 w-7 animate-sparkle" />
+                    <Sparkles className="h-7 w-7" />
                     <span className="sr-only">AI Food Assistant</span>
                 </Button>
             </Link>
