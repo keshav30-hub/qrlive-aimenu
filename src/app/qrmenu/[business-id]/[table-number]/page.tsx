@@ -307,24 +307,24 @@ export default function QrMenuPage() {
   };
 
   return (
-    <div className="h-screen w-full bg-gray-100 dark:bg-black">
+    <div className="h-screen w-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500">
         {qrliveContact?.website ? (
              <a href={qrliveContact.website} target="_blank" rel="noopener noreferrer">
                 <div
-                    className="fixed top-4 left-1/2 -translate-x-1/2 z-20 px-3 py-1 bg-primary text-primary-foreground rounded-full shadow-lg text-sm font-bold"
+                    className="fixed top-4 left-1/2 -translate-x-1/2 z-20 px-4 py-1.5 bg-white/20 backdrop-blur-sm text-white rounded-full shadow-lg text-sm font-bold border border-white/30"
                 >
                     QRLIVE
                 </div>
             </a>
         ) : (
             <div
-                className="fixed top-4 left-1/2 -translate-x-1/2 z-20 px-3 py-1 bg-primary text-primary-foreground rounded-full shadow-lg text-sm font-bold"
+                className="fixed top-4 left-1/2 -translate-x-1/2 z-20 px-4 py-1.5 bg-white/20 backdrop-blur-sm text-white rounded-full shadow-lg text-sm font-bold border border-white/30"
             >
                 QRLIVE
             </div>
         )}
-      <div className="max-w-[480px] mx-auto h-full flex flex-col bg-white dark:bg-gray-950 shadow-lg pt-12">
-        <header className="p-2 flex justify-between items-center flex-shrink-0">
+      <div className="max-w-[480px] mx-auto h-full flex flex-col bg-transparent pt-12">
+        <header className="p-2 flex justify-between items-center flex-shrink-0 bg-black/10 backdrop-blur-md rounded-t-lg border-b border-white/20">
           <div className="flex items-center gap-3">
             <Image
               src={businessData.logo}
@@ -334,8 +334,8 @@ export default function QrMenuPage() {
               className="rounded-md object-contain"
             />
             <div>
-              <h1 className="text-base font-bold leading-tight">{businessData.name}</h1>
-              <p className="text-xs text-muted-foreground">
+              <h1 className="text-base font-bold leading-tight text-white">{businessData.name}</h1>
+              <p className="text-xs text-white/80">
                 Table {tableNumber}
               </p>
             </div>
@@ -343,10 +343,10 @@ export default function QrMenuPage() {
           <div className="flex items-center gap-2">
             <Sheet open={isCartOpen} onOpenChange={setIsCartOpen}>
                 <SheetTrigger asChild>
-                    <Button size="icon" variant="outline" className="relative">
+                    <Button size="icon" variant="outline" className="relative bg-white/20 text-white border-white/30 hover:bg-white/30 hover:text-white">
                         <ShoppingBag className="h-6 w-6" />
                         {cart.length > 0 && (
-                            <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center">
+                            <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-pink-500 text-white text-xs flex items-center justify-center">
                             {cart.reduce((acc, item) => acc + item.quantity, 0)}
                             </span>
                         )}
@@ -437,7 +437,7 @@ export default function QrMenuPage() {
 
             <Dialog open={isServiceRequestDialogOpen} onOpenChange={setIsServiceRequestDialogOpen}>
                 <DialogTrigger asChild>
-                    <Button size="icon" className="bg-primary text-primary-foreground">
+                    <Button size="icon" className="bg-pink-500 text-white hover:bg-pink-600">
                         <ConciergeBell className="h-6 w-6" />
                         <span className="sr-only">Call Waiter</span>
                     </Button>
@@ -490,7 +490,7 @@ export default function QrMenuPage() {
                     onClick={() => carouselApi?.scrollTo(index)}
                     className={cn(
                       'h-2 w-2 rounded-full transition-all',
-                      currentSlide === index ? 'w-4 bg-primary' : 'bg-primary/50'
+                      currentSlide === index ? 'w-4 bg-white' : 'bg-white/50'
                     )}
                   />
                 ))}
@@ -501,7 +501,7 @@ export default function QrMenuPage() {
             <div className="grid grid-cols-2 gap-4">
               {availableCategories.map((category) => (
                   <Link key={category.name} href={`/qrmenu/${businessId}/${encodedTableNumber}/${category.name.toLowerCase().replace(/ /g, '-')}`}>
-                      <Card className="overflow-hidden">
+                      <Card className="overflow-hidden bg-white/10 backdrop-blur-lg border border-white/20 text-white transition-all hover:border-white/40">
                           <div className="relative h-24 w-full">
                               <Image
                                   src={category.imageUrl}
@@ -519,7 +519,7 @@ export default function QrMenuPage() {
               ))}
               {combos.length > 0 && (
                   <Link href={`/qrmenu/${businessId}/${encodedTableNumber}/combos`}>
-                      <Card className="overflow-hidden h-full flex flex-col">
+                      <Card className="overflow-hidden h-full flex flex-col bg-white/10 backdrop-blur-lg border border-white/20 text-white transition-all hover:border-white/40">
                            <div className="flex-grow flex items-center justify-center h-24">
                               <CardTitle className="text-base text-center">Combos</CardTitle>
                           </div>
@@ -531,11 +531,11 @@ export default function QrMenuPage() {
         </ScrollArea>
         
         <div className="fixed bottom-4 right-4 flex items-center gap-2">
-            <div className="z-50 overflow-hidden rounded-md border bg-background/30 backdrop-blur-md px-3 py-1.5 text-sm text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95">
+            <div className="z-50 overflow-hidden rounded-md border border-white/20 bg-black/20 backdrop-blur-md px-3 py-1.5 text-sm text-white shadow-lg animate-in fade-in-0 zoom-in-95">
                 <p>Hi, I'm AIFA! Ask me for suggestions.</p>
             </div>
             <Link href={aifaUrl}>
-                <Button size="icon" className="h-14 w-14 rounded-full shadow-lg bg-primary text-primary-foreground"
+                <Button size="icon" className="h-14 w-14 rounded-full shadow-lg bg-pink-500 text-white hover:bg-pink-600"
                 onClick={(e) => {
                     if(!userId) {
                         e.preventDefault();
