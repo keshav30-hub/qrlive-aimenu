@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -46,6 +47,7 @@ import {
   Search,
   GlassWater,
   SprayCan,
+  X,
 } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { getBusinessDataBySlug, getEvents, getMenuData, type BusinessData, type Event, type Category, submitServiceRequest, type MenuItem, type Combo, getQrliveContact, type QrliveContact } from '@/lib/qrmenu';
@@ -467,7 +469,7 @@ export default function QrMenuPage() {
           </div>
         </header>
 
-        <div className="p-4 bg-black/10 backdrop-blur-md z-20">
+        <div className="p-4 bg-black/10 backdrop-blur-md z-30">
             <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/50" />
                 <Input
@@ -476,8 +478,18 @@ export default function QrMenuPage() {
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
+                {searchTerm && (
+                    <Button 
+                        size="icon" 
+                        variant="ghost" 
+                        className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-white/50 hover:bg-white/20 hover:text-white"
+                        onClick={() => setSearchTerm('')}
+                    >
+                        <X className="h-4 w-4" />
+                    </Button>
+                )}
                 {searchResults.length > 0 && searchTerm && (
-                    <div className="absolute top-full mt-2 w-full rounded-md border border-white/20 bg-black/80 backdrop-blur-lg z-20">
+                    <div className="absolute top-full mt-2 w-full rounded-md border border-white/20 bg-black/90 backdrop-blur-lg z-20">
                         <ScrollArea className="max-h-60">
                             {searchResults.map(item => (
                                 <div
@@ -619,3 +631,4 @@ export default function QrMenuPage() {
     </div>
   );
 }
+
