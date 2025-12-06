@@ -61,10 +61,10 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 
 const serviceRequests = [
-    { text: 'Call Captain', icon: <ConciergeBell /> },
     { text: 'Get Tissues', icon: <Sparkles /> },
     { text: 'Clean the Table', icon: <SprayCan /> },
     { text: 'Get Water', icon: <GlassWater /> },
+    { text: 'Call Captain', icon: <ConciergeBell /> },
 ]
 
 type CartItem = MenuItem & { quantity: number };
@@ -489,7 +489,7 @@ export default function QrMenuPage() {
                     </Button>
                 )}
                 {searchResults.length > 0 && searchTerm && (
-                    <div className="absolute top-full mt-2 w-full rounded-md border border-white/20 bg-black/90 backdrop-blur-lg z-20">
+                    <div className="absolute top-full mt-2 w-full rounded-md border border-white/20 bg-black/95 backdrop-blur-lg z-20">
                         <ScrollArea className="max-h-60">
                             {searchResults.map(item => (
                                 <div
@@ -546,7 +546,7 @@ export default function QrMenuPage() {
                 <Dialog open={isServiceRequestDialogOpen} onOpenChange={setIsServiceRequestDialogOpen}>
                     <DialogTrigger asChild>
                         <button
-                            className="flex flex-col items-center justify-center gap-1 p-3 rounded-lg bg-white/10 backdrop-blur-lg border border-white/20 text-white transition-all hover:border-white/40 disabled:opacity-50"
+                            className="flex flex-col items-center justify-center gap-1 p-2 rounded-lg bg-white/10 backdrop-blur-lg border border-white/20 text-white transition-all hover:border-white/40 disabled:opacity-50"
                         >
                             <ConciergeBell className="h-5 w-5" />
                             <span className="font-semibold text-xs">Call Captain</span>
@@ -572,7 +572,7 @@ export default function QrMenuPage() {
                  <button
                     onClick={() => handleServiceRequest('Get Bill')}
                     disabled={isRequestingService}
-                    className="flex flex-col items-center justify-center gap-1 p-3 rounded-lg bg-white/10 backdrop-blur-lg border border-white/20 text-white transition-all hover:border-white/40 disabled:opacity-50"
+                    className="flex flex-col items-center justify-center gap-1 p-2 rounded-lg bg-white/10 backdrop-blur-lg border border-white/20 text-white transition-all hover:border-white/40 disabled:opacity-50"
                 >
                     <FileText className="h-5 w-5" />
                     <span className="font-semibold text-xs">Get Bill</span>
@@ -594,7 +594,7 @@ export default function QrMenuPage() {
                                   data-ai-hint={category.imageHint}
                                 />
                           </div>
-                          <CardHeader className="p-3">
+                          <CardHeader className="p-2">
                               <CardTitle className="text-base text-center">{category.name}</CardTitle>
                           </CardHeader>
                       </Card>
