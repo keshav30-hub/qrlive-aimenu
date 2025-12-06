@@ -47,7 +47,7 @@ const ChipButton = ({ text, onSelect }: { text: string; onSelect: (text: string)
     <Button
         variant="secondary"
         size="sm"
-        className="h-auto py-1 px-3 bg-white text-black hover:bg-gray-200"
+        className="h-auto py-1 px-3 bg-white text-black"
         onClick={() => onSelect(text)}
     >
         {text}
@@ -282,6 +282,31 @@ const ConfirmOrder = ({ orderText, onConfirm }: { orderText: string; onConfirm: 
     )
 };
 
+function AIFAMessageContent({ content }: { content: string }) {
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const parts = content.split(urlRegex);
+
+    return (
+        <p className="text-sm">
+            {parts.map((part, index) => {
+                if (part.match(urlRegex)) {
+                    return (
+                        <a
+                            key={index}
+                            href={part}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-400 underline hover:text-blue-300"
+                        >
+                            {part}
+                        </a>
+                    );
+                }
+                return part;
+            })}
+        </p>
+    );
+}
 
 const processDataForServerAction = (data: any) => {
     return JSON.parse(JSON.stringify(data));
@@ -328,7 +353,11 @@ export default function AIFAPage() {
         const initialMessage = getInitialMessage();
         setMessages([initialMessage]);
         sessionStorage.removeItem('aifa-chat-history');
-        sessionStorage.setItem('aifa-chat-history', JSON.stringify([initialMessage]));
+        sessionStorage.setItem('aifa-chat-history', JSON.stringify([{
+            id: initialMessage.id,
+            sender: initialMessage.sender,
+            content: initialMessage.content // Ensure content is a string for storage
+        }]));
         toast({ title: 'Chat cleared', description: 'Your conversation has been restarted.' });
     };
 
@@ -375,11 +404,8 @@ export default function AIFAPage() {
           if (savedMessagesJSON) {
             const savedMessages = JSON.parse(savedMessagesJSON);
             if (Array.isArray(savedMessages) && savedMessages.length > 0) {
-              const textMessages = savedMessages.filter((msg: any) => typeof msg.content === 'string');
-              if (textMessages.length > 1) { 
-                setMessages(textMessages);
-                return;
-              }
+              setMessages(savedMessages);
+              return;
             }
           }
         } catch (error) {
@@ -403,21 +429,22 @@ export default function AIFAPage() {
     }, [messages]);
 
 
-    const addMessage = (sender: 'user' | 'aifa', content: React.ReactNode, isText = false) => {
+    const addMessage = (sender: 'user' | 'aifa', content: React.ReactNode) => {
         const newMessage = { id: getUniqueMessageId(), sender, content };
         setMessages(prev => [...prev, newMessage]);
     
-        if (isText) {
-            try {
-                const savedMessagesJSON = sessionStorage.getItem('aifa-chat-history');
-                const savedMessages = savedMessagesJSON ? JSON.parse(savedMessagesJSON) : [];
-                
-                const newHistory = [...savedMessages, { id: newMessage.id, sender, content }];
-                
-                sessionStorage.setItem('aifa-chat-history', JSON.stringify(newHistory.slice(-HISTORY_LIMIT)));
-            } catch (error) {
-                console.error("Failed to save chat history to session storage:", error);
-            }
+        try {
+            const savedMessagesJSON = sessionStorage.getItem('aifa-chat-history');
+            const savedMessages = savedMessagesJSON ? JSON.parse(savedMessagesJSON) : [];
+            
+            // Only store simple text content in session storage
+            const contentForStorage = typeof content === 'string' ? content : 'Interactive Message';
+            
+            const newHistory = [...savedMessages, { id: newMessage.id, sender, content: contentForStorage }];
+            
+            sessionStorage.setItem('aifa-chat-history', JSON.stringify(newHistory.slice(-HISTORY_LIMIT)));
+        } catch (error) {
+            console.error("Failed to save chat history to session storage:", error);
         }
     };
     
@@ -444,7 +471,7 @@ export default function AIFAPage() {
                 feedbackMessage += ` and comment: ${feedback.comment}`;
             }
 
-            addMessage('user', feedbackMessage, true);
+            addMessage('user', feedbackMessage);
             await getAIResponse(feedbackMessage);
 
             toast({ title: "Feedback submitted successfully!" });
@@ -457,7 +484,7 @@ export default function AIFAPage() {
     };
     
     const handleFeedbackTarget = (target: string) => {
-        addMessage('user', `Feedback for ${target}`, true);
+        addMessage('user', `Feedback for ${target}`);
         setIsThinking(true);
         setTimeout(() => {
             const isForBusiness = target === (businessData?.name || 'Business');
@@ -490,7 +517,7 @@ export default function AIFAPage() {
                     title: "Order Confirmed!",
                     description: "A captain will be with you shortly to finalize your order.",
                 });
-                addMessage('aifa', "Excellent! I've notified our staff. They will be right with you to confirm everything.", true);
+                addMessage('aifa', "Excellent! I've notified our staff. They will be right with you to confirm everything.");
             } catch (error) {
                 console.error("Failed to submit order confirmation task:", error);
                 toast({
@@ -505,19 +532,19 @@ export default function AIFAPage() {
     const handleChipSelect = (action: string) => {
         // When a generic chip is selected, clear the item being customized.
         setItemBeingCustomized(null);
-        addMessage('user', action, true);
+        addMessage('user', action);
         getAIResponse(action);
     };
 
     const handleOptionSelect = (option: string) => {
         if (itemBeingCustomized) {
             const fullPrompt = `Add ${itemBeingCustomized} with ${option}`;
-            addMessage('user', fullPrompt, true);
+            addMessage('user', fullPrompt);
             getAIResponse(fullPrompt);
             setItemBeingCustomized(null); // Clear after use
         } else {
              // Fallback for safety, though it shouldn't happen with correct logic
-            addMessage('user', option, true);
+            addMessage('user', option);
             getAIResponse(option);
         }
     };
@@ -530,7 +557,7 @@ export default function AIFAPage() {
         let mainText = response.replace(chipRegex, '').replace(linkRegex, '').replace(specialTagRegex, '').trim();
     
         if (mainText) {
-            addMessage('aifa', mainText, true);
+            addMessage('aifa', <AIFAMessageContent content={mainText} />);
         }
     
         // Handle Links
@@ -603,7 +630,7 @@ export default function AIFAPage() {
             const isAskingForEvents = /event|happening|special/i.test(prompt);
 
             if ((prompt === "Events" || isAskingForEvents) && activeEvents.length > 0) {
-                 addMessage('aifa', "You're in for a treat! Here are our upcoming events. Let me know if you'd like to RSVP.", true);
+                 addMessage('aifa', "You're in for a treat! Here are our upcoming events. Let me know if you'd like to RSVP.");
                 activeEvents.forEach(event => {
                     addMessage('aifa', <EventCard event={event} businessId={businessId} />);
                 })
@@ -659,7 +686,7 @@ export default function AIFAPage() {
             }
         } catch(e: any) {
             console.error(e);
-            addMessage('aifa', e.message || "Oops! My circuits are a bit scrambled. Could you try asking that again?", true);
+            addMessage('aifa', e.message || "Oops! My circuits are a bit scrambled. Could you try asking that again?");
         } finally {
             setIsThinking(false);
         }
@@ -669,7 +696,7 @@ export default function AIFAPage() {
     const handleSendMessage = async () => {
         if (inputValue.trim()) {
             const userMessage = inputValue.trim();
-            addMessage('user', userMessage, true);
+            addMessage('user', userMessage);
             setInputValue('');
             await getAIResponse(userMessage);
         }
@@ -752,7 +779,7 @@ export default function AIFAPage() {
                                     </Avatar>
                                 )}
                                 <div className={`rounded-lg px-4 py-2 max-w-[85%] break-words ${message.sender === 'user' ? 'bg-white text-gray-800' : 'bg-black/20 text-white backdrop-blur-md border border-white/10'}`}>
-                                    { typeof message.content === 'string' ? <p className="text-sm">{message.content}</p> : message.content }
+                                    { typeof message.content === 'string' ? <AIFAMessageContent content={message.content} /> : message.content }
                                 </div>
                              </div>
                         ))}
