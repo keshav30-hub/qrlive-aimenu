@@ -251,6 +251,7 @@ export default function AIFAPage() {
     const [inputValue, setInputValue] = useState('');
     const [isThinking, setIsThinking] = useState(false);
     const scrollViewportRef = useRef<HTMLDivElement>(null);
+    const [itemBeingCustomized, setItemBeingCustomized] = useState<string | null>(null);
 
     const [businessData, setBusinessData] = useState<BusinessData | null>(null);
     const [events, setEvents] = useState<Event[]>([]);
@@ -446,27 +447,53 @@ export default function AIFAPage() {
     };
 
     const handleChipSelect = (action: string) => {
+        // When a generic chip is selected, clear the item being customized.
+        setItemBeingCustomized(null);
         addMessage('user', action);
         getAIResponse(action);
+    };
+
+    const handleOptionSelect = (option: string) => {
+        if (itemBeingCustomized) {
+            const fullPrompt = `Add ${itemBeingCustomized} with ${option}`;
+            addMessage('user', fullPrompt);
+            getAIResponse(fullPrompt);
+            setItemBeingCustomized(null); // Clear after use
+        }
     };
 
     const processAIResponse = (response: string) => {
         const chipRegex = /\[(CHIP|ADDON|MODIFIER):([^\]]+)\]/g;
         const matches = Array.from(response.matchAll(chipRegex));
-
+    
         const mainText = response.replace(chipRegex, '').trim();
-
+    
         if (matches.length > 0) {
             if (mainText) {
                 addMessage('aifa', mainText);
             }
-
+    
+            const isOptionFlow = matches.some(m => m[1] === 'ADDON' || m[1] === 'MODIFIER');
+            if (isOptionFlow) {
+                // Find the item name from the last user message.
+                // This is a bit brittle but should work for the current flow.
+                const lastUserMessage = [...messages].reverse().find(m => m.sender === 'user' && typeof m.content === 'string')?.content as string;
+                if (lastUserMessage) {
+                    const itemMatch = lastUserMessage.match(/Add (.+)/);
+                    if (itemMatch && itemMatch[1]) {
+                        setItemBeingCustomized(itemMatch[1]);
+                    }
+                }
+            }
+    
             const chips = matches.map((match, index) => {
+                const type = match[1];
                 const chipText = match[2];
-                return <ChipButton key={`${chipText}-${index}`} text={chipText} onSelect={handleChipSelect} />;
+                const onSelect = type === 'CHIP' ? handleChipSelect : handleOptionSelect;
+                return <ChipButton key={`${chipText}-${index}`} text={chipText} onSelect={onSelect} />;
             });
             addMessage('aifa', <div className="flex flex-wrap gap-2">{chips}</div>);
-
+    
         } else if (response.includes('[SUGGEST_FEEDBACK]')) {
             const cleanResponse = response.replace('[SUGGEST_FEEDBACK]', '').trim();
             if (cleanResponse) addMessage('aifa', cleanResponse);
