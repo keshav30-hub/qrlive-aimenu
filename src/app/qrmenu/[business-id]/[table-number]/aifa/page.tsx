@@ -47,7 +47,7 @@ const ChipButton = ({ text, onSelect }: { text: string; onSelect: (text: string)
     <Button
         variant="secondary"
         size="sm"
-        className="h-auto py-1 px-3 bg-white text-black"
+        className="h-auto py-1 px-3 bg-white text-black hover:bg-gray-200"
         onClick={() => onSelect(text)}
     >
         {text}
@@ -512,6 +512,10 @@ export default function AIFAPage() {
             addMessage('user', fullPrompt);
             getAIResponse(fullPrompt);
             setItemBeingCustomized(null); // Clear after use
+        } else {
+             // Fallback for safety, though it shouldn't happen with correct logic
+            addMessage('user', option);
+            getAIResponse(option);
         }
     };
 
@@ -545,11 +549,20 @@ export default function AIFAPage() {
             if (mainText) addMessage('aifa', mainText);
     
             const isOptionFlow = matches.some(m => m[1] === 'ADDON' || m[1] === 'MODIFIER');
+            
+            // Logic to find the item name from the AI's response text itself
             if (isOptionFlow) {
-                const lastUserMessage = [...messages].reverse().find(m => m.sender === 'user' && typeof m.content === 'string')?.content as string;
-                if (lastUserMessage) {
-                    const itemMatch = lastUserMessage.match(/Add (.+)/);
-                    if (itemMatch && itemMatch[1]) setItemBeingCustomized(itemMatch[1]);
+                 const mainTextMatch = mainText.match(/enhance the (.+?) with/i);
+                if (mainTextMatch && mainTextMatch[1]) {
+                    const itemName = mainTextMatch[1].trim();
+                    setItemBeingCustomized(itemName);
+                } else {
+                     // Fallback to previous message if needed
+                    const lastUserMessage = [...messages].reverse().find(m => m.sender === 'user' && typeof m.content === 'string')?.content as string;
+                    if (lastUserMessage) {
+                        const itemMatch = lastUserMessage.match(/Add (.+)/);
+                        if (itemMatch && itemMatch[1]) setItemBeingCustomized(itemMatch[1]);
+                    }
                 }
             }
     
