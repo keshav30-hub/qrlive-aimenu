@@ -43,7 +43,12 @@ const getUniqueMessageId = () => {
 };
 
 const ChipButton = ({ text, onSelect }: { text: string; onSelect: (text: string) => void }) => (
-    <Button variant="outline" size="sm" className="h-auto py-1 px-3" onClick={() => onSelect(text)}>
+    <Button
+        variant="secondary"
+        size="sm"
+        className="h-auto py-1 px-3 bg-white text-black hover:bg-white/90"
+        onClick={() => onSelect(text)}
+    >
         {text}
     </Button>
 );
