@@ -646,10 +646,10 @@ export default function QrMenuPage() {
            {socialLinks.length > 0 && (
             <section className="p-4">
               <Card className="bg-white/10 backdrop-blur-lg border border-white/20">
-                <CardHeader>
+                <CardHeader className="py-3">
                   <CardTitle className="text-base text-center text-white">Connect with us</CardTitle>
                 </CardHeader>
-                <CardContent className="flex justify-center gap-4">
+                <CardContent className="flex justify-center gap-4 pt-0 pb-3">
                   {socialLinks.map((link) => (
                     <a key={link.label} href={link.href} target="_blank" rel="noopener noreferrer">
                       <Button variant="outline" size="icon" className="bg-white/20 text-white border-white/30 hover:bg-white/30 hover:text-white">
