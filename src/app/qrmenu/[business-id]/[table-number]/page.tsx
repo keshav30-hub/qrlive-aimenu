@@ -337,7 +337,7 @@ export default function QrMenuPage() {
   const socialLinks = [
     {
       href: businessData.whatsappNumber ? `https://wa.me/${businessData.whatsappNumber.replace(/\D/g, '')}` : '',
-      icon: <Bot className="h-5 w-5" />, // Using Bot icon for WhatsApp
+      icon: <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>,
       label: 'WhatsApp',
     },
     {
@@ -646,7 +646,7 @@ export default function QrMenuPage() {
            {socialLinks.length > 0 && (
             <section className="p-4">
               <Card className="bg-white/10 backdrop-blur-lg border border-white/20">
-                <CardHeader className="py-3">
+                <CardHeader className="py-2">
                   <CardTitle className="text-base text-center text-white">Connect with us</CardTitle>
                 </CardHeader>
                 <CardContent className="flex justify-center gap-4 pt-0 pb-3">
