@@ -44,6 +44,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import Autoplay from "embla-carousel-autoplay";
 import { cn } from '@/lib/utils';
 import { trackQrScan, trackWaiterCall } from '@/lib/gtag';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 
 
 type CartItem = MenuItem & { quantity: number };
@@ -60,6 +62,7 @@ export default function QrMenuPage() {
 
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [orderNotes, setOrderNotes] = useState('');
 
   const [businessData, setBusinessData] = useState<BusinessData | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
@@ -180,7 +183,10 @@ export default function QrMenuPage() {
     if (!userId || typeof tableNumber !== 'string' || cart.length === 0) return;
 
     setIsPlacingOrder(true);
-    const orderSummary = cart.map(item => `${item.quantity}x ${item.name}`).join(', ');
+    let orderSummary = cart.map(item => `${item.quantity}x ${item.name}`).join(', ');
+    if (orderNotes.trim()) {
+        orderSummary += `. Notes: ${orderNotes.trim()}`;
+    }
     const requestType = `New Order: ${orderSummary}`;
     trackWaiterCall('Place Order'); // Track Place Order event
     try {
@@ -190,6 +196,7 @@ export default function QrMenuPage() {
         description: 'Your order has been sent to the kitchen. A staff member will confirm it shortly.',
       });
       setCart([]);
+      setOrderNotes('');
       setIsCartOpen(false);
     } catch (error) {
       console.error('Order placement failed:', error);
@@ -402,6 +409,15 @@ export default function QrMenuPage() {
                 </ScrollArea>
                 <SheetFooter className="p-4 bg-gray-100 dark:bg-gray-900 rounded-b-2xl">
                     <div className="w-full space-y-4">
+                         <div className="space-y-2">
+                            <Label htmlFor="order-notes">Order Notes (Optional)</Label>
+                            <Textarea
+                                id="order-notes"
+                                placeholder="e.g., Make one dish less spicy..."
+                                value={orderNotes}
+                                onChange={(e) => setOrderNotes(e.target.value)}
+                            />
+                        </div>
                         <div className="flex justify-between items-center text-lg font-semibold">
                         <span>To Pay</span>
                         <span>{format(cartTotal)}</span>
@@ -459,7 +475,7 @@ export default function QrMenuPage() {
                     disabled={isRequestingService}
                     className="flex flex-col items-center justify-center gap-1 p-3 rounded-lg bg-white/10 backdrop-blur-lg border border-white/20 text-white transition-all hover:border-white/40 disabled:opacity-50"
                 >
-                    <ConciergeBell className="h-6 w-6" />
+                    <ConciergeBell className="h-5 w-5" />
                     <span className="font-semibold text-xs">Call Captain</span>
                 </button>
                  <button
@@ -467,7 +483,7 @@ export default function QrMenuPage() {
                     disabled={isRequestingService}
                     className="flex flex-col items-center justify-center gap-1 p-3 rounded-lg bg-white/10 backdrop-blur-lg border border-white/20 text-white transition-all hover:border-white/40 disabled:opacity-50"
                 >
-                    <FileText className="h-6 w-6" />
+                    <FileText className="h-5 w-5" />
                     <span className="font-semibold text-xs">Get Bill</span>
                 </button>
             </div>

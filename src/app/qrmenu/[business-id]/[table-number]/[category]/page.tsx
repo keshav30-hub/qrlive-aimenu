@@ -53,6 +53,7 @@ import { useToast } from '@/hooks/use-toast';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { trackMenuItemView, trackWaiterCall } from '@/lib/gtag';
+import { Textarea } from '@/components/ui/textarea';
 
 
 const serviceRequests = [
@@ -178,6 +179,7 @@ export default function CategoryMenuPage() {
   const storageKey = `qrlive-cart-${businessId}-${tableNumber}`;
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [orderNotes, setOrderNotes] = useState('');
 
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [combos, setCombos] = useState<Combo[]>([]);
@@ -250,7 +252,10 @@ export default function CategoryMenuPage() {
     if (!userId || typeof tableNumber !== 'string' || cart.length === 0) return;
 
     setIsPlacingOrder(true);
-    const orderSummary = cart.map(item => `${item.quantity}x ${item.name}`).join(', ');
+    let orderSummary = cart.map(item => `${item.quantity}x ${item.name}`).join(', ');
+    if (orderNotes.trim()) {
+        orderSummary += `. Notes: ${orderNotes.trim()}`;
+    }
     const requestType = `New Order: ${orderSummary}`;
     trackWaiterCall('Place Order');
     try {
@@ -260,6 +265,7 @@ export default function CategoryMenuPage() {
         description: 'Your order has been sent to the kitchen. A staff member will confirm it shortly.',
       });
       setCart([]);
+      setOrderNotes('');
       setIsCartOpen(false);
     } catch (error) {
       console.error('Order placement failed:', error);
@@ -385,6 +391,15 @@ export default function CategoryMenuPage() {
                     </ScrollArea>
                     <SheetFooter className="p-4 bg-gray-100 dark:bg-gray-900 rounded-b-2xl">
                     <div className="w-full space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="order-notes">Order Notes (Optional)</Label>
+                            <Textarea
+                                id="order-notes"
+                                placeholder="e.g., Make one dish less spicy..."
+                                value={orderNotes}
+                                onChange={(e) => setOrderNotes(e.target.value)}
+                            />
+                        </div>
                         <div className="flex justify-between items-center text-lg font-semibold">
                         <span>To Pay</span>
                         <span>{format(cartTotal)}</span>
