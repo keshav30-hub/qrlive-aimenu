@@ -23,6 +23,7 @@ import { useFirebaseStorage } from "@/firebase/storage/use-firebase-storage";
 import { useFirebase } from "@/firebase";
 import { trackAifaMessage, trackAifaOpen, trackFeedbackSubmission } from "@/lib/gtag";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 import { format } from 'date-fns';
 
 type Message = {
@@ -185,46 +186,61 @@ const InstagramButton = ({ href }: { href: string }) => (
     </div>
 );
 
-const ConfirmOrder = ({ orderText, onConfirm }: { orderText: string, onConfirm: (items: string[]) => void }) => {
+const ConfirmOrder = ({ orderText, onConfirm }: { orderText: string; onConfirm: (orderSummary: string) => void }) => {
     const [isConfirming, setIsConfirming] = useState(false);
-    
-    // Function to parse items from the order summary text
-    const parseOrderItems = (text: string): string[] => {
-        const lines = text.split('\n').map(line => line.trim());
-        const items: string[] = [];
-        lines.forEach(line => {
-             // Regex to match patterns like "1 Classic Chicken Burger (Large)" or "2 Grilled Paneer Sandwiches"
-            const match = line.match(/(\d+)\s*(.*?)(?:\s\(.*\))?$/);
-            if (match) {
-                const quantity = parseInt(match[1], 10);
-                const itemName = match[2].trim();
-                for (let i = 0; i < quantity; i++) {
-                    items.push(itemName);
-                }
-            } else if (line.match(/^\d+x\s/)) { // for "1x Item" format
-                items.push(line);
-            }
-        });
-        // A fallback if parsing fails, just return the raw text
-        return items.length > 0 ? items : [text];
-    };
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [orderNotes, setOrderNotes] = useState('');
 
     const handleConfirm = async () => {
         setIsConfirming(true);
         const orderSummaryMatch = orderText.match(/Here's the order so far:\s*(.*)/is);
-        const summaryText = orderSummaryMatch ? orderSummaryMatch[1].trim() : "Your confirmed order.";
-        const parsedItems = parseOrderItems(summaryText);
-        await onConfirm(parsedItems);
+        let summaryText = orderSummaryMatch ? orderSummaryMatch[1].trim().replace(/\n/g, ', ') : "Your confirmed order.";
+        
+        if (orderNotes.trim()) {
+            summaryText += `. Notes: ${orderNotes.trim()}`;
+        }
+        
+        await onConfirm(summaryText);
         setIsConfirming(false);
+        setIsDialogOpen(false);
     }
 
     return (
         <div className="space-y-3 pt-2">
             <p className="text-sm font-medium">{orderText}</p>
-             <Button className="w-full" onClick={handleConfirm} disabled={isConfirming}>
-                 {isConfirming ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                 Confirm Order & Call Captain
-             </Button>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                    <Button className="w-full">
+                        Confirm Order & Call Captain
+                    </Button>
+                </DialogTrigger>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Add Order Notes</DialogTitle>
+                        <DialogDescription>
+                            Have any special requests for the kitchen? Let us know here.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">
+                        <Label htmlFor="order-notes" className="sr-only">Order Notes</Label>
+                        <Textarea
+                            id="order-notes"
+                            placeholder="e.g., make it extra spicy, no onions..."
+                            value={orderNotes}
+                            onChange={(e) => setOrderNotes(e.target.value)}
+                        />
+                    </div>
+                    <DialogFooter>
+                         <DialogClose asChild>
+                            <Button variant="outline">Cancel</Button>
+                        </DialogClose>
+                        <Button onClick={handleConfirm} disabled={isConfirming}>
+                            {isConfirming ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                            {isConfirming ? 'Sending...' : 'Send Order'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 };
@@ -412,16 +428,16 @@ export default function AIFAPage() {
         }, 300);
     }
     
-    const handleConfirmOrder = async (orderedItems: string[]) => {
+    const handleConfirmOrder = async (orderSummary: string) => {
         if (businessData?.id) {
             try {
-                const taskDescription = `Order ready: ${orderedItems.join(', ')}`;
+                const taskDescription = `Order ready: ${orderSummary}`;
                 await submitServiceRequest(businessData.id, tableNumber, taskDescription);
                 
                 // Add to order history
                 const newOrder: Order = {
                     timestamp: new Date().toISOString(),
-                    items: orderedItems,
+                    items: [orderSummary], // Storing the full summary string
                 };
 
                 setOrderHistory(prev => {
