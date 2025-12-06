@@ -324,7 +324,7 @@ export default function QrMenuPage() {
             </div>
         )}
       <div className="max-w-[480px] mx-auto h-full flex flex-col bg-transparent pt-12">
-        <header className="p-2 flex justify-between items-center flex-shrink-0 bg-black/10 backdrop-blur-md rounded-t-lg border-b border-white/20">
+        <header className="p-2 flex justify-between items-center flex-shrink-0 bg-black/10 backdrop-blur-md">
           <div className="flex items-center gap-3">
             <Image
               src={businessData.logo}
