@@ -25,14 +25,6 @@ import {
   SheetDescription,
   SheetTrigger,
 } from '@/components/ui/sheet';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogTrigger,
-} from '@/components/ui/dialog';
 import { useCurrency } from '@/hooks/use-currency';
 import {
   ShoppingBag,
@@ -41,9 +33,6 @@ import {
   Trash2,
   ConciergeBell,
   FileText,
-  Sparkles,
-  GlassWater,
-  SprayCan,
   Loader2,
   Star,
 } from 'lucide-react';
@@ -55,14 +44,6 @@ import Autoplay from "embla-carousel-autoplay";
 import { cn } from '@/lib/utils';
 import { trackQrScan, trackWaiterCall } from '@/lib/gtag';
 
-
-const serviceRequests = [
-    { text: 'Get Bill', icon: <FileText /> },
-    { text: 'Call Captain', icon: <ConciergeBell /> },
-    { text: 'Get Tissues', icon: <Sparkles /> },
-    { text: 'Clean the Table', icon: <SprayCan /> },
-    { text: 'Get Water', icon: <GlassWater /> },
-]
 
 type CartItem = MenuItem & { quantity: number };
 
@@ -87,7 +68,6 @@ export default function QrMenuPage() {
   const [qrliveContact, setQrliveContact] = useState<QrliveContact | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRequestingService, setIsRequestingService] = useState(false);
-  const [isServiceRequestDialogOpen, setIsServiceRequestDialogOpen] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
 
   const [carouselApi, setCarouselApi] = useState<CarouselApi>()
@@ -183,7 +163,6 @@ export default function QrMenuPage() {
             title: "Request Sent",
             description: "A staff member will be with you shortly.",
         });
-        setIsServiceRequestDialogOpen(false); // Close dialog on success
     } catch(error) {
         console.error("Service request failed:", error);
         toast({
@@ -434,31 +413,6 @@ export default function QrMenuPage() {
                 </SheetFooter>
                 </SheetContent>
             </Sheet>
-
-            <Dialog open={isServiceRequestDialogOpen} onOpenChange={setIsServiceRequestDialogOpen}>
-                <DialogTrigger asChild>
-                    <Button size="icon" className="bg-pink-500 text-white hover:bg-pink-600">
-                        <ConciergeBell className="h-6 w-6" />
-                        <span className="sr-only">Call Waiter</span>
-                    </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-xs sm:max-w-sm rounded-lg">
-                    <DialogHeader>
-                        <DialogTitle>Request Assistance</DialogTitle>
-                        <DialogDescription>
-                            Select a service and a staff member will be right with you.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="flex flex-wrap gap-3 py-4">
-                        {serviceRequests.map(req => (
-                            <Button key={req.text} variant="outline" className="flex-grow h-16 flex-col gap-1" onClick={() => handleServiceRequest(req.text)} disabled={isRequestingService}>
-                                {isRequestingService ? <Loader2 className="h-5 w-5 animate-spin"/> : req.icon}
-                                <span>{req.text}</span>
-                            </Button>
-                        ))}
-                    </div>
-                </DialogContent>
-            </Dialog>
           </div>
         </header>
 
@@ -496,6 +450,27 @@ export default function QrMenuPage() {
                 ))}
             </div>
           </section>}
+          
+          <section className="px-4 pb-4">
+            <div className="grid grid-cols-2 gap-4">
+                <button
+                    onClick={() => handleServiceRequest('Call Captain')}
+                    disabled={isRequestingService}
+                    className="flex flex-col items-center justify-center gap-2 p-4 rounded-lg bg-white/10 backdrop-blur-lg border border-white/20 text-white transition-all hover:border-white/40 disabled:opacity-50"
+                >
+                    <ConciergeBell className="h-7 w-7" />
+                    <span className="font-semibold text-sm">Call Captain</span>
+                </button>
+                 <button
+                    onClick={() => handleServiceRequest('Get Bill')}
+                    disabled={isRequestingService}
+                    className="flex flex-col items-center justify-center gap-2 p-4 rounded-lg bg-white/10 backdrop-blur-lg border border-white/20 text-white transition-all hover:border-white/40 disabled:opacity-50"
+                >
+                    <FileText className="h-7 w-7" />
+                    <span className="font-semibold text-sm">Get Bill</span>
+                </button>
+            </div>
+          </section>
 
           <main className="p-4">
             <div className="grid grid-cols-2 gap-4">
