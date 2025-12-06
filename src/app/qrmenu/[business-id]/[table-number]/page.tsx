@@ -467,7 +467,7 @@ export default function QrMenuPage() {
           </div>
         </header>
 
-        <div className="p-4 bg-black/10 backdrop-blur-md z-10">
+        <div className="p-4 bg-black/10 backdrop-blur-md z-20">
             <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/50" />
                 <Input
@@ -477,7 +477,7 @@ export default function QrMenuPage() {
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
                 {searchResults.length > 0 && searchTerm && (
-                    <div className="absolute top-full mt-2 w-full rounded-md border border-white/20 bg-black/30 backdrop-blur-lg z-20">
+                    <div className="absolute top-full mt-2 w-full rounded-md border border-white/20 bg-black/80 backdrop-blur-lg z-20">
                         <ScrollArea className="max-h-60">
                             {searchResults.map(item => (
                                 <div
