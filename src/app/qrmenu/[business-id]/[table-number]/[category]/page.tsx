@@ -494,7 +494,7 @@ export default function CategoryMenuPage() {
                 </div>
                 {!isComboPage && (
                     <div className="flex items-center space-x-2">
-                        <Switch id="veg-only" checked={showVegOnly} onCheckedChange={setShowVegOnly} />
+                        <Switch id="veg-only" checked={showVegOnly} onCheckedChange={setShowVegOnly} className="data-[state=checked]:bg-green-500" />
                         <Label htmlFor="veg-only" className="text-white">Veg</Label>
                     </div>
                 )}
