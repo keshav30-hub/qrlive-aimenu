@@ -34,8 +34,8 @@ import {
   ConciergeBell,
   FileText,
   Loader2,
-  Star,
   Sparkles,
+  Search,
 } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { getBusinessDataBySlug, getEvents, getMenuData, type BusinessData, type Event, type Category, submitServiceRequest, type MenuItem, type Combo, getQrliveContact, type QrliveContact } from '@/lib/qrmenu';
@@ -46,6 +46,7 @@ import { cn } from '@/lib/utils';
 import { trackQrScan, trackWaiterCall } from '@/lib/gtag';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 
 
 type CartItem = MenuItem & { quantity: number };
@@ -59,7 +60,6 @@ export default function QrMenuPage() {
   const router = useRouter();
   const storageKey = `qrlive-cart-${businessId}-${tableNumber}`;
 
-
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [orderNotes, setOrderNotes] = useState('');
@@ -67,12 +67,14 @@ export default function QrMenuPage() {
   const [businessData, setBusinessData] = useState<BusinessData | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [combos, setCombos] = useState<Combo[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [qrliveContact, setQrliveContact] = useState<QrliveContact | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRequestingService, setIsRequestingService] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const [carouselApi, setCarouselApi] = useState<CarouselApi>()
   const [currentSlide, setCurrentSlide] = useState(0)
@@ -129,6 +131,7 @@ export default function QrMenuPage() {
           getQrliveContact(),
         ]);
         setCategories(menuData.categories);
+        setMenuItems(menuData.items);
         setCombos(menuData.combos);
         setEvents(eventsData);
         setQrliveContact(contactData);
@@ -261,6 +264,19 @@ export default function QrMenuPage() {
       return true; // Available if day is set but time is not
     });
   }, [categories]);
+
+  const searchResults = useMemo(() => {
+    if (!searchTerm) return [];
+    return menuItems.filter(item =>
+      item.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [searchTerm, menuItems]);
+
+  const handleSuggestionClick = (item: MenuItem) => {
+    const categorySlug = item.category.toLowerCase().replace(/ /g, '-');
+    router.push(`/qrmenu/${businessId}/${encodedTableNumber}/${categorySlug}#${item.id}`);
+    setSearchTerm('');
+  };
 
   if (isLoading) {
     return <div className="flex h-screen items-center justify-center">Loading Menu...</div>
@@ -433,6 +449,33 @@ export default function QrMenuPage() {
           </div>
         </header>
 
+        <div className="p-4 bg-black/10 backdrop-blur-md">
+            <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/50" />
+                <Input
+                    placeholder="Search for any dish..."
+                    className="pl-10 bg-white/10 text-white placeholder:text-white/60 border-white/20 focus:border-white/50"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                {searchResults.length > 0 && searchTerm && (
+                    <div className="absolute top-full mt-2 w-full rounded-md border border-white/20 bg-black/30 backdrop-blur-lg z-20">
+                        <ScrollArea className="max-h-60">
+                            {searchResults.map(item => (
+                                <div
+                                    key={item.id}
+                                    onClick={() => handleSuggestionClick(item)}
+                                    className="p-3 text-white text-sm cursor-pointer hover:bg-white/10"
+                                >
+                                    {item.name}
+                                </div>
+                            ))}
+                        </ScrollArea>
+                    </div>
+                )}
+            </div>
+        </div>
+
         <ScrollArea className="flex-1 min-h-0">
           {(events || []).length > 0 && <section className="px-4 pb-4">
             <Carousel
@@ -522,10 +565,7 @@ export default function QrMenuPage() {
           </main>
         </ScrollArea>
         
-        <div className="fixed bottom-4 right-4 flex items-center gap-2">
-            <div className="z-50 overflow-hidden rounded-md border border-white/20 bg-black/20 backdrop-blur-md px-3 py-1.5 text-sm text-white shadow-md animate-in fade-in-0 zoom-in-95">
-                <p>Hi, I'm AIFA! Ask me for suggestions.</p>
-            </div>
+        <div className="fixed bottom-4 right-4 z-20">
             <Link href={aifaUrl}>
                 <Button size="icon" className="h-14 w-14 rounded-full shadow-lg bg-pink-500 text-white hover:bg-pink-600"
                 onClick={(e) => {

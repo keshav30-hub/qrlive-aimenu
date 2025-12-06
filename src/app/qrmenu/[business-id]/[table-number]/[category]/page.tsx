@@ -45,7 +45,7 @@ import {
   Minus,
   Trash2
 } from 'lucide-react';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { getBusinessDataBySlug, getMenuData, type MenuItem, submitServiceRequest, type Combo } from '@/lib/qrmenu';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -191,6 +191,24 @@ export default function CategoryMenuPage() {
 
   const [selectedItemForDialog, setSelectedItemForDialog] = useState<MenuItem | null>(null);
   const [isModifierDialogOpen, setIsModifierDialogOpen] = useState(false);
+  const itemRefs = useRef<Record<string, HTMLDivElement>>({});
+
+  useEffect(() => {
+    const hash = window.location.hash.substring(1);
+    if (hash && !isLoading) {
+      setTimeout(() => {
+        const element = itemRefs.current[hash];
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          element.classList.add('animate-pulse', 'bg-white/20');
+          setTimeout(() => {
+            element.classList.remove('animate-pulse', 'bg-white/20');
+          }, 2000);
+        }
+      }, 500); // Delay to allow layout to settle
+    }
+  }, [isLoading]);
+
 
   useEffect(() => {
     try {
@@ -463,7 +481,8 @@ export default function CategoryMenuPage() {
               {filteredItems.map((item) => (
                 <Card
                   key={item.id}
-                  className="overflow-hidden flex flex-col bg-white/10 backdrop-blur-lg border border-white/20"
+                  ref={el => itemRefs.current[item.id] = el!}
+                  className="overflow-hidden flex flex-col bg-white/10 backdrop-blur-lg border border-white/20 transition-all duration-500"
                 >
                   <div className="relative w-full aspect-[4/3]">
                     <Image
