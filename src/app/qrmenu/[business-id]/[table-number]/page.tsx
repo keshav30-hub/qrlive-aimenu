@@ -64,6 +64,7 @@ import { trackQrScan, trackWaiterCall } from '@/lib/gtag';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const serviceRequests = [
     { text: 'Get Tissues', icon: <Sparkles /> },
@@ -665,18 +666,27 @@ export default function QrMenuPage() {
         </ScrollArea>
         
         <div className="fixed bottom-4 right-4 z-20">
-            <Link href={aifaUrl}>
-                <Button size="icon" className="h-14 w-14 rounded-full shadow-lg bg-pink-500 text-white hover:bg-pink-600"
-                onClick={(e) => {
-                    if(!userId) {
-                        e.preventDefault();
-                        toast({variant: 'destructive', title: 'AI Assistant Not Ready', description: 'Please wait a moment and try again.'})
-                    }
-                }}>
-                    <Sparkles className="h-7 w-7" />
-                    <span className="sr-only">AI Food Assistant</span>
-                </Button>
-            </Link>
+            <TooltipProvider>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <Link href={aifaUrl}>
+                            <Button size="icon" className="h-14 w-14 rounded-full shadow-lg bg-pink-500 text-white hover:bg-pink-600"
+                            onClick={(e) => {
+                                if(!userId) {
+                                    e.preventDefault();
+                                    toast({variant: 'destructive', title: 'AI Assistant Not Ready', description: 'Please wait a moment and try again.'})
+                                }
+                            }}>
+                                <Bot className="h-7 w-7" />
+                                <span className="sr-only">AI Food Assistant</span>
+                            </Button>
+                        </Link>
+                    </TooltipTrigger>
+                    <TooltipContent side="left" className="bg-black/50 text-white border-white/20">
+                        <p>Hi, I'm AIFA! Ask me for suggestions.</p>
+                    </TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
         </div>
       </div>
     </div>
