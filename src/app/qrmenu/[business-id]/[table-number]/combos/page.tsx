@@ -64,6 +64,29 @@ const serviceRequests = [
 
 type CartItem = (MenuItem | Combo) & { quantity: number; selectedModifiers?: any; selectedAddons?: any[]; finalPrice: number };
 
+const loadingMessages = [
+    "We are cooking something very special for you...",
+    "Confused what to eat? Ask AIFA!",
+    "Finding the most delicious dishes for you...",
+    "Good food is on the way to the menu...",
+    "Preparing the feast, please wait a moment!"
+];
+
+const LoadingComponent = () => {
+    const [message, setMessage] = useState('');
+
+    useEffect(() => {
+        setMessage(loadingMessages[Math.floor(Math.random() * loadingMessages.length)]);
+    }, []);
+
+    return (
+        <div className="flex h-screen flex-col items-center justify-center bg-gradient-to-br from-gray-900 via-blue-950 to-black text-white">
+            <Loader2 className="h-12 w-12 animate-spin mb-4" />
+            <p className="text-lg animate-pulse">{message}</p>
+        </div>
+    );
+};
+
 
 export default function CombosPage() {
   const router = useRouter();
@@ -211,7 +234,7 @@ export default function CombosPage() {
   const aifaUrl = `/qrmenu/${businessId}/${encodedTableNumber}/aifa`;
 
   if (isLoading) {
-    return <div className="flex h-screen items-center justify-center">Loading combos...</div>
+    return <LoadingComponent />
   }
 
   return (
