@@ -43,11 +43,11 @@ import {
   ConciergeBell,
   FileText,
   Loader2,
-  Sparkles,
   Search,
+  X,
+  Sparkles,
   GlassWater,
   SprayCan,
-  X,
 } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { getBusinessDataBySlug, getEvents, getMenuData, type BusinessData, type Event, type Category, submitServiceRequest, type MenuItem, type Combo, getQrliveContact, type QrliveContact } from '@/lib/qrmenu';
@@ -331,22 +331,7 @@ export default function QrMenuPage() {
 
   return (
     <div className="h-screen w-full bg-gradient-to-br from-gray-900 via-blue-950 to-black">
-        {qrliveContact?.website ? (
-             <a href={qrliveContact.website} target="_blank" rel="noopener noreferrer">
-                <div
-                    className="fixed top-4 left-1/2 -translate-x-1/2 z-20 px-4 py-1.5 bg-white/20 backdrop-blur-sm text-white rounded-full shadow-lg text-sm font-bold border border-white/30"
-                >
-                    QRLIVE
-                </div>
-            </a>
-        ) : (
-            <div
-                className="fixed top-4 left-1/2 -translate-x-1/2 z-20 px-4 py-1.5 bg-white/20 backdrop-blur-sm text-white rounded-full shadow-lg text-sm font-bold border border-white/30"
-            >
-                QRLIVE
-            </div>
-        )}
-      <div className="max-w-[480px] mx-auto h-full flex flex-col bg-transparent pt-12">
+      <div className="max-w-[480px] mx-auto h-full flex flex-col bg-transparent">
         <header className="p-2 flex justify-between items-center flex-shrink-0 bg-black/10 backdrop-blur-md">
           <div className="flex items-center gap-3">
             <Image
@@ -363,10 +348,61 @@ export default function QrMenuPage() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          {qrliveContact?.website ? (
+             <a href={qrliveContact.website} target="_blank" rel="noopener noreferrer">
+                <div
+                    className="px-4 py-1.5 bg-white/20 backdrop-blur-sm text-white rounded-full shadow-lg text-sm font-bold border border-white/30"
+                >
+                    QRLIVE
+                </div>
+            </a>
+          ) : (
+            <div
+                className="px-4 py-1.5 bg-white/20 backdrop-blur-sm text-white rounded-full shadow-lg text-sm font-bold border border-white/30"
+            >
+                QRLIVE
+            </div>
+          )}
+        </header>
+
+        <div className="p-4 bg-black/10 backdrop-blur-md z-30 flex items-center gap-2">
+            <div className="relative flex-grow">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/50" />
+                <Input
+                    placeholder="Search for any dish..."
+                    className="pl-10 bg-white/10 text-white placeholder:text-white/60 border-white/20 focus:border-white/50"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                {searchTerm && (
+                    <Button 
+                        size="icon" 
+                        variant="ghost" 
+                        className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-white/50 hover:bg-white/20 hover:text-white"
+                        onClick={() => setSearchTerm('')}
+                    >
+                        <X className="h-4 w-4" />
+                    </Button>
+                )}
+                {searchResults.length > 0 && searchTerm && (
+                    <div className="absolute top-full mt-2 w-full rounded-md border border-white/20 bg-black/95 backdrop-blur-lg z-20">
+                        <ScrollArea className="max-h-60">
+                            {searchResults.map(item => (
+                                <div
+                                    key={item.id}
+                                    onClick={() => handleSuggestionClick(item)}
+                                    className="p-3 text-white text-sm cursor-pointer hover:bg-white/10"
+                                >
+                                    {item.name}
+                                </div>
+                            ))}
+                        </ScrollArea>
+                    </div>
+                )}
+            </div>
             <Sheet open={isCartOpen} onOpenChange={setIsCartOpen}>
                 <SheetTrigger asChild>
-                    <Button size="icon" variant="outline" className="relative bg-white/20 text-white border-white/30 hover:bg-white/30 hover:text-white">
+                    <Button size="icon" variant="outline" className="relative bg-white/20 text-white border-white/30 hover:bg-white/30 hover:text-white flex-shrink-0">
                         <ShoppingBag className="h-6 w-6" />
                         {cart.length > 0 && (
                             <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-pink-500 text-white text-xs flex items-center justify-center">
@@ -466,44 +502,6 @@ export default function QrMenuPage() {
                 </SheetFooter>
                 </SheetContent>
             </Sheet>
-          </div>
-        </header>
-
-        <div className="p-4 bg-black/10 backdrop-blur-md z-30">
-            <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/50" />
-                <Input
-                    placeholder="Search for any dish..."
-                    className="pl-10 bg-white/10 text-white placeholder:text-white/60 border-white/20 focus:border-white/50"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                {searchTerm && (
-                    <Button 
-                        size="icon" 
-                        variant="ghost" 
-                        className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-white/50 hover:bg-white/20 hover:text-white"
-                        onClick={() => setSearchTerm('')}
-                    >
-                        <X className="h-4 w-4" />
-                    </Button>
-                )}
-                {searchResults.length > 0 && searchTerm && (
-                    <div className="absolute top-full mt-2 w-full rounded-md border border-white/20 bg-black/95 backdrop-blur-lg z-20">
-                        <ScrollArea className="max-h-60">
-                            {searchResults.map(item => (
-                                <div
-                                    key={item.id}
-                                    onClick={() => handleSuggestionClick(item)}
-                                    className="p-3 text-white text-sm cursor-pointer hover:bg-white/10"
-                                >
-                                    {item.name}
-                                </div>
-                            ))}
-                        </ScrollArea>
-                    </div>
-                )}
-            </div>
         </div>
 
         <ScrollArea className="flex-1 min-h-0">
@@ -631,4 +629,5 @@ export default function QrMenuPage() {
     </div>
   );
 }
+
 
