@@ -457,18 +457,18 @@ export default function QrMenuPage() {
                 <button
                     onClick={() => handleServiceRequest('Call Captain')}
                     disabled={isRequestingService}
-                    className="flex flex-col items-center justify-center gap-2 p-4 rounded-lg bg-white/10 backdrop-blur-lg border border-white/20 text-white transition-all hover:border-white/40 disabled:opacity-50"
+                    className="flex flex-col items-center justify-center gap-1 p-3 rounded-lg bg-white/10 backdrop-blur-lg border border-white/20 text-white transition-all hover:border-white/40 disabled:opacity-50"
                 >
-                    <ConciergeBell className="h-7 w-7" />
-                    <span className="font-semibold text-sm">Call Captain</span>
+                    <ConciergeBell className="h-6 w-6" />
+                    <span className="font-semibold text-xs">Call Captain</span>
                 </button>
                  <button
                     onClick={() => handleServiceRequest('Get Bill')}
                     disabled={isRequestingService}
-                    className="flex flex-col items-center justify-center gap-2 p-4 rounded-lg bg-white/10 backdrop-blur-lg border border-white/20 text-white transition-all hover:border-white/40 disabled:opacity-50"
+                    className="flex flex-col items-center justify-center gap-1 p-3 rounded-lg bg-white/10 backdrop-blur-lg border border-white/20 text-white transition-all hover:border-white/40 disabled:opacity-50"
                 >
-                    <FileText className="h-7 w-7" />
-                    <span className="font-semibold text-sm">Get Bill</span>
+                    <FileText className="h-6 w-6" />
+                    <span className="font-semibold text-xs">Get Bill</span>
                 </button>
             </div>
           </section>
