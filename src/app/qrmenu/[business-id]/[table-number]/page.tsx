@@ -17,6 +17,14 @@ import {
   type CarouselApi,
 } from '@/components/ui/carousel';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
   Sheet,
   SheetContent,
   SheetHeader,
@@ -36,6 +44,8 @@ import {
   Loader2,
   Sparkles,
   Search,
+  GlassWater,
+  SprayCan,
 } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { getBusinessDataBySlug, getEvents, getMenuData, type BusinessData, type Event, type Category, submitServiceRequest, type MenuItem, type Combo, getQrliveContact, type QrliveContact } from '@/lib/qrmenu';
@@ -48,6 +58,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 
+const serviceRequests = [
+    { text: 'Call Captain', icon: <ConciergeBell /> },
+    { text: 'Get Tissues', icon: <Sparkles /> },
+    { text: 'Clean the Table', icon: <SprayCan /> },
+    { text: 'Get Water', icon: <GlassWater /> },
+]
 
 type CartItem = MenuItem & { quantity: number };
 
@@ -73,6 +89,7 @@ export default function QrMenuPage() {
   const [qrliveContact, setQrliveContact] = useState<QrliveContact | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRequestingService, setIsRequestingService] = useState(false);
+  const [isServiceRequestDialogOpen, setIsServiceRequestDialogOpen] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -170,6 +187,7 @@ export default function QrMenuPage() {
             title: "Request Sent",
             description: "A staff member will be with you shortly.",
         });
+        setIsServiceRequestDialogOpen(false);
     } catch(error) {
         console.error("Service request failed:", error);
         toast({
@@ -513,14 +531,32 @@ export default function QrMenuPage() {
           
           <section className="px-4 pb-4">
             <div className="grid grid-cols-2 gap-4">
-                <button
-                    onClick={() => handleServiceRequest('Call Captain')}
-                    disabled={isRequestingService}
-                    className="flex flex-col items-center justify-center gap-1 p-3 rounded-lg bg-white/10 backdrop-blur-lg border border-white/20 text-white transition-all hover:border-white/40 disabled:opacity-50"
-                >
-                    <ConciergeBell className="h-5 w-5" />
-                    <span className="font-semibold text-xs">Call Captain</span>
-                </button>
+                <Dialog open={isServiceRequestDialogOpen} onOpenChange={setIsServiceRequestDialogOpen}>
+                    <DialogTrigger asChild>
+                        <button
+                            className="flex flex-col items-center justify-center gap-1 p-3 rounded-lg bg-white/10 backdrop-blur-lg border border-white/20 text-white transition-all hover:border-white/40 disabled:opacity-50"
+                        >
+                            <ConciergeBell className="h-5 w-5" />
+                            <span className="font-semibold text-xs">Call Captain</span>
+                        </button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-xs sm:max-w-sm rounded-lg">
+                        <DialogHeader>
+                            <DialogTitle>Request Assistance</DialogTitle>
+                            <DialogDescription>
+                                Select a service and a staff member will be right with you.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="flex flex-wrap gap-3 py-4">
+                            {serviceRequests.map(req => (
+                                <Button key={req.text} variant="outline" className="flex-grow h-16 flex-col gap-1" onClick={() => handleServiceRequest(req.text)} disabled={isRequestingService}>
+                                    {isRequestingService ? <Loader2 className="h-5 w-5 animate-spin"/> : req.icon}
+                                    <span>{req.text}</span>
+                                </Button>
+                            ))}
+                        </div>
+                    </DialogContent>
+                </Dialog>
                  <button
                     onClick={() => handleServiceRequest('Get Bill')}
                     disabled={isRequestingService}
