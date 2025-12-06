@@ -209,21 +209,21 @@ export default function CombosPage() {
   }
 
   return (
-    <div className="h-screen w-full bg-gray-100 dark:bg-black">
-      <div className="max-w-[480px] mx-auto h-full flex flex-col bg-white dark:bg-gray-950 shadow-lg">
-        <header className="px-4 py-2 flex justify-between items-center sticky top-0 bg-white dark:bg-gray-950 z-10">
+    <div className="h-screen w-full bg-gradient-to-br from-gray-900 via-blue-950 to-black">
+      <div className="max-w-[480px] mx-auto h-full flex flex-col bg-transparent shadow-lg">
+        <header className="p-2 flex justify-between items-center flex-shrink-0 bg-black/10 backdrop-blur-md">
           <div className="flex items-center gap-2">
-            <Button size="icon" onClick={() => router.back()} className="bg-primary text-primary-foreground">
+            <Button size="icon" onClick={() => router.back()} className="bg-white/20 text-white border-white/30 hover:bg-white/30 hover:text-white">
               <ChevronLeft className="h-6 w-6" />
             </Button>
-            <h1 className="text-xl font-bold capitalize">Combos</h1>
+            <h1 className="text-xl font-bold capitalize text-white">Combos</h1>
           </div>
            <div className="flex items-center gap-2">
             <Sheet open={isCartOpen} onOpenChange={setIsCartOpen}>
               <SheetTrigger asChild>
-                <Button size="icon" variant="outline" className="relative">
+                <Button size="icon" variant="outline" className="relative bg-white/20 text-white border-white/30 hover:bg-white/30 hover:text-white">
                     <ShoppingBag className="h-6 w-6" />
-                    {cart.length > 0 && <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center">{cart.reduce((total, item) => total + item.quantity, 0)}</span>}
+                    {cart.length > 0 && <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-pink-500 text-white text-xs flex items-center justify-center">{cart.reduce((total, item) => total + item.quantity, 0)}</span>}
                 </Button>
               </SheetTrigger>
               <SheetContent side="bottom" className="max-w-[480px] mx-auto rounded-t-2xl p-0">
@@ -269,7 +269,7 @@ export default function CombosPage() {
             </Sheet>
             <Dialog open={isServiceRequestDialogOpen} onOpenChange={setIsServiceRequestDialogOpen}>
                 <DialogTrigger asChild>
-                    <Button size="icon" className="bg-primary text-primary-foreground">
+                    <Button size="icon" className="bg-white/20 text-white border-white/30 hover:bg-white/30 hover:text-white">
                         <ConciergeBell className="h-6 w-6" />
                         <span className="sr-only">Call Waiter</span>
                     </Button>
@@ -294,12 +294,12 @@ export default function CombosPage() {
           </div>
         </header>
 
-        <div className="px-4 py-2 flex items-center gap-4 sticky top-[64px] bg-white dark:bg-gray-950 z-10 border-b">
+        <div className="px-4 py-2 flex items-center gap-4 sticky top-[60px] bg-black/10 backdrop-blur-md z-10">
           <div className="relative flex-grow">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/50" />
             <Input 
               placeholder="Search for combos..." 
-              className="pl-10"
+              className="pl-10 bg-white/10 text-white placeholder:text-white/60 border-white/20 focus:border-white/50"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -312,7 +312,7 @@ export default function CombosPage() {
               {filteredItems.map((item) => (
                 <Card
                   key={item.id}
-                  className="overflow-hidden flex flex-col"
+                  className="overflow-hidden flex flex-col bg-white/10 backdrop-blur-lg border border-white/20"
                 >
                   <div className="relative w-full aspect-[4/3]">
                     <Image
@@ -324,14 +324,14 @@ export default function CombosPage() {
                     />
                   </div>
                   <CardContent className="p-2 flex flex-col flex-grow">
-                    <h3 className="font-semibold text-xs flex-grow leading-tight">{item.name}</h3>
+                    <h3 className="font-semibold text-xs flex-grow leading-tight text-white">{item.name}</h3>
                     <div className="flex justify-between items-center mt-1">
-                      <span className="font-bold text-sm">
+                      <span className="font-bold text-sm text-white">
                         {format(Number(item.price))}
                       </span>
                       <Button
                         size="icon"
-                        className="h-7 w-7"
+                        className="h-7 w-7 bg-white/20 text-white border-white/30 hover:bg-white/30"
                         onClick={() => addToCart(item)}
                       >
                          <Plus className="h-4 w-4" />
@@ -342,26 +342,23 @@ export default function CombosPage() {
               ))}
             </div>
             {filteredItems.length === 0 && (
-                <div className="text-center py-10 text-muted-foreground">
+                <div className="text-center py-10 text-white/70">
                     <p>No combos found that match your search.</p>
                 </div>
             )}
           </main>
         </ScrollArea>
         
-        <div className="fixed bottom-4 right-4 flex items-center gap-2">
-            <div className="z-50 overflow-hidden rounded-md border bg-background/30 backdrop-blur-md px-3 py-1.5 text-sm text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95">
-                <p>Hi, I'm AIFA! Ask me for suggestions.</p>
-            </div>
+        <div className="fixed bottom-4 right-4 z-20">
             <Link href={aifaUrl}>
-                <Button size="icon" className="h-14 w-14 rounded-full shadow-lg bg-primary text-primary-foreground"
+                <Button size="icon" className="h-14 w-14 rounded-full shadow-lg bg-pink-500 text-white hover:bg-pink-600"
                 onClick={(e) => {
                     if(!userId) {
                         e.preventDefault();
                         toast({variant: 'destructive', title: 'AI Assistant Not Ready', description: 'Please wait a moment and try again.'})
                     }
                 }}>
-                    <Sparkles className="h-7 w-7 animate-sparkle" />
+                    <Sparkles className="h-7 w-7" />
                     <span className="sr-only">AI Food Assistant</span>
                 </Button>
             </Link>

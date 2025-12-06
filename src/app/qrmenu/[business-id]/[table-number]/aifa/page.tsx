@@ -588,22 +588,22 @@ export default function AIFAPage() {
     const showInitialActions = messages.length <= 1;
 
     return (
-        <div className="h-screen w-full bg-gray-100 dark:bg-black">
-            <div className="max-w-[480px] mx-auto h-full flex flex-col bg-white dark:bg-gray-950 shadow-lg">
-                <header className="p-4 flex justify-between items-center sticky top-0 bg-white dark:bg-gray-950 z-10 border-b">
+        <div className="h-screen w-full bg-gradient-to-br from-gray-900 via-blue-950 to-black">
+            <div className="max-w-[480px] mx-auto h-full flex flex-col bg-transparent shadow-lg">
+                <header className="p-2 flex justify-between items-center flex-shrink-0 bg-black/10 backdrop-blur-md">
                     <div className="flex items-center gap-2">
-                        <Button size="icon" onClick={() => router.back()} className="bg-primary text-primary-foreground">
+                        <Button size="icon" onClick={() => router.back()} className="bg-white/20 text-white border-white/30 hover:bg-white/30 hover:text-white">
                             <ChevronLeft className="h-6 w-6" />
                         </Button>
                         <div>
-                            <h1 className="text-xl font-bold">AIFA</h1>
-                            <p className="text-xs font-bold text-foreground/80">powered by QRLIVE</p>
+                            <h1 className="text-xl font-bold text-white">AIFA</h1>
+                            <p className="text-xs font-bold text-white/80">powered by QRLIVE</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
                          <Sheet>
                             <SheetTrigger asChild>
-                                <Button variant="ghost" size="icon">
+                                <Button variant="ghost" size="icon" className="text-white hover:bg-white/10 hover:text-white">
                                     <History className="h-5 w-5" />
                                     <span className="sr-only">Order History</span>
                                 </Button>
@@ -633,8 +633,8 @@ export default function AIFAPage() {
                                 </ScrollArea>
                             </SheetContent>
                         </Sheet>
-                        <Button variant="ghost" size="icon" onClick={resetChat}>
-                            <Trash2 className="h-5 w-5 text-destructive" />
+                        <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/20 hover:text-destructive" onClick={resetChat}>
+                            <Trash2 className="h-5 w-5" />
                             <span className="sr-only">Delete Chat</span>
                         </Button>
                     </div>
@@ -646,12 +646,12 @@ export default function AIFAPage() {
                             <div key={message.id} className={`flex items-start gap-2 ${message.sender === 'user' ? 'justify-end' : ''}`}>
                                 {message.sender === 'aifa' && (
                                     <Avatar className="h-8 w-8 flex-shrink-0">
-                                        <div className="flex h-full w-full items-center justify-center rounded-full bg-primary text-primary-foreground">
+                                        <div className="flex h-full w-full items-center justify-center rounded-full bg-pink-500 text-white">
                                             <Sparkles className="h-5 w-5" />
                                         </div>
                                     </Avatar>
                                 )}
-                                <div className={`rounded-lg px-4 py-2 max-w-[85%] break-words ${message.sender === 'user' ? 'bg-primary text-primary-foreground' : 'bg-gray-200 dark:bg-gray-800'}`}>
+                                <div className={`rounded-lg px-4 py-2 max-w-[85%] break-words ${message.sender === 'user' ? 'bg-white text-gray-800' : 'bg-black/20 text-white backdrop-blur-md border border-white/10'}`}>
                                     { typeof message.content === 'string' ? <p className="text-sm">{message.content}</p> : message.content }
                                 </div>
                              </div>
@@ -659,11 +659,11 @@ export default function AIFAPage() {
                         {isThinking && (
                              <div className="flex items-start gap-2">
                                 <Avatar className="h-8 w-8 flex-shrink-0">
-                                    <div className="flex h-full w-full items-center justify-center rounded-full bg-primary text-primary-foreground">
+                                    <div className="flex h-full w-full items-center justify-center rounded-full bg-pink-500 text-white">
                                         <Sparkles className="h-5 w-5" />
                                     </div>
                                 </Avatar>
-                                <div className="rounded-lg px-4 py-2 max-w-[85%] bg-gray-200 dark:bg-gray-800">
+                                <div className="rounded-lg px-4 py-2 max-w-[85%] bg-black/20 text-white backdrop-blur-md border border-white/10">
                                     <p className="text-sm">Thinking...</p>
                                  </div>
                             </div>
@@ -672,27 +672,26 @@ export default function AIFAPage() {
                     </div>
                 </ScrollArea>
 
-                <div className="p-4 bg-white dark:bg-gray-950 border-t z-20">
+                <div className="p-4 bg-transparent border-t border-white/10 z-20">
                     <div className="flex items-center gap-2">
                         <Input 
                             placeholder="Ask me for suggestions..." 
-                            className="flex-1"
+                            className="flex-1 bg-white/10 text-white placeholder:text-white/60 border-white/20 focus:border-white/50"
                             value={inputValue}
                             onChange={(e) => setInputValue(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
                             disabled={isThinking}
                         />
-                        <Button size="icon" onClick={handleSendMessage} disabled={isThinking || !inputValue.trim()}>
+                        <Button size="icon" onClick={handleSendMessage} disabled={isThinking || !inputValue.trim()} className="bg-white/20 text-white border-white/30 hover:bg-white/30">
                             <Send className="h-5 w-5" />
                         </Button>
                     </div>
                 </div>
 
-                <footer className="text-center p-2 bg-gray-100 dark:bg-black border-t">
-                     <p className="text-xs text-muted-foreground">AIFA can make mistakes.</p>
+                <footer className="text-center p-2 bg-black/20 border-t border-white/10">
+                     <p className="text-xs text-white/50">AIFA can make mistakes.</p>
                 </footer>
             </div>
         </div>
     );
 }
-
