@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/carousel';
 import {
   Dialog,
+  DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
