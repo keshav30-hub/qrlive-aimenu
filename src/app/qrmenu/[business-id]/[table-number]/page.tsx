@@ -307,7 +307,7 @@ export default function QrMenuPage() {
   };
 
   return (
-    <div className="h-screen w-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500">
+    <div className="h-screen w-full bg-gradient-to-br from-gray-900 via-blue-950 to-black">
         {qrliveContact?.website ? (
              <a href={qrliveContact.website} target="_blank" rel="noopener noreferrer">
                 <div
