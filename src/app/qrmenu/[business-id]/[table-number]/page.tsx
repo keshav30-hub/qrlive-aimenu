@@ -8,6 +8,7 @@ import {
   Card,
   CardHeader,
   CardTitle,
+  CardContent,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,7 +19,6 @@ import {
 } from '@/components/ui/carousel';
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
@@ -398,8 +398,8 @@ export default function QrMenuPage() {
           )}
         </header>
 
-        <div className="p-4 bg-black/10 backdrop-blur-md z-30 flex items-center gap-2">
-            <div className="relative flex-grow">
+        <div className="p-4 bg-black/10 backdrop-blur-md z-10 flex items-center gap-2">
+            <div className="relative flex-grow z-20">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/50" />
                 <Input
                     placeholder="Search for any dish..."
